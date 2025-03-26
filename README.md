@@ -84,7 +84,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Postman](https://www.postman.com/downloads/)
 - [Git](https://git-scm.com/downloads)
 
-> **Note**: The project uses Java 17, so make sure to have the correct version installed. You can check the Java version using the following command:
+> **Note**: The project uses Java 21, so make sure to have the correct version installed. You can check the Java version using the following command:
 
 ```bash
 java -version
@@ -250,6 +250,7 @@ EMAIL_PASSWORD=password # If using gmail, this must be a 2 step verification ena
   - To *stop* the running application on Docker, simply run the command - **docker-compose down**
   - This will stop the running application and remove the container.
   - If you want to remove the container and the image, simply run the command - **docker-compose down --rmi all**
+  - [DockerHub](https://hub.docker.com/r/23yea1903/kavun)
 
 #### Grafana
 

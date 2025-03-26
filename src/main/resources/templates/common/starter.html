@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<!-- Head -->
+<th:block th:replace="~{common/template :: common-head(title='Starter')}"/>
+
+<body>
+
+<!-- Container starts-->
+<main class="container">
+
+  <!--Common Body Scripts-->
+  <nav th:replace="~{common/template :: common-navbar}"></nav>
+
+</main>
+<!-- Container ends-->
+
+<!--Common Body Scripts-->
+<th:block th:replace="~{common/template :: common-scripts}"/>
+
+</body>
+</html>

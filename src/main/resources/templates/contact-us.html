@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<!-- Head -->
+<th:block th:replace="~{common/template :: common-head(title='Contact')}"/>
+
+<body>
+
+<!-- Container starts-->
+<main class="container">
+
+  <!--Common Body Scripts-->
+  <nav th:replace="~{common/template :: common-navbar}"></nav>
+
+
+  <!--Section: Contact v.2-->
+  <section style="margin-top: 5rem;">
+
+    <!--Section heading-->
+    <h2 class="h1-responsive font-weight-bold text-center my-4" th:text="#{contact.text}"></h2>
+    <!--Section description-->
+    <p class="text-center w-responsive mx-auto mb-5" th:text="#{contact.lead.text}"></p>
+
+    <div class="row">
+
+      <div class="col-md-6 mt-4 mb-4 text-center">
+        <div class="bg-success text-white p-2" th:if="${feedbackSuccess}"
+             th:text="#{contact.form.success.text}"></div>
+        <div class="bg-warning p-2" th:if="${error}" th:text="${error}"></div>
+      </div>
+
+      <!--Grid column-->
+      <div class="col-md-9 mb-md-0 mb-5">
+        <form id="contact-form" method="post" name="contact-form" th:action="@{/contact}"
+              th:object="${user}">
+          <input th:field="*{email}" th:if="${user}" type="hidden">
+
+          <!--Grid row-->
+          <div class="row">
+
+            <!--Grid column-->
+            <div class="col-md-6">
+              <div class="md-form mb-0">
+                <input class="form-control" id="name" name="name" type="text">
+                <label class="" for="name" th:text="#{contact.name}"></label>
+              </div>
+            </div>
+            <!--Grid column-->
+
+            <!--Grid column-->
+            <div class="col-md-6">
+              <div class="md-form mb-0">
+                <input class="form-control" disabled th:field="*{email}" th:if="${user}"
+                       type="text">
+                <input class="form-control" id="email" name="email" th:unless="${user}" type="text">
+                <label class="" for="email" th:text="#{contact.email}"></label>
+              </div>
+            </div>
+            <!--Grid column-->
+
+          </div>
+          <!--Grid row-->
+
+          <!--Grid row-->
+          <div class="row">
+            <div class="col-md-12">
+              <div class="md-form mb-0">
+                <input class="form-control" id="subject" name="subject" type="text">
+                <label class="" for="subject" th:text="#{contact.form.subject}"></label>
+              </div>
+            </div>
+          </div>
+          <!--Grid row-->
+
+          <!--Grid row-->
+          <div class="row">
+
+            <!--Grid column-->
+            <div class="col-md-12">
+
+              <div class="md-form">
+                <textarea class="form-control md-textarea" id="message" name="message" rows="2"
+                          type="text"></textarea>
+                <label for="message" th:text="#{contact.form.feedback}"></label>
+              </div>
+
+            </div>
+          </div>
+          <!--Grid row-->
+
+        </form>
+
+        <div class="text-center text-md-left">
+          <a class="btn btn-primary" onclick="document.getElementById('contact-form').submit();">Send</a>
+        </div>
+        <div class="status"></div>
+      </div>
+      <!--Grid column-->
+
+      <!--Grid column-->
+      <div class="col-md-3 text-center">
+        <ul class="list-unstyled mb-0">
+          <li><i class="fas fa-map-marker-alt fa-2x"></i>
+            <p th:text="${@systemProperties.address}"></p>
+          </li>
+
+          <li><i class="fas fa-phone mt-4 fa-2x"></i>
+            <p th:text="${@systemProperties.phone}"></p>
+          </li>
+
+          <li><i class="fas fa-envelope mt-4 fa-2x"></i>
+            <p th:text="${@systemProperties.email}"></p>
+          </li>
+        </ul>
+      </div>
+      <!--Grid column-->
+
+    </div>
+
+  </section>
+  <!--Section: Contact v.2-->
+
+</main>
+<!-- Container ends-->
+
+<!--Common Body Scripts-->
+<th:block th:replace="~{common/template :: common-scripts}"/>
+
+</body>
+</html>

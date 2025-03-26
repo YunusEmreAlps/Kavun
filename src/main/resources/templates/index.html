@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- Head -->
+<th:block th:replace="~{common/template :: common-head(title='Home')}"/>
+
+<body>
+
+<!-- Container starts-->
+<main class="container">
+
+  <!--Common Body Scripts-->
+  <nav th:replace="~{common/template :: common-navbar}"></nav>
+
+  <!-- Row starts-->
+  <div class="row">
+    <div class="container bg-secondary text-light p-5 rounded">
+      <div class="container bg-secondary p-5 text-center">
+        <h1 class="display-4" th:text="#{navbar.logo.text}"></h1>
+
+        <div sec:authorize="isAuthenticated()"
+             th:with="lastLogin=${#authentication.principal.lastSuccessfulLogin}">
+
+          <p th:if="${lastLogin}" class="lead">
+            Last Login:
+            <span
+                th:text="${#temporals.format(lastLogin, 'MMM dd yyyy h:mm:ss a')}">
+            </span>
+          </p>
+          <p th:unless="${lastLogin}">No previous recorded login action</p>
+
+          <hr>
+
+          <p class="lead">
+            Failed Login Attempts: <span
+              th:text="${#authentication.principal.failedLoginAttempts}"></span>
+          </p>
+
+        </div>
+
+        <hr>
+
+        <p>Admin Username: &quot;<span th:text="${adminUsername}"></span>&quot;</p>
+        <p>Admin Email: &quot;<span th:text="${adminEmail}"></span>&quot;</p>
+        <p>Admin Password: &quot;<span th:text="${adminPassword}"></span>&quot;</p>
+
+        <hr>
+      </div>
+    </div>
+  </div>
+  <!-- Row ends -->
+
+</main>
+<!-- Container ends-->
+
+
+<!--Common Body Scripts-->
+<div th:replace="~{common/template :: common-scripts}"></div>
+</body>
+</html>

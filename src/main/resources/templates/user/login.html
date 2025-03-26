@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Head -->
+<th:block
+    th:replace="~{common/template :: common-head(title='Login', formValidation=true, togglePassword=true)}"/>
+
+<body>
+
+<!-- Container starts-->
+<main class="container">
+
+  <!--Common Body Scripts-->
+  <nav th:replace="~{common/template :: common-navbar}"></nav>
+
+  <!-- Row starts-->
+  <div class="row mt-5">
+    <!-- Col starts-->
+    <div class="col-md-4 offset-md-4 mt-4">
+      <div class="mt-4 mb-2 text-center">
+        <div class="bg-warning p-2" th:if="${param.error}" th:text="${session['SPRING_SECURITY_LAST_EXCEPTION'].message}"></div>
+        <div class="bg-success text-white p-2" th:if="${param.logout}"
+             th:text="#{login.logout.success}"></div>
+        <div class="bg-success text-white p-2" th:if="${passwordResetSuccess}"
+             th:text="#{reset.password.email.sent.success}"></div>
+        <div class="bg-warning p-2" th:if="${error}" th:text="${error}"></div>
+      </div>
+
+      <form id="login-form" method="post" th:action="@{/login}"
+            th:object="${user}">
+        <fieldset>
+          <legend th:text="#{sign-in.text}"></legend>
+
+          <!-- Username input starts-->
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-user"></i></span>
+              <input aria-describedby="username" aria-label="Username" autofocus
+                     class="form-control rounded"
+                     required th:field="*{username}" th:placeholder="#{form.username} + ' or ' + #{form.email}" type="text">
+            </div>
+          </div>
+          <!-- Username input ends -->
+          <!-- Password input starts -->
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-lock"></i></span>
+              <input aria-describedby="password" aria-label="Password" class="form-control rounded"
+                     required
+                     th:field="*{password}" th:placeholder="#{form.password}" type="password">
+              <button aria-label="Show password as plain text. Warning: this will display your password on the screen." class="d-none" id="toggle-password"
+                      type="button">
+              </button>
+            </div>
+          </div>
+          <!-- Password input ends -->
+          <!-- Remember me starts -->
+          <div class="mb-3 form-check form-switch">
+            <input checked class="form-check-input" id="remember-me" name="remember-me"
+                   type="checkbox">
+            <label class="form-check-label" for="remember-me"
+                   th:text="#{login.remember-me}"></label>
+          </div>
+          <!-- Remember me ends-->
+          <!-- Sign in button starts -->
+          <div class="mb-3 d-grid gap-2 mx-auto">
+            <button class="btn btn-primary" th:text="#{login.text}" type="submit"></button>
+          </div>
+          <!-- Sign in button ends -->
+        </fieldset>
+      </form>
+
+      <hr/>
+
+      <div class="input-group mb-3">
+        <a th:href="@{/password-reset}" th:text="#{login.forgot.password}"></a>
+      </div>
+      <!-- Sign in button starts -->
+      <div class="d-grid gap-2 mx-auto mb-3">
+        <a class="btn btn-info" th:href="@{/sign-up}" th:text="#{sign-up.text}" type="submit"></a>
+      </div>
+      <!-- Sign in button ends -->
+    </div>
+    <!-- Col ends-->
+  </div>
+  <!-- Row ends -->
+
+</main>
+<!-- Container ends-->
+
+
+<!--Common Body Scripts-->
+<th:block th:replace="~{common/template :: common-scripts(formValidation=true, togglePassword=true)}"/>
+
+</body>
+</html>

@@ -1,0 +1,902 @@
+memberSearchIndex = [{
+  "p": "com.kavun.enums",
+  "c": "TokenType",
+  "l": "ACCESS"
+}, {
+  "p": "com.kavun.enums",
+  "c": "UserHistoryType",
+  "l": "ACCOUNT_DISABLED"
+}, {
+  "p": "com.kavun.enums",
+  "c": "UserHistoryType",
+  "l": "ACCOUNT_ENABLED"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "addCookieToHeaders(HttpHeaders, TokenType, String, Duration)",
+  "u": "addCookieToHeaders(org.springframework.http.HttpHeaders,com.kavun.enums.TokenType,java.lang.String,java.time.Duration)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "addCookieToHeaders(TokenType, String)",
+  "u": "addCookieToHeaders(com.kavun.enums.TokenType,java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "addCookieToHeaders(TokenType, String, Duration)",
+  "u": "addCookieToHeaders(com.kavun.enums.TokenType,java.lang.String,java.time.Duration)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "addDeletedCookieToHeaders(TokenType)",
+  "u": "addDeletedCookieToHeaders(com.kavun.enums.TokenType)"
+}, {
+  "p": "com.kavun.config",
+  "c": "I18NConfig",
+  "l": "addInterceptors(InterceptorRegistry)",
+  "u": "addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry)"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "DevConfig",
+  "l": "amazonS3(AwsProperties)",
+  "u": "amazonS3(com.kavun.config.properties.AwsProperties)"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "ProdConfig",
+  "l": "amazonS3(AwsProperties)",
+  "u": "amazonS3(com.kavun.config.properties.AwsProperties)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "ApiWebSecurityConfig",
+  "l": "ApiWebSecurityConfig()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "ApplicationConfig",
+  "l": "ApplicationConfig()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.config.jpa",
+  "c": "JpaConfig",
+  "l": "auditorAware()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "authenticateUser(AuthenticationManager, String, String)",
+  "u": "authenticateUser(org.springframework.security.authentication.AuthenticationManager,java.lang.String,java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "authenticateUser(AuthenticationManager, UserDetails)",
+  "u": "authenticateUser(org.springframework.security.authentication.AuthenticationManager,org.springframework.security.core.userdetails.UserDetails)"
+}, {
+  "p": "com.kavun.web.rest.v1",
+  "c": "AuthRestApi",
+  "l": "authenticateUser(String, LoginRequest)",
+  "u": "authenticateUser(java.lang.String,com.kavun.web.payload.request.LoginRequest)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "ApiWebSecurityConfig",
+  "l": "authenticationManagerBean()"
+}, {
+  "p": "com.kavun.web.rest.v1",
+  "c": "AuthRestApi",
+  "l": "AuthRestApi()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.config.properties",
+  "c": "AwsProperties",
+  "l": "AwsProperties()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "BLANK_EMAIL"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "BLANK_PASSWORD"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "BLANK_USERNAME"
+}, {
+  "p": "com.kavun.config.jpa",
+  "c": "JpaConfig",
+  "l": "cacheManager()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "clearAuthentication()"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "ApplicationConfig",
+  "l": "clock()"
+}, {
+  "p": "com.kavun.config.security.jwt",
+  "c": "JwtAuthenticationEntryPoint",
+  "l": "commence(HttpServletRequest, HttpServletResponse, AuthenticationException)",
+  "u": "commence(javax.servlet.http.HttpServletRequest,javax.servlet.http.HttpServletResponse,org.springframework.security.core.AuthenticationException)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "ApiWebSecurityConfig",
+  "l": "configure(HttpSecurity)",
+  "u": "configure(org.springframework.security.config.annotation.web.builders.HttpSecurity)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "FormLoginSecurityConfig",
+  "l": "configure(HttpSecurity)",
+  "u": "configure(org.springframework.security.config.annotation.web.builders.HttpSecurity)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "configureDevEnvironmentAccess(HttpSecurity, Environment)",
+  "u": "configureDevEnvironmentAccess(org.springframework.security.config.annotation.web.builders.HttpSecurity,org.springframework.core.env.Environment)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "SecurityConfig",
+  "l": "configureGlobal(AuthenticationManagerBuilder)",
+  "u": "configureGlobal(org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder)"
+}, {
+  "p": "com.kavun.config.jpa.repository",
+  "c": "UserRepositoryRestConfig",
+  "l": "configureRepositoryRestConfiguration(RepositoryRestConfiguration, CorsRegistry)",
+  "u": "configureRepositoryRestConfiguration(org.springframework.data.rest.core.config.RepositoryRestConfiguration,org.springframework.web.servlet.config.annotation.CorsRegistry)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "convertToUser(UserDto)",
+  "u": "convertToUser(com.kavun.shared.dto.UserDto)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "convertToUserDto(List<User>)",
+  "u": "convertToUserDto(java.util.List)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "convertToUserDto(User)",
+  "u": "convertToUserDto(com.kavun.backend.persistent.domain.user.User)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "convertToUserDto(UserDetailsBuilder)",
+  "u": "convertToUserDto(com.kavun.backend.service.impl.UserDetailsBuilder)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "SecurityBean",
+  "l": "cookieProcessorCustomizer()"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "SecurityBean",
+  "l": "corsConfigurationSource()"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "COULD_NOT_CREATE_USER"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "createCookie(HttpCookie)",
+  "u": "createCookie(org.springframework.http.HttpCookie)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "createCookie(String, String, Duration)",
+  "u": "createCookie(java.lang.String,java.lang.String,java.time.Duration)"
+}, {"p": "com.kavun.enums", "c": "UserHistoryType", "l": "CREATED"}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "createTokenCookie(String, TokenType)",
+  "u": "createTokenCookie(java.lang.String,com.kavun.enums.TokenType)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "createTokenCookie(String, TokenType, Duration)",
+  "u": "createTokenCookie(java.lang.String,com.kavun.enums.TokenType,java.time.Duration)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUser()"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUser(boolean)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUser(String)",
+  "u": "createUser(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUser(String, RoleType)",
+  "u": "createUser(java.lang.String,com.kavun.enums.RoleType)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUser(String, String, String)",
+  "u": "createUser(java.lang.String,java.lang.String,java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUser(String, String, String, boolean)",
+  "u": "createUser(java.lang.String,java.lang.String,java.lang.String,boolean)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "createUser(UserDto)",
+  "u": "createUser(com.kavun.shared.dto.UserDto)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "createUser(UserDto, Set<RoleType>)",
+  "u": "createUser(com.kavun.shared.dto.UserDto,java.util.Set)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUserDto(boolean)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUserDto(String)",
+  "u": "createUserDto(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUserDto(String, boolean)",
+  "u": "createUserDto(java.lang.String,boolean)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "createUserDto(String, String, String, boolean)",
+  "u": "createUserDto(java.lang.String,java.lang.String,java.lang.String,boolean)"
+}, {
+  "p": "com.kavun.config",
+  "c": "OpenApi30Config",
+  "l": "customOpenAPI()"
+}, {
+  "p": "com.kavun.backend.bootstrap",
+  "c": "DatabaseSeeder",
+  "l": "DatabaseSeeder()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "ApplicationConfig",
+  "l": "dateTimeProvider()"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "EncryptionService",
+  "l": "decode(String)",
+  "u": "decode(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "EncryptionService",
+  "l": "decrypt(String)",
+  "u": "decrypt(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.storage",
+  "c": "AmazonS3Service",
+  "l": "delete(String)",
+  "u": "delete(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "deleteByPublicId(String)",
+  "u": "deleteByPublicId(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "CookieService",
+  "l": "deleteTokenCookie(TokenType)",
+  "u": "deleteTokenCookie(com.kavun.enums.TokenType)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "deleteUser(String)",
+  "u": "deleteUser(java.lang.String)"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ProfileTypeConstants",
+  "l": "DEV"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "DevConfig",
+  "l": "DevConfig()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "disableUser(String)",
+  "u": "disableUser(java.lang.String)"
+}, {
+  "p": "com.kavun.web.rest.v1",
+  "c": "UserRestApi",
+  "l": "disableUser(String)",
+  "u": "disableUser(java.lang.String)"
+}, {
+  "p": "com.kavun.config.security.jwt",
+  "c": "JwtAuthTokenFilter",
+  "l": "doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain)",
+  "u": "doFilterInternal(javax.servlet.http.HttpServletRequest,javax.servlet.http.HttpServletResponse,javax.servlet.FilterChain)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "enableUser(String)",
+  "u": "enableUser(java.lang.String)"
+}, {
+  "p": "com.kavun.web.rest.v1",
+  "c": "UserRestApi",
+  "l": "enableUser(String)",
+  "u": "enableUser(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "enableUser(UserDto)",
+  "u": "enableUser(com.kavun.shared.dto.UserDto)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "EncryptionService",
+  "l": "encode(String)",
+  "u": "encode(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "EncryptionService",
+  "l": "encrypt(String)",
+  "u": "encrypt(java.lang.String)"
+}, {
+  "p": "com.kavun.exception",
+  "c": "EncryptionException",
+  "l": "EncryptionException(String)",
+  "u": "%3Cinit%3E(java.lang.String)"
+}, {
+  "p": "com.kavun.exception",
+  "c": "EncryptionException",
+  "l": "EncryptionException(String, Throwable)",
+  "u": "%3Cinit%3E(java.lang.String,java.lang.Throwable)"
+}, {
+  "p": "com.kavun.exception",
+  "c": "EncryptionException",
+  "l": "EncryptionException(Throwable)",
+  "u": "%3Cinit%3E(java.lang.Throwable)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "existsByEmailOrderById(String)",
+  "u": "existsByEmailOrderById(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "existsByUsername(String)",
+  "u": "existsByUsername(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "existsByUsernameAndEnabledTrueOrEmailAndEnabledTrueOrderById(String, String)",
+  "u": "existsByUsernameAndEnabledTrueOrEmailAndEnabledTrueOrderById(java.lang.String,java.lang.String)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "existsByUsernameOrderById(String)",
+  "u": "existsByUsernameOrderById(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "existsByUsernameOrEmailAndEnabled(String, String)",
+  "u": "existsByUsernameOrEmailAndEnabled(java.lang.String,java.lang.String)"
+}, {"p": "com.kavun.enums", "c": "OperationStatus", "l": "FAILURE"}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "findAllNotEnabledAfterAllowedDays()"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "findByEmail(String)",
+  "u": "findByEmail(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "findByEmail(String)",
+  "u": "findByEmail(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "findByEnabledFalseAndCreatedAtBefore(LocalDateTime)",
+  "u": "findByEnabledFalseAndCreatedAtBefore(java.time.LocalDateTime)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "findById(Long)",
+  "u": "findById(java.lang.Long)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "RoleRepository",
+  "l": "findByName(String)",
+  "u": "findByName(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "findByPublicId(String)",
+  "u": "findByPublicId(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "findByPublicId(String)",
+  "u": "findByPublicId(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.persistent.repository",
+  "c": "UserRepository",
+  "l": "findByUsername(String)",
+  "u": "findByUsername(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "findByUsername(String)",
+  "u": "findByUsername(java.lang.String)"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "FormLoginSecurityConfig",
+  "l": "FormLoginSecurityConfig()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "JwtService",
+  "l": "generateJwtToken(String)",
+  "u": "generateJwtToken(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "JwtService",
+  "l": "generateJwtToken(String, Date)",
+  "u": "generateJwtToken(java.lang.String,java.util.Date)"
+}, {
+  "p": "com.kavun.backend.service.storage",
+  "c": "AmazonS3Service",
+  "l": "generatePreSignedUrl(String)",
+  "u": "generatePreSignedUrl(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "AuditService",
+  "l": "getAuditLogs(Class<?>)",
+  "u": "getAuditLogs(java.lang.Class)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "AuditService",
+  "l": "getAuditLogs(Class<?>, boolean)",
+  "u": "getAuditLogs(java.lang.Class,boolean)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "AuditService",
+  "l": "getAuditLogs(Class<?>, boolean, boolean)",
+  "u": "getAuditLogs(java.lang.Class,boolean,boolean)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "AuditService",
+  "l": "getAuditLogs(Class<?>, boolean, boolean, boolean)",
+  "u": "getAuditLogs(java.lang.Class,boolean,boolean,boolean)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "getAuthenticatedUserDetails()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "getAuthentication()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "getAuthorizedUserDetails()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "getAuthorizedUserDto()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "WebUtils",
+  "l": "getDefaultEmailUrls()"
+}, {
+  "p": "com.kavun.backend.service.storage",
+  "c": "AmazonS3Service",
+  "l": "getFile(String)",
+  "u": "getFile(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.storage",
+  "c": "AmazonS3Service",
+  "l": "getFiles(String)",
+  "u": "getFiles(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "WebUtils",
+  "l": "getGenericUri(String)",
+  "u": "getGenericUri(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "WebUtils",
+  "l": "getGenericUri(String, String)",
+  "u": "getGenericUri(java.lang.String,java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "JwtService",
+  "l": "getJwtToken(HttpServletRequest, boolean)",
+  "u": "getJwtToken(javax.servlet.http.HttpServletRequest,boolean)"
+}, {
+  "p": "com.kavun.backend.service.i18n",
+  "c": "I18NService",
+  "l": "getMessage(String)",
+  "u": "getMessage(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.i18n",
+  "c": "I18NService",
+  "l": "getMessage(String, Object[], Locale)",
+  "u": "getMessage(java.lang.String,java.lang.Object[],java.util.Locale)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "RoleService",
+  "l": "getRoleById(Integer)",
+  "u": "getRoleById(java.lang.Integer)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "RoleService",
+  "l": "getRoleByName(String)",
+  "u": "getRoleByName(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "getRoles(Set<UserRole>)",
+  "u": "getRoles(java.util.Set)"
+}, {
+  "p": "com.kavun.backend.service.user",
+  "c": "UserService",
+  "l": "getUserDetails(String)",
+  "u": "getUserDetails(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "JwtService",
+  "l": "getUsernameFromToken(String)",
+  "u": "getUsernameFromToken(java.lang.String)"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "DevConfig",
+  "l": "h2servletRegistration()"
+}, {
+  "p": "com.kavun.web.advice",
+  "c": "RestResponseEntityExceptionHandler",
+  "l": "handleConflict(RuntimeException, WebRequest)",
+  "u": "handleConflict(java.lang.RuntimeException,org.springframework.web.context.request.WebRequest)"
+}, {
+  "p": "com.kavun.config",
+  "c": "I18NConfig",
+  "l": "I18NConfig()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "INVALID_EMAIL"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "INVALID_TOKEN"
+}, {
+  "p": "com.kavun.exception",
+  "c": "InvalidFileFormatException",
+  "l": "InvalidFileFormatException(String)",
+  "u": "%3Cinit%3E(java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "isAuthenticated()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "isAuthenticated(Authentication)",
+  "u": "isAuthenticated(org.springframework.security.core.Authentication)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "isEmail(String)",
+  "u": "isEmail(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.security",
+  "c": "JwtService",
+  "l": "isValidJwtToken(String)",
+  "u": "isValidJwtToken(java.lang.String)"
+}, {
+  "p": "com.kavun.config.jpa",
+  "c": "JpaConfig",
+  "l": "JpaConfig()",
+  "u": "%3Cinit%3E()"
+}, {"p": "com.kavun.enums", "c": "TokenType", "l": "JSESSIONID"}, {
+  "p": "com.kavun.annotation",
+  "c": "SuppressSpotBugWarnings",
+  "l": "justification()"
+}, {
+  "p": "com.kavun.config.security.jwt",
+  "c": "JwtAuthenticationEntryPoint",
+  "l": "JwtAuthenticationEntryPoint()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.config.security.jwt",
+  "c": "JwtAuthTokenFilter",
+  "l": "JwtAuthTokenFilter()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.config",
+  "c": "I18NConfig",
+  "l": "localeChangeInterceptor()"
+}, {
+  "p": "com.kavun.config",
+  "c": "I18NConfig",
+  "l": "localeResolver()"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "SecurityUtils",
+  "l": "logout(HttpServletRequest, HttpServletResponse)",
+  "u": "logout(javax.servlet.http.HttpServletRequest,javax.servlet.http.HttpServletResponse)"
+}, {
+  "p": "com.kavun.web.rest.v1",
+  "c": "AuthRestApi",
+  "l": "logout(HttpServletRequest, HttpServletResponse)",
+  "u": "logout(javax.servlet.http.HttpServletRequest,javax.servlet.http.HttpServletResponse)"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "DevConfig",
+  "l": "mailSender()"
+}, {
+  "p": "com.kavun",
+  "c": "KavunApplication",
+  "l": "main(String[])",
+  "u": "main(java.lang.String[])"
+}, {
+  "p": "com.kavun.config",
+  "c": "I18NConfig",
+  "l": "messageSource()"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "NOT_INSTANTIABLE"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "NULL_ELEMENTS_NOT_ALLOWED"
+}, {
+  "p": "com.kavun.config",
+  "c": "OpenApi30Config",
+  "l": "OpenApi30Config(String, String)",
+  "u": "%3Cinit%3E(java.lang.String,java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util",
+  "c": "UserUtils",
+  "l": "PASSWORD_MAX_LENGTH"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ErrorConstants",
+  "l": "PASSWORD_SIZE"
+}, {
+  "p": "com.kavun.enums",
+  "c": "UserHistoryType",
+  "l": "PASSWORD_UPDATE"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "SecurityBean",
+  "l": "passwordEncoder()"
+}, {
+  "p": "com.kavun.config.security",
+  "c": "SecurityBean",
+  "l": "persistentRepository(DataSource)",
+  "u": "persistentRepository(javax.sql.DataSource)"
+}, {
+  "p": "com.kavun.constant",
+  "c": "ProfileTypeConstants",
+  "l": "PROD"
+}, {
+  "p": "com.kavun.config.core",
+  "c": "ProdConfig",
+  "l": "ProdConfig()",
+  "u": "%3Cinit%3E()"
+}, {
+  "p": "com.kavun.enums",
+  "c": "UserHistoryType",
+  "l": "PROFILE_UPDATE"
+}, {
+  "p": "com.kavun.task",
+  "c": "UserPruningScheduler",
+  "l": "pruneUsers()"
+}, {"p": "com.kavun.enums", "c": "TokenType", "l": "REFRESH"}, {
+  "p": "com.kavun.web.rest.v1",
+  "c": "AuthRestApi",
+  "l": "refreshToken(String)",
+  "u": "refreshToken(java.lang.String)"
+}, {
+  "p": "com.kavun.backend.service.storage",
+  "c": "AmazonS3Service",
+  "l": "renameFile(String, String)",
+  "u": "renameFile(java.lang.String,java.lang.String)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "FileUtils",
+  "l": "resize(File, int, int)",
+  "u": "resize(java.io.File,int,int)"
+}, {
+  "p": "com.kavun.shared.util.core",
+  "c": "FileUtils",
+  "l": "resize600(File)",
+  "u": "resize600(java.io.File)"
+}, {
+  "p": "com.kavun.web.advice",
+  "c": "RestResponseEntityExceptionHandler",
+  "l": "RestResponseEntityExceptionHandler()",
+  "u": "%3Cinit%3E()"
+}, {"p": "com.kavun.enums", "c": "RoleType", "l": "ROLE_ADMIN"},
+  {"p": "com.kavun.enums", "c": "RoleType", "l": "ROLE_USER"},
+  {"p": "com.kavun.constant", "c": "CacheConstants", "l": "ROLES"}, {
+    "p": "com.kavun.backend.bootstrap",
+    "c": "DatabaseSeeder",
+    "l": "run(String...)",
+    "u": "run(java.lang.String...)"
+  }, {
+    "p": "com.kavun.backend.service.user",
+    "c": "UserService",
+    "l": "saveOrUpdate(User, boolean)",
+    "u": "saveOrUpdate(com.kavun.backend.persistent.domain.user.User,boolean)"
+  }, {
+    "p": "com.kavun.backend.service.user",
+    "c": "RoleService",
+    "l": "saveRole(Role)",
+    "u": "saveRole(com.kavun.backend.persistent.domain.user.Role)"
+  }, {
+    "p": "com.kavun.config.security",
+    "c": "SecurityBean",
+    "l": "SecurityBean()",
+    "u": "%3Cinit%3E()"
+  }, {
+    "p": "com.kavun.config.security",
+    "c": "SecurityConfig",
+    "l": "SecurityConfig()",
+    "u": "%3Cinit%3E()"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendAccountConfirmationEmail(UserDto)",
+    "u": "sendAccountConfirmationEmail(com.kavun.shared.dto.UserDto)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendAccountVerificationEmail(UserDto, String)",
+    "u": "sendAccountVerificationEmail(com.kavun.shared.dto.UserDto,java.lang.String)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendHtmlEmail(HtmlEmailRequest)",
+    "u": "sendHtmlEmail(com.kavun.web.payload.request.mail.HtmlEmailRequest)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendHtmlEmailWithAttachment(HtmlEmailRequest)",
+    "u": "sendHtmlEmailWithAttachment(com.kavun.web.payload.request.mail.HtmlEmailRequest)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendMail(SimpleMailMessage)",
+    "u": "sendMail(org.springframework.mail.SimpleMailMessage)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendMailWithFeedback(FeedbackRequest)",
+    "u": "sendMailWithFeedback(com.kavun.web.payload.request.mail.FeedbackRequest)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendPasswordResetConfirmationEmail(UserDto)",
+    "u": "sendPasswordResetConfirmationEmail(com.kavun.shared.dto.UserDto)"
+  }, {
+    "p": "com.kavun.backend.service.mail",
+    "c": "EmailService",
+    "l": "sendPasswordResetEmail(UserDto, String)",
+    "u": "sendPasswordResetEmail(com.kavun.shared.dto.UserDto,java.lang.String)"
+  }, {
+    "p": "com.kavun.shared.util.core",
+    "c": "SecurityUtils",
+    "l": "setAuthentication(Authentication)",
+    "u": "setAuthentication(org.springframework.security.core.Authentication)"
+  }, {
+    "p": "com.kavun",
+    "c": "KavunApplication",
+    "l": "KavunApplication()",
+    "u": "%3Cinit%3E()"
+  }, {
+    "p": "com.kavun.backend.service.storage",
+    "c": "AmazonS3Service",
+    "l": "storeFile(MultipartFile, String, String)",
+    "u": "storeFile(org.springframework.web.multipart.MultipartFile,java.lang.String,java.lang.String)"
+  }, {
+    "p": "com.kavun.backend.service.storage",
+    "c": "AmazonS3Service",
+    "l": "storeProfileImage(MultipartFile, String)",
+    "u": "storeProfileImage(org.springframework.web.multipart.MultipartFile,java.lang.String)"
+  }, {"p": "com.kavun.enums", "c": "OperationStatus", "l": "SUCCESS"},
+  {
+    "p": "com.kavun.config.properties",
+    "c": "SystemProperties",
+    "l": "SystemProperties()",
+    "u": "%3Cinit%3E()"
+  }, {
+    "p": "com.kavun.constant",
+    "c": "ProfileTypeConstants",
+    "l": "TEST"
+  }, {
+    "p": "com.kavun.constant",
+    "c": "ErrorConstants",
+    "l": "UNAUTHORIZED_ACCESS_MESSAGE"
+  }, {
+    "p": "com.kavun.backend.service.user",
+    "c": "UserService",
+    "l": "updateUser(UserDto, UserHistoryType)",
+    "u": "updateUser(com.kavun.shared.dto.UserDto,com.kavun.enums.UserHistoryType)"
+  }, {
+    "p": "com.kavun.constant",
+    "c": "CacheConstants",
+    "l": "USER_DETAILS"
+  }, {
+    "p": "com.kavun.constant",
+    "c": "ErrorConstants",
+    "l": "USERNAME_SIZE"
+  }, {
+    "p": "com.kavun.task",
+    "c": "UserPruningScheduler",
+    "l": "UserPruningScheduler()",
+    "u": "%3Cinit%3E()"
+  }, {
+    "p": "com.kavun.config.jpa.repository",
+    "c": "UserRepositoryRestConfig",
+    "l": "UserRepositoryRestConfig()",
+    "u": "%3Cinit%3E()"
+  }, {
+    "p": "com.kavun.web.rest.v1",
+    "c": "UserRestApi",
+    "l": "UserRestApi()",
+    "u": "%3Cinit%3E()"
+  }, {"p": "com.kavun.constant", "c": "CacheConstants", "l": "USERS"},
+  {
+    "p": "com.kavun.shared.util.core",
+    "c": "ValidationUtils",
+    "l": "validateInputs(Object...)",
+    "u": "validateInputs(java.lang.Object...)"
+  }, {
+    "p": "com.kavun.shared.util.core",
+    "c": "ValidationUtils",
+    "l": "validateInputsWithMessage(String, Object...)",
+    "u": "validateInputsWithMessage(java.lang.String,java.lang.Object...)"
+  }, {
+    "p": "com.kavun.shared.util.core",
+    "c": "SecurityUtils",
+    "l": "validateUserDetailsStatus(UserDetails)",
+    "u": "validateUserDetailsStatus(org.springframework.security.core.userdetails.UserDetails)"
+  }, {
+    "p": "com.kavun.annotation",
+    "c": "SuppressSpotBugWarnings",
+    "l": "value()"
+  }, {
+    "p": "com.kavun.enums",
+    "c": "OperationStatus",
+    "l": "valueOf(String)",
+    "u": "valueOf(java.lang.String)"
+  }, {
+    "p": "com.kavun.enums",
+    "c": "RoleType",
+    "l": "valueOf(String)",
+    "u": "valueOf(java.lang.String)"
+  }, {
+    "p": "com.kavun.enums",
+    "c": "TokenType",
+    "l": "valueOf(String)",
+    "u": "valueOf(java.lang.String)"
+  }, {
+    "p": "com.kavun.enums",
+    "c": "UserHistoryType",
+    "l": "valueOf(String)",
+    "u": "valueOf(java.lang.String)"
+  },
+  {"p": "com.kavun.enums", "c": "OperationStatus", "l": "values()"},
+  {"p": "com.kavun.enums", "c": "RoleType", "l": "values()"},
+  {"p": "com.kavun.enums", "c": "TokenType", "l": "values()"},
+  {"p": "com.kavun.enums", "c": "UserHistoryType", "l": "values()"},
+  {"p": "com.kavun.enums", "c": "UserHistoryType", "l": "VERIFIED"}];
+updateSearchResults();

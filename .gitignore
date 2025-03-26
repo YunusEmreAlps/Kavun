@@ -391,6 +391,9 @@ gradle-app.setting
 
 .jpb
 
+# Ignore Grafana Dashboard
+grafana/
+
 # Eclipse Gradle plugin generated files
 # Eclipse Core
 # JDT-specific (Eclipse Java Development Tools)

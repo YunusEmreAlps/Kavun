@@ -12,7 +12,10 @@ rule_files:
 scrape_configs:
 
   - job_name: "prometheus"
-
     static_configs:
-      - targets: ["localhost:8080"]
+      - targets: ["localhost:9090"]
+
+  - job_name: "kavun"
+    static_configs:
+      - targets: ["host.docker.internal:8080"] # Use host.docker.internal for local app
     metrics_path: '/actuator/prometheus'

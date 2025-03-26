@@ -23,6 +23,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
     - [5. Accessing the Application](#5-accessing-the-application)
       - [H2 Database](#h2-database)
       - [Docker](#docker)
+      - [Grafana](#grafana)
   - [Architecture](#architecture)
   - [Database Schema](#database-schema)
   - [Development Workflow](#development-workflow)
@@ -74,7 +75,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 
 ### 1. Prerequisites
 
-- [Java 17](https://www.oracle.com/java/technologies/javase-jdk17-downloads.html)
+- [Java 21](https://www.oracle.com/java/technologies/javase-jdk21-downloads.html)
 - [Gradle](https://gradle.org/install/)
 - [Lombok](https://projectlombok.org/setup/overview)
 - [Docker](https://docs.docker.com/get-docker/)
@@ -219,6 +220,8 @@ EMAIL_PASSWORD=password # If using gmail, this must be a 2 step verification ena
 - Access the Swagger UI on [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 - Access the Actuator Health on [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
 - Access the Actuator Prometheus on [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
+- Access the Grafana Dashboard on [http://localhost:3000/](http://localhost:3000/)
+- Access the Prometheus Dashboard on [http://localhost:9090/](http://localhost:9090/)
 
 #### H2 Database
 
@@ -247,6 +250,14 @@ EMAIL_PASSWORD=password # If using gmail, this must be a 2 step verification ena
   - To *stop* the running application on Docker, simply run the command - **docker-compose down**
   - This will stop the running application and remove the container.
   - If you want to remove the container and the image, simply run the command - **docker-compose down --rmi all**
+
+#### Grafana
+
+- The application uses **Grafana** for monitoring and visualization.
+- The **Grafana** dashboard can be accessed on [http://localhost:3000/](http://localhost:3000/)
+- The **Grafana** dashboard can be accessed using the following credentials:
+  - **User Name**: admin
+  - **Password**: admin
 
 ## Architecture
 

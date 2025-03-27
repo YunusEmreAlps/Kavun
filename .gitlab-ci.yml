@@ -1,0 +1,59 @@
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
+variables:
+  GRADLE_BASE_IMAGE: "gradle:jdk21"
+  DOCKER_IMAGE: "registry.gitlab.com/<your-namespace>/kavun"
+
+cache:
+  paths:
+    - .gradle/caches/
+    - .gradle/wrapper/
+
+before_script:
+  - echo "Using Gradle base image: $GRADLE_BASE_IMAGE"
+
+build:
+  stage: build
+  image: $GRADLE_BASE_IMAGE
+  script:
+    - ./gradlew clean build -x test -x integrationTest 
+  artifacts:
+    paths:
+      - build/libs/
+
+test:
+  stage: test
+  image: $GRADLE_BASE_IMAGE
+  script:
+    - ./gradlew test
+  artifacts:
+    when: always
+    paths:
+      - build/test-results/test/
+    reports:
+      junit: build/test-results/test/*.xml
+
+package:
+  stage: package
+  image: $GRADLE_BASE_IMAGE
+  script:
+    - ./gradlew bootJar
+  artifacts:
+    paths:
+      - build/libs/*.jar
+
+docker-build:
+  stage: deploy
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHORT_SHA
+  only:
+    - master

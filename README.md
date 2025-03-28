@@ -1,5 +1,15 @@
 <!-- KAVUN -->
 
+<br />
+
+<p align="center">
+  <a href="docs/images/kavun_only.png" target="_blank">
+    <picture>
+      <img src="docs/images/kavun_only - Copy.png" alt="Kavun Logo" width="200" height="200" align="center">
+    </picture>
+  </a>
+</p>
+
 # Kavun🍈
 
 Welcome to the **Kavun** project! It is a modern, opinionated, and production-ready starter for Spring Boot projects. It is designed to help developers get started with Spring Boot projects quickly and efficiently. The project includes a wide range of features and tools to help developers build robust and scalable applications. It is built using the latest technologies and best practices to ensure high performance, security, and maintainability.

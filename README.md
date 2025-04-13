@@ -378,7 +378,7 @@ The project is structured in a layered architecture with the following layers:
 - **Documentation**:
   - [X] API documentation with Swagger/OpenAPI
   - [X] User documentation with Markdown
-  - [Z] Code documentation with Javadoc
+  - [X] Code documentation with Javadoc
   - [ ] Deployment documentation with diagrams and flowcharts
   - [ ] Architecture documentation with diagrams and flowcharts
   - [X] Contributing guidelines and code of conduct

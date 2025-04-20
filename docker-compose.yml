@@ -64,7 +64,15 @@ services:
       - '9187:9187'
     environment:
       DATA_SOURCE_NAME: postgres://postgres:postgres@postgres-db:5432/kavun
-
+  # Syslog
+  syslog:
+    image: balabit/syslog-ng:latest
+    container_name: syslog
+    entrypoint: /usr/sbin/syslog-ng
+    command: "-F -edv"
+    ports:
+      - 514:514
+      - 601:601
 # Volumes
 volumes:
   postgres-data:

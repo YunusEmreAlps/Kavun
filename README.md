@@ -344,7 +344,7 @@ The project is structured in a layered architecture with the following layers:
   - [X] Add database connection pooling (HikariCP)
   - [ ] Add database read replicas for scalability
   - [ ] Automate database backups
-  
+
 - **Logging**:
   - [X] Log4j2 for logging
   - [X] Syslog and Web Access Logging
@@ -378,14 +378,14 @@ The project is structured in a layered architecture with the following layers:
 - **Documentation**:
   - [X] API documentation with Swagger/OpenAPI
   - [X] User documentation with Markdown
-  - [Z] Code documentation with Javadoc
+  - [X] Code documentation with Javadoc
   - [ ] Deployment documentation with diagrams and flowcharts
   - [ ] Architecture documentation with diagrams and flowcharts
   - [X] Contributing guidelines and code of conduct
   - [X] Roadmap and future plans
 
 - **Others**:
-  - [X] SMTP and Email Support  
+  - [X] SMTP and Email Support
   - [ ] Cache Support (Redis, Memcached, etc.)
   - [ ] Queue Support (RabbitMQ, Kafka, etc.)
   - [ ] Search Support (Elasticsearch, Solr, etc.)

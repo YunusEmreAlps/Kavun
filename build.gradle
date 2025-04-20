@@ -61,7 +61,9 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
   implementation 'org.springframework.boot:spring-boot-starter-data-rest'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
+  implementation 'org.springframework.boot:spring-boot-starter-logging'
   implementation 'io.micrometer:micrometer-registry-prometheus'
+  implementation 'ch.qos.logback:logback-classic'
 
   // Dev Tools
   compileOnly 'org.projectlombok:lombok'
@@ -72,7 +74,7 @@ dependencies {
   implementation 'org.ehcache:ehcache'
   implementation 'org.hibernate.orm:hibernate-jcache'
   implementation 'org.ehcache:ehcache-transactions:3.10.8'
-  implementation 'org.codehaus.janino:janino:3.1.9'
+  implementation 'org.codehaus.janino:janino'
 
   // Utilities
   implementation 'org.jsoup:jsoup:1.18.3'

@@ -25,7 +25,8 @@ import lombok.Setter;
 @Setter
 @Table(name = "otp")
 public class Otp extends BaseEntity<Long> implements Serializable {
-  @Serial private static final long serialVersionUID = 7538542321562810251L;
+  @Serial
+  private static final long serialVersionUID = 7538542321562810251L;
 
   @Column(nullable = false)
   @Size(min = SecurityConstants.OTP_LENGTH, max = SecurityConstants.OTP_LENGTH)

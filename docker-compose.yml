@@ -15,28 +15,28 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
   # App service
-  kavun:
-    image: 23yea193/kavun
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - '8080:8080'
-    restart: always
-    depends_on:
-      - postgres-db
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/kavun
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
-      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
-    healthcheck:
-      test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
-      interval: 20s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
+  # kavun:
+  #   image: 23yea193/kavun
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - '8080:8080'
+  #   restart: always
+  #   depends_on:
+  #     - postgres-db
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker
+  #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/kavun
+  #     - SPRING_DATASOURCE_USERNAME=postgres
+  #     - SPRING_DATASOURCE_PASSWORD=postgres
+  #     - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+  #   healthcheck:
+  #     test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
+  #     interval: 20s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 40s
   # Grafana service
   grafana:
     image: grafana/grafana:latest
@@ -56,6 +56,7 @@ services:
       - '9090:9090'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.rules.yml:/etc/prometheus/prometheus.rules.yml
   # PGExporter service
   pgexporter:
     image: wrouesnel/postgres_exporter:latest
@@ -64,6 +65,17 @@ services:
       - '9187:9187'
     environment:
       DATA_SOURCE_NAME: postgres://postgres:postgres@postgres-db:5432/kavun
+  # AlertManager service
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: always
+    ports:
+      - '9093:9093'
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/config.yml
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
   # Syslog
   syslog:
     image: balabit/syslog-ng:latest

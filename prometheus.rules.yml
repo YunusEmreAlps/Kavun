@@ -1,0 +1,20 @@
+groups:
+  - name: kavun-alerts
+    rules:
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes > 500000000
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 500MB for more than 1 minute."
+
+      - alert: ApplicationDown
+        expr: up{job="kavun"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application is down"
+          description: "Kavun is not responding."

@@ -8,6 +8,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.slf4j.MDC;
+import lombok.NonNull;
+
+import org.springframework.security.core.Authentication;
+
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -16,7 +21,7 @@ public class LoggingFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
     try {
@@ -36,6 +41,7 @@ public class LoggingFilter extends OncePerRequestFilter {
       MDC.put("action", action);
       MDC.put("queryParams", queryParams != null ? queryParams : "");
 
+      // Proceed with the filter chain
       filterChain.doFilter(request, response);
     } finally {
       MDC.clear(); // Ensure MDC is cleared after the request is processed
@@ -88,7 +94,12 @@ public class LoggingFilter extends OncePerRequestFilter {
    * @return the authenticated user
    */
   private String getAuthenticatedUser(HttpServletRequest request) {
-    return request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "anonymous";
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication != null && authentication.isAuthenticated()
+        && !"anonymousUser".equals(authentication.getPrincipal())) {
+      return authentication.getName();
+    }
+    return "system"; // unauthenticated user
   }
 
   /**

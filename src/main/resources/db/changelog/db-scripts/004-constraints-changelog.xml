@@ -5,6 +5,13 @@
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
 	<changeSet author="Yunus Emre Alpu" id="constraints_0">
 		<sql endDelimiter="/">
+			-- OTP Constraints
+			alter table if exists otp
+			drop constraint if exists UK_3f2a4e7d9b1c6f8e2a3b4c5d6;
+			
+			alter table if exists otp
+			add constraint UK_3f2a4e7d9b1c6f8e2a3b4c5d6 unique (public_id);
+
 			-- UserHistory Constraints
 			alter table if exists user_history
 			drop constraint if exists UK_b9aiadh5fvuj1ssnxyya4yclu;

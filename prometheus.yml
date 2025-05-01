@@ -6,8 +6,10 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
+            - localhost:9093
 
 rule_files:
+  - prometheus_rules.yml
 
 scrape_configs:
   - job_name: "prometheus"
@@ -28,5 +30,5 @@ scrape_configs:
         replacement: "postgres-db:9187"
   - job_name: "kavun"
     static_configs:
-      - targets: ["host.docker.internal:8080"] # Use host.docker.internal for local app
+      - targets: ["localhost:8080"] # Use localhost for local app
     metrics_path: '/actuator/prometheus'

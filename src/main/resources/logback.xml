@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 	<!-- Load properties from application.properties -->
-	<springProperty name="syslogEnabled" source="syslog.enabled" defaultValue="false" />
+	<springProperty name="syslogEnabled" source="syslog.enabled" defaultValue="true" />
 	<springProperty name="syslogHost" source="syslog.host" defaultValue="localhost" />
 	<springProperty name="syslogPort" source="syslog.port" defaultValue="514" />
 	<springProperty name="syslogProtocol" source="syslog.protocol" defaultValue="UDP" />
@@ -28,8 +28,7 @@
 		</encoder>
 	</appender>
 	<!-- Appender for syslog, active under specified profiles -->
-	<springProfile name="docker | dev | test | prod">
-		<!-- Conditional Appender based on syslogEnabled property -->
+	<springProfile name="development | docker | production">
 		<appender name="SYSLOG" class="ch.qos.logback.classic.net.SyslogAppender">
 			<syslogHost>
 				${syslogHost}
@@ -53,11 +52,12 @@
 		<appender-ref ref="SYSTEM_CONSOLE" />
 	</logger>
 	<!-- Logger for application logs (detailed) -->
-	<logger name="com.kavun.annotation.impl.MethodLogger" level="DEBUG" additivity="false">
-		<appender-ref ref="APP_CONSOLE" />
-		<!-- Conditionally add SYSLOG appender based on the profile and syslogEnabled -->
-		<appender-ref ref="SYSLOG" />
-	</logger>
+	<springProfile name="development | docker | production">
+		<logger name="com.kavun.annotation.impl.MethodLogger" level="INFO" additivity="false">
+			<appender-ref ref="APP_CONSOLE" />
+			<appender-ref ref="SYSLOG" />
+		</logger>
+	</springProfile>
 	<!-- Root logger (uses simpler system log pattern) -->
 	<root level="INFO">
 		<appender-ref ref="SYSTEM_CONSOLE" />

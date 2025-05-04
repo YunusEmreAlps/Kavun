@@ -1,7 +1,9 @@
 package com.kavun.backend.persistent.domain.user;
 
 import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.constant.AuthConstants;
 import com.kavun.constant.user.UserConstants;
+import com.kavun.enums.OtpDeliveryMethod;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -69,6 +71,9 @@ public class User extends BaseEntity<Long> implements Serializable {
   private boolean accountNonExpired;
   private boolean accountNonLocked;
   private boolean credentialsNonExpired;
+
+  @NotBlank(message = AuthConstants.BLANK_OTP_DELIVERY_METHOD)
+  private String otpDeliveryMethod = OtpDeliveryMethod.EMAIL.name();
 
   @NotAudited
   @ToString.Exclude

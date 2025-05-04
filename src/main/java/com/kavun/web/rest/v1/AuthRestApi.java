@@ -36,8 +36,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * This class attempt to authenticate with AuthenticationManager bean, add an authentication object
- * to SecurityContextHolder then Generate JWT token, then return JWT to a client.
+ * This class attempt to authenticate with AuthenticationManager bean, add an
+ * authentication object
+ * to SecurityContextHolder then Generate JWT token, then return JWT to a
+ * client.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -59,10 +61,12 @@ public class AuthRestApi {
   private final DaoAuthenticationProvider authenticationManager;
 
   /**
-   * Attempts to authenticate with the provided credentials. If successful, a JWT token is returned
+   * Attempts to authenticate with the provided credentials. If successful, a JWT
+   * token is returned
    * with some user details.
    *
-   * <p>A refresh token is generated and returned as a cookie.
+   * <p>
+   * A refresh token is generated and returned as a cookie.
    *
    * @param refreshToken The refresh token
    * @param loginRequest the login request
@@ -93,10 +97,79 @@ public class AuthRestApi {
   }
 
   /**
+   * Attempts to authenticate with the provided credentials. If successful, a JWT
+   * token is returned
+   * with some user details. (With OTP)
+   *
+   * <p>
+   * A refresh token is generated and returned as a cookie.
+   *
+   * @param refreshToken The refresh token
+   * @param loginRequest the login request
+   * @return the jwt token details
+   */
+  /*
+   * @SecurityRequirements
+   *
+   * @Loggable(level = "debug")
+   *
+   * @PostMapping(value = SecurityConstants.LOGIN)
+   * public ResponseEntity<?> authenticateUser(
+   *
+   * @CookieValue(required = false) String refreshToken,
+   *
+   * @Valid @RequestBody LoginRequest loginRequest) {
+   *
+   * var username = loginRequest.getUsername();
+   * // Authentication will fail if the credentials are invalid and throw
+   * exception.
+   * SecurityUtils.authenticateUser(authenticationManager, username,
+   * loginRequest.getPassword());
+   *
+   * // Generate and Send OTP
+   * String target = null;
+   * UserDto user = userService.findByUsername(username);
+   * if (user != null) {
+   * if (user.getOtpDeliveryMethod().equals(OtpDeliveryMethod.SMS.name())) {
+   * target = user.getPhone();
+   * } else if
+   * (user.getOtpDeliveryMethod().equals(OtpDeliveryMethod.EMAIL.name())) {
+   * target = user.getEmail();
+   * }
+   * }
+   * if (target != null) {
+   * CustomResponse<Object> response = otpService.generateOtp(target);
+   * if (user.getOtpDeliveryMethod().equals(OtpDeliveryMethod.SMS.name())) {
+   * // TODO: Send the OTP code to the phone number
+   * } else if
+   * (user.getOtpDeliveryMethod().equals(OtpDeliveryMethod.EMAIL.name())) {
+   * emailService.sendOtpEmail(user, response.getData().get().toString());
+   * } else {
+   * return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+   * .body(
+   * CustomResponse.of(
+   * HttpStatus.BAD_REQUEST.value(),
+   * null,
+   * AuthConstants.INVALID_OTP_DELIVERY_METHOD,
+   * SecurityConstants.LOGIN));
+   * }
+   * return ResponseEntity.ok(response);
+   * }
+   * return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+   * .body(
+   * CustomResponse.of(
+   * HttpStatus.BAD_REQUEST.value(),
+   * null,
+   * AuthConstants.BLANK_OTP_DELIVERY_METHOD,
+   * SecurityConstants.LOGIN));
+   * }
+   */
+
+  /**
    * Refreshes the current access token and refresh token accordingly.
    *
    * @param refreshToken The refresh token
-   * @param request The request
+   * @param request      The request
    * @return the jwt token details
    */
   @SecurityRequirements
@@ -125,9 +198,123 @@ public class AuthRestApi {
   }
 
   /**
-   * Logout the user from the system and clear all cookies from request and response.
+   * Endpoint to generate OTP for the user.
    *
-   * @param request the request
+   * @param username the username
+   * @return the response entity
+   */
+  /*
+   * @SecurityRequirements
+   *
+   * @Loggable(level = "warn")
+   *
+   * @PostMapping(SecurityConstants.GENERATE_OTP)
+   * public ResponseEntity<CustomResponse<Object>> generateOtp(String username) {
+   * UserDto user = userService.findByUsername(username);
+   * String target = null;
+   *
+   * if (user.getOtpDeliveryMethod() == OtpDeliveryMethod.SMS.name()) {
+   * target = user.getPhone();
+   * } else if (user.getOtpDeliveryMethod() == OtpDeliveryMethod.EMAIL.name()) {
+   * target = user.getEmail();
+   * }
+   *
+   * // Get the user email or phone number from the username
+   * if (target == null) {
+   * return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+   * .body(
+   * CustomResponse.of(
+   * HttpStatus.BAD_REQUEST.value(),
+   * null,
+   * UserConstants.USER_NOT_FOUND,
+   * SecurityConstants.GENERATE_OTP));
+   * } else {
+   * CustomResponse<Object> response = otpService.generateOtp(target);
+   * if (user.getOtpDeliveryMethod() == OtpDeliveryMethod.SMS.name()) {
+   * // TODO: Send the OTP code to the phone number
+   * } else if (user.getOtpDeliveryMethod() == OtpDeliveryMethod.EMAIL.name()) {
+   * emailService.sendOtpEmail(user, response.getData().get().toString());
+   * }
+   * return ResponseEntity.ok(response);
+   * }
+   * }
+   */
+
+  /**
+   * Endpoint to verify OTP for the user.
+   *
+   * @param request the OTP verification request
+   * @return the response entity
+   */
+  /*
+   * @SecurityRequirements
+   *
+   * @Loggable(level = "warn")
+   *
+   * @PostMapping(SecurityConstants.VERIFY_OTP)
+   * public ResponseEntity<CustomResponse<?>> verifyOtp(
+   *
+   * @CookieValue(required = false) String refreshToken,
+   *
+   * @RequestBody OtpVerificationRequest request) {
+   * CustomResponse<Boolean> response =
+   * otpService.validateOtp(request.getPublicId(), request.getTarget(),
+   * request.getCode());
+   * if (response.getData().orElse(false)) {
+   *
+   * UserDto user = userService.findByEmail(request.getTarget());
+   * if (user == null) {
+   * user = userService.findByPhone(request.getTarget());
+   * }
+   *
+   * if (user == null) {
+   * return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+   * .body(
+   * CustomResponse.of(
+   * HttpStatus.BAD_REQUEST.value(),
+   * null,
+   * UserConstants.USER_NOT_FOUND,
+   * SecurityConstants.VERIFY_OTP));
+   * }
+   *
+   * var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
+   * var isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
+   *
+   * // Authenticate user without password by setting it in the
+   * SecurityContextHolder
+   * SecurityUtils.authenticateUser(userDetailsService.loadUserByUsername(user.
+   * getUsername()));
+   *
+   * var responseHeaders = new HttpHeaders();
+   *
+   * // If the refresh token is valid, then we will not generate a new refresh
+   * token.
+   * String newAccessToken = updateCookies(user.getUsername(),
+   * isRefreshTokenValid, responseHeaders);
+   * String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
+   *
+   * JwtResponseBuilder jwtResponse =
+   * JwtResponseBuilder.buildJwtResponse(encryptedAccessToken);
+   *
+   * return ResponseEntity.ok()
+   * .headers(responseHeaders)
+   * .body(
+   * CustomResponse.of(
+   * HttpStatus.OK.value(),
+   * jwtResponse,
+   * AuthConstants.OTP_VERIFIED,
+   * SecurityConstants.VERIFY_OTP));
+   * } else {
+   * return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+   * }
+   * }
+   */
+
+  /**
+   * Logout the user from the system and clear all cookies from request and
+   * response.
+   *
+   * @param request  the request
    * @param response the response
    * @return response entity
    */
@@ -148,9 +335,9 @@ public class AuthRestApi {
   /**
    * Creates a refresh token if expired and adds it to the cookies.
    *
-   * @param username the username
+   * @param username       the username
    * @param isRefreshValid if the refresh token is valid
-   * @param headers the http headers
+   * @param headers        the http headers
    */
   private String updateCookies(
       String username, boolean isRefreshValid, MultiValueMap<String, String> headers) {

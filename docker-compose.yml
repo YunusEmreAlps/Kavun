@@ -1,8 +1,7 @@
 version: '3.9'
 
 services:
-
-  # Postgres database
+  # Postgres Database
   postgres-db:
     image: postgres:alpine
     restart: always
@@ -14,7 +13,14 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres-data:/var/lib/postgresql/data
-  # App service
+    healthcheck:
+      test: "pg_isready -U postgres"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  
+  # Kavun service
   # kavun:
   #   image: 23yea193/kavun
   #   build:
@@ -37,6 +43,7 @@ services:
   #     timeout: 5s
   #     retries: 5
   #     start_period: 40s
+  
   # Grafana service
   grafana:
     image: grafana/grafana:latest
@@ -48,6 +55,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - ./grafana:/var/lib/grafana
+
   # Prometheus service
   prometheus:
     image: prom/prometheus:latest
@@ -57,6 +65,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus.rules.yml:/etc/prometheus/prometheus.rules.yml
+  
   # PGExporter service
   pgexporter:
     image: wrouesnel/postgres_exporter:latest
@@ -65,6 +74,7 @@ services:
       - '9187:9187'
     environment:
       DATA_SOURCE_NAME: postgres://postgres:postgres@postgres-db:5432/kavun
+  
   # AlertManager service
   alertmanager:
     image: prom/alertmanager:latest
@@ -76,6 +86,7 @@ services:
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
+  
   # Syslog
   syslog:
     image: balabit/syslog-ng:latest

@@ -89,6 +89,7 @@
 			profile_image varchar(255),
 			username varchar(50) not null,
 			verification_token varchar(255),
+			otp_delivery_method varchar(255) NOT NULL DEFAULT 'EMAIL',
 			primary key (id)
 			);
 		</sql>
@@ -115,6 +116,7 @@
 			profile_image varchar(255),
 			username varchar(255),
 			verification_token varchar(255),
+			otp_delivery_method varchar(255) NOT NULL DEFAULT 'EMAIL',
 			primary key (rev, id)
 			);
 		</sql>

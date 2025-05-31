@@ -11,10 +11,10 @@ Decide on the URL, HTTP method, and the purpose of the endpoint. For example, le
 Locate the appropriate controller or create a new one if necessary. For this example, we'll add a new method to the `UserRestApi` controller.
 
 ```java
-package com.ziyaret.web.rest.v1;
+package com.kavun.web.rest.v1;
 
-import com.ziyaret.backend.service.user.UserService;
-import com.ziyaret.web.payload.response.UserResponse;
+import com.kavun.backend.service.user.UserService;
+import com.kavun.web.payload.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +44,9 @@ public class UserRestApi {
 Add the corresponding method in the `UserService` interface and its implementation.
 
 ```java
-package com.ziyaret.backend.service.user;
+package com.kavun.backend.service.user;
 
-import com.ziyaret.web.payload.response.UserResponse;
+import com.kavun.web.payload.response.UserResponse;
 
 public interface UserService {
     UserResponse findByUsername(String username);
@@ -54,12 +54,12 @@ public interface UserService {
 ```
 
 ```java
-package com.ziyaret.backend.service.user.impl;
+package com.kavun.backend.service.user.impl;
 
-import com.ziyaret.backend.persistent.domain.user.User;
-import com.ziyaret.backend.persistent.repository.UserRepository;
-import com.ziyaret.backend.service.user.UserService;
-import com.ziyaret.web.payload.response.UserResponse;
+import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.repository.UserRepository;
+import com.kavun.backend.service.user.UserService;
+import com.kavun.web.payload.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -83,9 +83,9 @@ public class UserServiceImpl implements UserService {
 Add the method to the `UserRepository` to fetch user details by username.
 
 ```java
-package com.ziyaret.backend.persistent.repository;
+package com.kavun.backend.persistent.repository;
 
-import com.ziyaret.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -100,9 +100,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 Create a DTO to structure the response data.
 
 ```java
-package com.ziyaret.web.payload.response;
+package com.kavun.web.payload.response;
 
-import com.ziyaret.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.domain.user.User;
 import lombok.Data;
 
 @Data
@@ -122,10 +122,10 @@ public class UserResponse {
 Write unit tests to ensure the new endpoint works as expected.
 
 ```java
-package com.ziyaret.web.rest.v1;
+package com.kavun.web.rest.v1;
 
-import com.ziyaret.backend.service.user.UserService;
-import com.ziyaret.web.payload.response.UserResponse;
+import com.kavun.backend.service.user.UserService;
+import com.kavun.web.payload.response.UserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

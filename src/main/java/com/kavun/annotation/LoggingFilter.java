@@ -7,21 +7,31 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
 import org.slf4j.MDC;
 import lombok.NonNull;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.kavun.backend.persistent.domain.siem.ApplicationLog;
+import com.kavun.backend.persistent.repository.ApplicationLogRepository;
+
 @Component
 public class LoggingFilter extends OncePerRequestFilter {
 
+  @Autowired
+  private ApplicationLogRepository applicationLogRepository;
+
   @Override
   protected void doFilterInternal(
-      @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
+      @SuppressWarnings("null") @NonNull HttpServletRequest request,
+      @SuppressWarnings("null") @NonNull HttpServletResponse response,
+      @SuppressWarnings("null") @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
     try {
@@ -29,9 +39,10 @@ public class LoggingFilter extends OncePerRequestFilter {
       String ip = getIp();
       String userIp = getUserIp(request);
       String user = getAuthenticatedUser(request);
-      String url = getUrl(request);
+      String url = getUrl(request); // Full URL including query parameters
       String action = getAction(request);
       String queryParams = getQueryParams(request);
+      String path = request.getRequestURI(); // Path without query parameters
 
       MDC.put("hostname", hostname);
       MDC.put("ip", ip);
@@ -40,6 +51,24 @@ public class LoggingFilter extends OncePerRequestFilter {
       MDC.put("url", url);
       MDC.put("action", action);
       MDC.put("queryParams", queryParams != null ? queryParams : "");
+
+      if (path.startsWith("/api/v1/")) {
+        ApplicationLog applicationLog = new ApplicationLog();
+        applicationLog.setLogLevel("INFO");
+        applicationLog.setThreadName(Thread.currentThread().getName());
+        applicationLog.setLoggerName("com.kavun");
+        applicationLog.setLogMessage("Request received");
+        applicationLog.setHostname(hostname);
+        applicationLog.setIp(ip);
+        applicationLog.setLogType("HTTP Request");
+        applicationLog.setUserIpAddress(userIp);
+        applicationLog.setUsername(user);
+        applicationLog.setRequestUrl(url);
+        applicationLog.setAction(action);
+        applicationLog.setRequestParams(queryParams);
+        // Save the log to the database
+        applicationLogRepository.save(applicationLog);
+      }
 
       // Proceed with the filter chain
       filterChain.doFilter(request, response);

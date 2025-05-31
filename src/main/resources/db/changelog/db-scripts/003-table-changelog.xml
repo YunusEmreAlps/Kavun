@@ -3,6 +3,34 @@
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd
    http://www.liquibase.org/xml/ns/dbchangelog
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+	<changeSet author="Yunus Emre Alpu" id="application_logs">
+		<sql endDelimiter="/">
+			CREATE TABLE IF NOT EXISTS application_logs (
+			id bigint not null,
+			created_at timestamp(6),
+			created_by varchar(255) not null,
+			public_id varchar(255) not null,
+			updated_at timestamp(6),
+			updated_by varchar(255),
+			version smallint not null,
+			log_level varchar(50) not null,
+			thread_name varchar(100) not null,
+			logger_name varchar(255) not null,
+			log_message text,
+			hostname varchar(255),
+			ip varchar(45),
+			log_type varchar(100),
+			user_ip_address varchar(45),
+			username varchar(255),
+			request_url varchar(2048),
+			action varchar(255),
+			request_params text,
+			state_before text,
+			state_after text,
+			primary key (id)
+			);
+		</sql>
+	</changeSet>
 	<changeSet author="Yunus Emre Alpu" id="persistent_logins_0">
 		<sql endDelimiter="/">
 			CREATE TABLE IF NOT EXISTS persistent_logins (

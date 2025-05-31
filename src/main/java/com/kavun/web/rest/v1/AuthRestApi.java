@@ -13,6 +13,7 @@ import com.kavun.web.payload.request.LoginRequest;
 import com.kavun.web.payload.response.JwtResponseBuilder;
 import com.kavun.web.payload.response.LogoutResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -49,6 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(SecurityConstants.API_V1_AUTH_ROOT_URL)
+@Tag(name = "Authentication", description = "APIs for user authentication and authorization")
 public class AuthRestApi {
 
   @Value("${access-token-expiration-in-minutes}")

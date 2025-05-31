@@ -12,6 +12,7 @@ import com.kavun.shared.util.UserUtils;
 import com.kavun.web.payload.request.SignUpRequest;
 import com.kavun.web.payload.response.UserResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(AdminConstants.API_V1_USERS_ROOT_URL)
+@Tag(name = "User Management", description = "APIs for managing users")
 public class UserRestApi {
 
   private final UserService userService;

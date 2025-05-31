@@ -10,7 +10,7 @@
 	<!-- Base pattern for system logs (simpler) -->
 	<property name="BASE_SYS_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %msg%n" />
 	<!-- Base pattern for application logs (detailed) -->
-	<property name="BASE_APP_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %X{hostname} | %X{ip} | %X{actionType} | %X{userIp} | %X{user} | %X{url} | %X{action} | %X{queryParams} | %msg%n" />
+	<property name="BASE_APP_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %X{hostname} | %X{ip} | %X{userIp} | %X{user} | %X{url} | %X{action} | %X{queryParams} | %msg%n" />
 	<!-- Appender for system logs (simple log pattern) -->
 	<appender name="SYSTEM_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
@@ -28,7 +28,7 @@
 		</encoder>
 	</appender>
 	<!-- Appender for syslog, active under specified profiles -->
-	<springProfile name="development | docker | production">
+	<springProfile name="development | test | production | docker">
 		<appender name="SYSLOG" class="ch.qos.logback.classic.net.SyslogAppender">
 			<syslogHost>
 				${syslogHost}
@@ -52,7 +52,7 @@
 		<appender-ref ref="SYSTEM_CONSOLE" />
 	</logger>
 	<!-- Logger for application logs (detailed) -->
-	<springProfile name="development | docker | production">
+	<springProfile name="development | test | production | docker">
 		<logger name="com.kavun.annotation.impl.MethodLogger" level="INFO" additivity="false">
 			<appender-ref ref="APP_CONSOLE" />
 			<appender-ref ref="SYSLOG" />

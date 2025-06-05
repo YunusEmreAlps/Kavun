@@ -50,7 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(SecurityConstants.API_V1_AUTH_ROOT_URL)
-@Tag(name = "Authentication", description = "APIs for user authentication and authorization")
+@Tag(name = "01. Authentication", description = "APIs for user authentication and authorization")
 public class AuthRestApi {
 
   @Value("${access-token-expiration-in-minutes}")

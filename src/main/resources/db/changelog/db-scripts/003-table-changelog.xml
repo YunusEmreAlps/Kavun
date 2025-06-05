@@ -54,8 +54,15 @@
 	<changeSet author="Yunus Emre Alpu" id="role_0">
 		<sql endDelimiter="/">
 			CREATE TABLE IF NOT EXISTS role (
-			id integer not null,
+			id bigint not null,
+			created_at timestamp(6),
+			created_by varchar(255) not null,
+			public_id varchar(255) not null,
+			updated_at timestamp(6),
+			updated_by varchar(255),
+			version smallint not null,
 			name varchar(255),
+			description text,
 			primary key (id)
 			);
 		</sql>
@@ -86,7 +93,7 @@
 			updated_at timestamp(6),
 			updated_by varchar(255),
 			version smallint not null,
-			role_id integer,
+			role_id bigint,
 			user_id bigint,
 			primary key (id)
 			);

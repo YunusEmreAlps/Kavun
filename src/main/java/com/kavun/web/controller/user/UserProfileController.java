@@ -17,6 +17,8 @@ import java.util.Comparator;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -37,6 +39,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Slf4j
 @Controller
 @RequiredArgsConstructor
+@RepositoryRestResource(exported = false)
 @RequestMapping(ProfileConstants.PROFILE_MAPPING)
 @PreAuthorize("isAuthenticated() and hasAnyRole(T(com.kavun.enums.RoleType).values())")
 public class UserProfileController {

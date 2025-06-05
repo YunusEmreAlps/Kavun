@@ -1,9 +1,9 @@
 package com.kavun.backend.persistent.domain.user;
 
+import com.kavun.backend.persistent.domain.base.BaseEntity;
 import com.kavun.enums.RoleType;
 import jakarta.persistence.Cacheable;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
@@ -25,11 +25,12 @@ import lombok.ToString;
 @ToString
 @Cacheable
 @NoArgsConstructor
-public class Role implements Serializable {
+public class Role extends BaseEntity<Long> implements Serializable {
   @Serial private static final long serialVersionUID = 7008351760784988067L;
 
-  @Id private Integer id;
+  // @Id private Integer id;
   private String name;
+  private String description;
 
   /**
    * The Role class creates a role for the user.
@@ -37,8 +38,9 @@ public class Role implements Serializable {
    * @param roleType assigns the role properties.
    */
   public Role(RoleType roleType) {
-    this.id = roleType.getId();
+    // this.id = roleType.getId();
     this.name = roleType.getName();
+    this.description = roleType.getDescription();
   }
 
   /**

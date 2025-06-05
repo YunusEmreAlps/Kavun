@@ -12,6 +12,8 @@ public final class AdminConstants {
   /** Admin Controller URI Mappings. */
   public static final String API_V1_USERS_ROOT_URL = "/api/v1/users";
 
+  public static final String API_V1_ROLE_ROOT_URL = "/api/v1/roles";
+
   private AdminConstants() {
     throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);
   }

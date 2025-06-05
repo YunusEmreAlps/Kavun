@@ -46,7 +46,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(AdminConstants.API_V1_USERS_ROOT_URL)
-@Tag(name = "User Management", description = "APIs for managing users")
+@Tag(name = "02. User Management", description = "APIs for managing users")
 public class UserRestApi {
 
   private final UserService userService;

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,8 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.kavun.constant.base.BaseConstants;
+
 /**
  * BaseEntity class allows an entity to inherit common properties from it.
  *
@@ -35,87 +38,78 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @ToString
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-public class BaseEntity<T extends Serializable> {
+public abstract class BaseEntity<T extends Serializable> {
 
-  private static final String SEQUENCE_NAME = "KavunSequence";
-  private static final String SEQUENCE_GENERATOR_NAME = "KavunSequenceGenerator";
+  private static final String SEQUENCE_NAME = "kavun_sequence";
+  private static final String SEQUENCE_GENERATOR_NAME = "kavun_sequence_generator";
 
-  /** Sequence Generator to auto generate IDs. */
-  @SequenceGenerator(
-      name = SEQUENCE_GENERATOR_NAME,
-      sequenceName = SEQUENCE_NAME,
-      allocationSize = 1)
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = SEQUENCE_GENERATOR_NAME)
+  @SequenceGenerator(name = SEQUENCE_GENERATOR_NAME, sequenceName = SEQUENCE_NAME, allocationSize = 1)
   private T id;
 
-  @Column(unique = true, nullable = false)
-  @NotBlank(message = "Public facing id is needed for all entities")
+  @Column(unique = true, nullable = false, updatable = false)
+  @NotBlank(message = BaseConstants.PUBLIC_ID_NOT_BLANK)
   private String publicId;
 
-  /** Manages the version of Entities to measure the amount of modifications made to this entity. */
-  @Version private short version;
+  @Version
+  private short version;
 
   @CreatedDate
-  @Column(updatable = false)
+  @Column(nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
   @CreatedBy
   @Column(nullable = false, updatable = false)
   private String createdBy;
 
-  @Column @LastModifiedDate private LocalDateTime updatedAt;
+  @LastModifiedDate
+  @Column
+  private LocalDateTime updatedAt;
 
-  @Column @LastModifiedBy private String updatedBy;
+  @LastModifiedBy
+  @Column
+  private String updatedBy;
 
-  /**
-   * Evaluate the equality of BaseEntity class.
-   *
-   * @param o is the other object use in equality test.
-   * @return the equality of both objects.
-   */
+  @Column
+  private LocalDateTime deletedAt;
+
+  @Column
+  private String deletedBy;
+
+  @Column(nullable = false)
+  private boolean deleted = false;
+
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
+    if (this == o)
       return true;
-    }
-    if (!(o instanceof BaseEntity<?> that)) {
+    if (!(o instanceof BaseEntity<?> that) || !that.canEqual(this))
       return false;
-    }
-    if (!that.canEqual(this)) {
-      return false;
-    }
-    return Objects.equals(getVersion(), that.getVersion())
-        && Objects.equals(getPublicId(), that.getPublicId());
+    return version == that.version && Objects.equals(publicId, that.publicId);
   }
 
-  /**
-   * This method is meant for allowing to redefine equality on several levels of the class hierarchy
-   * while keeping its contract.
-   *
-   * @see <a href="https://www.artima.com/articles/how-to-write-an-equality-method-in-java">More</a>
-   * @param other is the other object use in equality test.
-   * @return if the other object can be equal to this object.
-   */
   protected boolean canEqual(Object other) {
     return other instanceof BaseEntity;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getVersion(), getPublicId());
+    return Objects.hash(version, publicId);
   }
 
-  /**
-   * A callback to assign a random UUID to publicId.
-   *
-   * <p>Assign a public id to the user. This is used to identify the user in the system and can be
-   * shared publicly over the internet.
-   */
   @PrePersist
-  /* default */ void onCreate() {
-    if (Objects.isNull(getPublicId())) {
-      setPublicId(UUID.randomUUID().toString());
+  protected void onCreate() {
+    if (publicId == null) { // Avoid overwriting if set by subclass
+      publicId = UUID.randomUUID().toString();
     }
+    version = 0;
+  }
+
+  @PreRemove
+  protected void onDelete() {
+    deleted = true;
+    deletedAt = LocalDateTime.now();
+    deletedBy = new ApplicationAuditorAware().getCurrentAuditor().orElse("system");
   }
 }

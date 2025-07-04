@@ -15,6 +15,7 @@ import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserDtoMapper;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.ValidationUtils;
+import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.UserResponse;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -34,6 +35,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.datatables.mapping.DataTablesInput;
 import org.springframework.data.jpa.datatables.mapping.DataTablesOutput;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -138,6 +141,12 @@ public class UserServiceImpl implements UserService {
     Page<User> usersPage = userRepository.findAll(pageable);
 
     return usersPage.map(UserDtoMapper.MAPPER::toUserResponse);
+  }
+
+  @Override
+  public Page<UserResponse> findAll(Specification<User> spec, Pageable pageable) {
+    return userRepository.findAll(spec, pageable)
+        .map(UserDtoMapper.MAPPER::toUserResponse);
   }
 
   /**
@@ -428,5 +437,117 @@ public class UserServiceImpl implements UserService {
     user.addUserHistory(new UserHistory(UUID.randomUUID().toString(), user, historyType));
 
     return saveOrUpdate(user, isUpdate);
+  }
+
+    /**
+   * Reset the user password with the new password.
+   *
+   * @param token       the token
+   * @param newPassword the new password
+   * @throws NullPointerException in case the given entity is {@literal null}
+   */
+  @Override
+  @Transactional
+  public CustomResponse<String> resetPassword(final String token, final String newPassword) {
+    Validate.notNull(token, UserConstants.USER_ID_MUST_NOT_BE_NULL);
+    Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
+
+    User storedUser = userRepository.findByVerificationToken(token);
+    if (Objects.nonNull(storedUser)) {
+      storedUser.setPassword(passwordEncoder.encode(newPassword));
+      storedUser.setVerificationToken(null);
+      userRepository.save(storedUser);
+      return CustomResponse.of(
+          HttpStatus.OK, null, UserConstants.PASSWORD_RESET_SUCCESSFULLY, null);
+    }
+    return CustomResponse.of(
+        HttpStatus.BAD_REQUEST, null, UserConstants.PASSWORD_RESET_FAILED, null);
+  }
+
+  /**
+   * Update the password for the user with the publicId and new password given.
+   *
+   * @param publicId    the publicId
+   * @param oldPassword the old password
+   * @param newPassword the new password
+   * @return CustomResponse with status and message
+   */
+  @Override
+  @Transactional
+  public CustomResponse<String> updatePassword(
+      final String publicId, final String oldPassword, final String newPassword) {
+    Validate.notNull(publicId, UserConstants.BLANK_PUBLIC_ID);
+    Validate.notNull(oldPassword, UserConstants.BLANK_PASSWORD);
+    Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
+
+    User storedUser = userRepository.findByPublicId(publicId);
+    if (Objects.isNull(storedUser)) {
+      return CustomResponse.of(
+          HttpStatus.NOT_FOUND, null, UserConstants.USER_NOT_FOUND, null);
+    }
+
+    if (!passwordEncoder.matches(oldPassword, storedUser.getPassword())) {
+      return CustomResponse.of(
+          HttpStatus.BAD_REQUEST, null, UserConstants.PASSWORD_UPDATED_FAILED, null);
+    }
+
+    storedUser.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(storedUser);
+
+    return CustomResponse.of(
+        HttpStatus.OK, null, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY, null);
+  }
+
+    /**
+   * Generate unique username for the user.
+   *
+   * @param firstName the first name
+   * @param lastName  the last name
+   * @return the unique username
+   */
+
+  public String generateUniqueUsername(String firstName, String lastName) {
+    Validate.notNull(firstName, UserConstants.BLANK_FIRST_NAME);
+    Validate.notNull(lastName, UserConstants.BLANK_LAST_NAME);
+
+    // Remove leading/trailing spaces and special characters, allow Unicode
+    // letters/digits
+    String baseFirst = firstName.trim().replaceAll("[^\\p{L}\\p{Nd}]", "");
+    String baseLast = lastName.trim().replaceAll("[^\\p{L}\\p{Nd}]", "");
+
+    // Fallback if names are empty after cleaning
+    if (baseFirst.isEmpty())
+      baseFirst = "ziyaret";
+    if (baseLast.isEmpty())
+      baseLast = "user";
+
+    // Reserve 1 char for the dot
+    int maxFirst = Math.min(baseFirst.length(), UserConstants.USERNAME_MAX_SIZE / 2);
+    int maxLast = Math.min(baseLast.length(), UserConstants.USERNAME_MAX_SIZE - maxFirst - 1);
+
+    // Truncate to fit within 50 chars (including dot)
+    baseFirst = baseFirst.substring(0, Math.min(baseFirst.length(), maxFirst));
+    baseLast = baseLast.substring(0, Math.min(baseLast.length(), maxLast));
+
+    String baseUsername = (baseFirst + "." + baseLast).toLowerCase();
+    String username = baseUsername;
+    int counter = 1;
+
+    // If username exceeds max length, truncate
+    if (username.length() > UserConstants.USERNAME_MAX_SIZE) {
+      username = username.substring(0, UserConstants.USERNAME_MAX_SIZE);
+    }
+
+    // Ensure uniqueness and length with counter
+    while (existsByUsername(username)) {
+      String suffix = String.valueOf(counter);
+      int trimLength = UserConstants.USERNAME_MAX_SIZE - suffix.length();
+      String trimmedBase = baseUsername.length() > trimLength
+          ? baseUsername.substring(0, trimLength)
+          : baseUsername;
+      username = trimmedBase + suffix;
+      counter++;
+    }
+    return username;
   }
 }

@@ -51,7 +51,7 @@ public class OtpServiceImpl implements OtpService {
         params.put("target", otpEntity.getTarget());
 
         return CustomResponse.of(
-                HttpStatus.OK.value(), params, AuthConstants.OTP_GENERATED, SecurityConstants.GENERATE_OTP);
+                HttpStatus.OK, params, AuthConstants.OTP_GENERATED, SecurityConstants.GENERATE_OTP);
     }
 
     /**
@@ -75,7 +75,7 @@ public class OtpServiceImpl implements OtpService {
                 otpEntity.setActive(false);
                 otpRepository.save(otpEntity);
                 return CustomResponse.of(
-                        HttpStatus.OK.value(), true, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP);
+                        HttpStatus.OK, true, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP);
             } else {
                 otpEntity.setFailedAttempts(otpEntity.getFailedAttempts() + 1);
                 if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
@@ -88,19 +88,19 @@ public class OtpServiceImpl implements OtpService {
 
                 if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
                     return CustomResponse.of(
-                            HttpStatus.BAD_REQUEST.value(),
+                            HttpStatus.BAD_REQUEST,
                             false,
                             AuthConstants.OTP_MAX_ATTEMPTS,
                             SecurityConstants.VERIFY_OTP);
                 } else if (otpEntity.isExpired()) {
                     return CustomResponse.of(
-                            HttpStatus.BAD_REQUEST.value(),
+                            HttpStatus.BAD_REQUEST,
                             false,
                             AuthConstants.OTP_EXPIRED,
                             SecurityConstants.VERIFY_OTP);
                 } else {
                     return CustomResponse.of(
-                            HttpStatus.BAD_REQUEST.value(),
+                            HttpStatus.BAD_REQUEST,
                             false,
                             AuthConstants.OTP_NOT_VERIFIED,
                             SecurityConstants.VERIFY_OTP);
@@ -109,7 +109,7 @@ public class OtpServiceImpl implements OtpService {
             // otpRepository.delete(otpEntity);
         } else {
             return CustomResponse.of(
-                    HttpStatus.BAD_REQUEST.value(),
+                    HttpStatus.BAD_REQUEST,
                     false,
                     AuthConstants.OTP_NOT_FOUND,
                     SecurityConstants.VERIFY_OTP);

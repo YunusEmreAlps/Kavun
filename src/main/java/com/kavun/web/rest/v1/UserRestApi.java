@@ -1,25 +1,34 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.mail.EmailService;
 import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.AdminConstants;
+import com.kavun.constant.ErrorConstants;
+import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.shared.util.UserUtils;
+import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.request.SignUpRequest;
+import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.UserResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.converters.models.PageableAsQueryParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -32,6 +41,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -53,9 +63,33 @@ public class UserRestApi {
   private final JwtService jwtService;
   private final EmailService emailService;
   private final EncryptionService encryptionService;
+  private final UserSpecification userSpecification;
 
-  private static final String AUTHORIZE =
-      "isFullyAuthenticated() && hasRole(T(com.kavun.enums.RoleType).ROLE_ADMIN)";
+  private static final String AUTHORIZE = "isFullyAuthenticated() && hasRole(T(com.kavun.enums.RoleType).ROLE_ADMIN)";
+
+  /**
+   * Searches for users based on the provided parameters
+   *
+   * @param paramaterMap a map of search parameters where the key is the
+   * @param page         pagination information
+   * @return a paginated list of users that match the search criteria
+   */
+  @PageableAsQueryParam
+  @PreAuthorize(AUTHORIZE)
+  @Loggable(ignoreResponseData = true)
+  @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<CustomResponse<Page<UserResponse>>> searchUsers(
+      @RequestParam Map<String, Object> paramaterMap,
+      Pageable page) {
+
+    Specification<User> spec = userSpecification.search(paramaterMap);
+
+    Page<UserResponse> users = userService.findAll(spec, page);
+    return ResponseEntity.ok(
+        CustomResponse.of(HttpStatus.OK, users,
+            "Users retrieved successfully",
+            AdminConstants.API_V1_USERS_ROOT_URL + "/search"));
+  }
 
   /**
    * Performs a search for users based on the provided search criteria.
@@ -71,36 +105,6 @@ public class UserRestApi {
 
     Page<UserResponse> users = userService.findAll(page);
     return ResponseEntity.ok(users);
-  }
-
-  /**
-   * Enables the user associated with the publicId.
-   *
-   * @param publicId the publicId
-   * @return if the operation is success
-   */
-  @PreAuthorize(AUTHORIZE)
-  @PutMapping(value = "/{publicId}/enable")
-  public ResponseEntity<OperationStatus> enableUser(@PathVariable String publicId) {
-    var userDto = userService.enableUser(publicId);
-
-    return ResponseEntity.ok(
-        Objects.isNull(userDto) ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
-  }
-
-  /**
-   * Disables the user associated with the publicId.
-   *
-   * @param publicId the publicId
-   * @return if the operation is success
-   */
-  @PreAuthorize(AUTHORIZE)
-  @PutMapping(value = "/{publicId}/disable", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<OperationStatus> disableUser(@PathVariable String publicId) {
-    var userDto = userService.disableUser(publicId);
-
-    return ResponseEntity.ok(
-        Objects.isNull(userDto) ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
   }
 
   /**
@@ -138,12 +142,69 @@ public class UserRestApi {
     var encodedToken = encryptionService.encode(encryptedToken);
 
     emailService.sendAccountVerificationEmail(savedUserDto, encodedToken);
-    var location =
-        ServletUriComponentsBuilder.fromCurrentRequest()
-            .path("/{publicId}")
-            .buildAndExpand(savedUserDto.getPublicId())
-            .toUriString();
+    var location = ServletUriComponentsBuilder.fromCurrentRequest()
+        .path("/{publicId}")
+        .buildAndExpand(savedUserDto.getPublicId())
+        .toUriString();
 
     return ResponseEntity.status(HttpStatus.CREATED).header(HttpHeaders.LOCATION, location).build();
   }
+
+  /**
+   * Update the user password for the currently authenticated user.
+   *
+   * @param oldPassword the old password
+   * @param newPassword the new password
+   * @return "Password updated successfully" if the password is updated
+   */
+  @Loggable
+  @PreAuthorize(AUTHORIZE)
+  @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<CustomResponse<String>> updatePassword(
+      @RequestParam String oldPassword, @RequestParam String newPassword) {
+
+    var userDetails = SecurityUtils.getAuthenticatedUserDetails();
+    if (Objects.isNull(userDetails)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .body(CustomResponse.of(HttpStatus.UNAUTHORIZED, null, ErrorConstants.UNAUTHORIZED_ACCESS,
+              AdminConstants.API_V1_USERS_ROOT_URL + ProfileConstants.PROFILE_MAPPING));
+    }
+
+    // Update the password
+    userService.updatePassword(userDetails.getPublicId(), oldPassword, newPassword);
+
+    return ResponseEntity.ok(CustomResponse.of(HttpStatus.OK, null, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY,
+        ProfileConstants.REDIRECT_TO_PROFILE));
+  }
+
+  /**
+   * Enables the user associated with the publicId.
+   *
+   * @param publicId the publicId
+   * @return if the operation is success
+   */
+  @PreAuthorize(AUTHORIZE)
+  @PutMapping(value = "/{publicId}/enable")
+  public ResponseEntity<OperationStatus> enableUser(@PathVariable String publicId) {
+    var userDto = userService.enableUser(publicId);
+
+    return ResponseEntity.ok(
+        Objects.isNull(userDto) ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
+  }
+
+  /**
+   * Disables the user associated with the publicId.
+   *
+   * @param publicId the publicId
+   * @return if the operation is success
+   */
+  @PreAuthorize(AUTHORIZE)
+  @PutMapping(value = "/{publicId}/disable", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<OperationStatus> disableUser(@PathVariable String publicId) {
+    var userDto = userService.disableUser(publicId);
+
+    return ResponseEntity.ok(
+        Objects.isNull(userDto) ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
+  }
+
 }

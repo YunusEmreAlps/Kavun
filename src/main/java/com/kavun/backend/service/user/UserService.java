@@ -4,6 +4,7 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.enums.RoleType;
 import com.kavun.enums.UserHistoryType;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.UserResponse;
 import java.util.List;
 import java.util.Set;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.datatables.mapping.DataTablesInput;
 import org.springframework.data.jpa.datatables.mapping.DataTablesOutput;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -26,7 +28,7 @@ public interface UserService {
   /**
    * Saves or updates the user with the user instance given.
    *
-   * @param user the user with updated information
+   * @param user     the user with updated information
    * @param isUpdate if the operation is an update
    * @return the updated user.
    * @throws NullPointerException in case the given entity is {@literal null}
@@ -46,7 +48,7 @@ public interface UserService {
   /**
    * Create the userDto with the userDto instance given.
    *
-   * @param userDto the userDto with updated information
+   * @param userDto   the userDto with updated information
    * @param roleTypes the roleTypes.
    * @return the updated userDto.
    * @throws NullPointerException in case the given entity is {@literal null}
@@ -63,7 +65,17 @@ public interface UserService {
   Page<UserResponse> findAll(final Pageable pageable);
 
   /**
-   * Returns users according to the details in the dataTablesInput or null if no user exists.
+   * Returns users according to the specification.
+   *
+   * @param spec     the specification
+   * @param pageable the pageable
+   * @return the users
+   */
+  Page<UserResponse> findAll(Specification<User> spec, Pageable pageable);
+
+  /**
+   * Returns users according to the details in the dataTablesInput or null if no
+   * user exists.
    *
    * @param dataTablesInput the dataTablesInput
    * @return the dataTablesOutput
@@ -114,7 +126,8 @@ public interface UserService {
   List<UserDto> findAllNotEnabledAfterAllowedDays();
 
   /**
-   * Returns a userDetails for the given username or null if a user could not be found.
+   * Returns a userDetails for the given username or null if a user could not be
+   * found.
    *
    * @param username The username associated to the user to find
    * @return a user for the given username or null if a user could not be found
@@ -134,16 +147,17 @@ public interface UserService {
    * Checks if the username or email already exists and enabled.
    *
    * @param username the username
-   * @param email the email
+   * @param email    the email
    * @return <code>true</code> if username exists
    */
   boolean existsByUsernameOrEmailAndEnabled(String username, String email);
 
   /**
-   * Validates the username exists and the token belongs to the user with the username.
+   * Validates the username exists and the token belongs to the user with the
+   * username.
    *
    * @param username the username
-   * @param token the token
+   * @param token    the token
    * @return if token is valid
    */
   boolean isValidUsernameAndToken(String username, String token);
@@ -151,7 +165,7 @@ public interface UserService {
   /**
    * Update the user with the user instance given and the update type for record.
    *
-   * @param userDto The user with updated information
+   * @param userDto         The user with updated information
    * @param userHistoryType the history type to be recorded
    * @return the updated user
    * @throws NullPointerException in case the given entity is {@literal null}
@@ -183,4 +197,30 @@ public interface UserService {
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   void deleteUser(String publicId);
+
+  /**
+   * Reset the password for the user with the token and new password given.
+   *
+   * @param token the token
+   * @param newPassword the new password
+   * @throws NullPointerException in case the given entity is {@literal null}
+   */
+  CustomResponse<String> resetPassword(String token, String newPassword);
+  /**
+   * Update the password for the user with the publicId and new password given.
+   *
+   * @param publicId    the publicId
+   * @param oldPassword the old password
+   * @param newPassword the new password
+   */
+  CustomResponse<String> updatePassword(String publicId, String oldPassword, String newPassword);
+
+  /**
+   * Generate unique username for the user.
+   *
+   * @param firstName the first name
+   * @param lastName  the last name
+   * @return the unique username
+   */
+  String generateUniqueUsername(String firstName, String lastName);
 }

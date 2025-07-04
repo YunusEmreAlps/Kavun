@@ -3,6 +3,7 @@
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd
    http://www.liquibase.org/xml/ns/dbchangelog
    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+   <!-- TODO: if you want to use hibernate ddi-auto update, you can comment all the changesets in this file -->
 	<changeSet author="Yunus Emre Alpu" id="application_logs">
 		<sql endDelimiter="/">
 			CREATE TABLE IF NOT EXISTS application_logs (
@@ -12,6 +13,9 @@
 			public_id varchar(255) not null,
 			updated_at timestamp(6),
 			updated_by varchar(255),
+			deleted_at timestamp(6),
+			deleted_by varchar(255),
+			deleted boolean not null default false,
 			version smallint not null,
 			log_level varchar(50) not null,
 			thread_name varchar(100) not null,
@@ -60,6 +64,9 @@
 			public_id varchar(255) not null,
 			updated_at timestamp(6),
 			updated_by varchar(255),
+			deleted_at timestamp(6),
+			deleted_by varchar(255),
+			deleted boolean not null default false,
 			version smallint not null,
 			name varchar(255),
 			description text,
@@ -76,6 +83,9 @@
 			public_id varchar(255) not null,
 			updated_at timestamp(6),
 			updated_by varchar(255),
+			deleted_at timestamp(6),
+			deleted_by varchar(255),
+			deleted boolean not null default false,
 			version smallint not null,
 			user_history_type smallint check (user_history_type between 0 and 5),
 			user_id bigint,
@@ -92,6 +102,9 @@
 			public_id varchar(255) not null,
 			updated_at timestamp(6),
 			updated_by varchar(255),
+			deleted_at timestamp(6),
+			deleted_by varchar(255),
+			deleted boolean not null default false,
 			version smallint not null,
 			role_id bigint,
 			user_id bigint,
@@ -108,6 +121,9 @@
 			public_id varchar(255) not null,
 			updated_at timestamp(6),
 			updated_by varchar(255),
+			deleted_at timestamp(6),
+			deleted_by varchar(255),
+			deleted boolean not null default false,
 			version smallint not null,
 			account_non_expired boolean not null,
 			account_non_locked boolean not null,

@@ -55,6 +55,7 @@ public class DatabaseSeeder implements CommandLineRunner {
   private void persistDefaultAdminUser() {
     try {
       var adminDto = UserUtils.createUserDto(adminUsername, adminPassword, adminEmail, true);
+      LOG.info("Creating default admin user: {}", adminDto);
       Set<RoleType> adminRoleType = Collections.singleton(RoleType.ROLE_ADMIN);
 
       userService.createUser(adminDto, adminRoleType);

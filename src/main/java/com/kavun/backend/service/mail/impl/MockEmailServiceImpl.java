@@ -4,8 +4,11 @@ import com.kavun.constant.EmailConstants;
 import com.kavun.constant.EnvConstants;
 import com.kavun.web.payload.request.mail.EmailRequest;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
+import com.kavun.web.payload.response.CustomResponse;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +21,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-@Profile(EnvConstants.DEVELOPMENT)
+@Profile(EnvConstants.INTEGRATION_TEST)
 public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
 
   /**
@@ -31,6 +34,26 @@ public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
     LOG.info(EmailConstants.SIMULATING_SENDING_AN_EMAIL);
     LOG.info("Simple Mail Message content is {}", simpleMailMessage);
     LOG.info(EmailConstants.MAIL_SUCCESS_MESSAGE);
+  }
+
+  @Override
+  public CustomResponse<String> sendSimpleEmail(final SimpleMailMessage simpleMailMessage) {
+    try {
+      sendMail(simpleMailMessage);
+      String recipients = simpleMailMessage.getTo() != null ? String.join(", ", simpleMailMessage.getTo()) : "unknown";
+
+      return CustomResponse.of(
+          HttpStatus.OK,
+          EmailConstants.MAIL_SUCCESS_MESSAGE,
+          simpleMailMessage.getSubject() + " sent to " + recipients);
+
+    } catch (Exception e) {
+      LOG.error("Failed to send simple email", e);
+      return CustomResponse.of(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          "Failed to send email: " + e.getMessage(),
+          null);
+    }
   }
 
   /**
@@ -47,7 +70,8 @@ public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   /**
-   * Sends an email with the provided details and template for html with an attachment.
+   * Sends an email with the provided details and template for html with an
+   * attachment.
    *
    * @param emailRequest the email format
    */
@@ -57,4 +81,5 @@ public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
     LOG.info("attachments to be emailed are {}", emailRequest.getAttachments());
     LOG.info(EmailConstants.MAIL_SUCCESS_MESSAGE);
   }
+
 }

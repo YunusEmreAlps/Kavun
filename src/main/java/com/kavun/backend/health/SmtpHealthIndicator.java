@@ -2,128 +2,80 @@ package com.kavun.backend.health;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 
+import com.kavun.config.MailConfig;
+
 import jakarta.mail.MessagingException;
 import jakarta.mail.Transport;
 import jakarta.mail.Session;
-import java.time.Duration;
-import java.time.LocalDateTime;
+
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SmtpHealthIndicator implements HealthIndicator {
 
+    private final MailConfig mailConfig;
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.host:}")
-    private String mailHost;
-
-    @Value("${spring.mail.port:587}")
-    private int mailPort;
-
-    @Value("${spring.mail.username:}")
-    private String mailUsername;
-
-    @Value("${spring.mail.password:}")
-    private String mailPassword;
-
-    @Value("${spring.mail.protocol:smtp}")
-    private String mailProtocol;
-
-    @Value("${management.health.mail.show-details:false}")
-    private boolean showDetails;
-
-    @Value("${management.health.mail.cache-duration:30}")
-    private int cacheDurationSeconds;
-
-    // Cache the health result to avoid frequent connection attempts
-    private final AtomicReference<CachedHealthResult> cachedResult = new AtomicReference<>();
-
+    // Health check for SMTP configuration
     @Override
     public Health health() {
-        // Check cached result first
-        CachedHealthResult cached = cachedResult.get();
-        if (cached != null && cached.isValid(cacheDurationSeconds)) {
-            LOG.debug("Returning cached SMTP health result");
-            return cached.health;
-        }
+        try {
+            if (!isConfigurationValid()) {
+                return createSecureHealthResult(false, "SMTP Not Configured Properly");
+            }
 
-        // Perform actual health check
-        Health health = performHealthCheck();
+            long startTime = System.currentTimeMillis();
 
-        // Cache the result
-        cachedResult.set(new CachedHealthResult(health, LocalDateTime.now()));
+            // Test SMTP connection
+            try (SmtpConnection connection = createSmtpConnection()) {
+                boolean connected = connection.test();
+                long connectionTime = System.currentTimeMillis() - startTime;
 
-        return health;
-    }
+                LOG.info("SMTP Health Check {} in {}ms",
+                        connected ? "Connected" : "Failed", connectionTime);
 
-    private Health performHealthCheck() {
-        if (!isConfigurationValid()) {
-            return createSecureHealthResult(false, "SMTP not configured");
-        }
+                return createSecureHealthResult(connected,
+                        connected ? "Connected" : "Connection Failed");
 
-        long startTime = System.currentTimeMillis();
-
-        try (SmtpConnection connection = createSmtpConnection()) {
-            boolean connected = connection.test();
-            long connectionTime = System.currentTimeMillis() - startTime;
-
-            LOG.info("SMTP health check {} in {}ms",
-                    connected ? "succeeded" : "failed", connectionTime);
-
-            return createSecureHealthResult(connected,
-                    connected ? "Connected" : "Connection failed");
-
+            } catch (Exception e) {
+                long connectionTime = System.currentTimeMillis() - startTime;
+                LOG.error("SMTP Health Check Failed After {}ms: {}", connectionTime, e.getMessage());
+                return createSecureHealthResult(false, "Connection Error");
+            }
+            
         } catch (Exception e) {
-            long connectionTime = System.currentTimeMillis() - startTime;
-
-            LOG.error("SMTP health check failed after {}ms: {}", connectionTime, e.getMessage());
-
-            return createSecureHealthResult(false, "Connection error");
+            LOG.error("SMTP Health Check Failed: {}", e.getMessage());
+            return createSecureHealthResult(false, "Health Check Failed");
         }
     }
 
+    // Validate SMTP configuration
     private boolean isConfigurationValid() {
-        return mailHost != null && !mailHost.trim().isEmpty() &&
-                mailUsername != null && !mailUsername.trim().isEmpty() &&
+        return mailConfig.getHost() != null && !mailConfig.getHost().trim().isEmpty() &&
+                mailConfig.getUsername() != null && !mailConfig.getUsername().trim().isEmpty() &&
                 mailSender instanceof JavaMailSenderImpl;
     }
 
+    // Create health result
     private Health createSecureHealthResult(boolean isUp, String status) {
         Health.Builder builder = isUp ? Health.up() : Health.down();
-
-        if (showDetails) {
-            builder.withDetail("smtp_status", status)
-                    .withDetail("host", maskSensitiveInfo(mailHost))
-                    .withDetail("port", mailPort)
-                    .withDetail("username", maskSensitiveInfo(mailUsername))
-                    .withDetail("protocol", mailProtocol);
-        } else {
-            // Only show basic status for security
-            builder.withDetail("status", status);
-        }
-
+        builder.withDetail("status", status);
         return builder.build();
     }
 
-    private String maskSensitiveInfo(String info) {
-        if (info == null || info.length() <= 4)
-            return "***";
-        return info.substring(0, 2) + "***" + info.substring(info.length() - 2);
-    }
-
+    // Create SMTP connection
     private SmtpConnection createSmtpConnection() {
         return new SmtpConnection((JavaMailSenderImpl) mailSender,
-                mailHost, mailPort, mailUsername, mailPassword, mailProtocol);
+                mailConfig.getHost(), mailConfig.getPort(), mailConfig.getUsername(), mailConfig.getPassword(),
+                mailConfig.getProtocol());
     }
 
     // Inner class for managing SMTP connections
@@ -177,22 +129,6 @@ public class SmtpHealthIndicator implements HealthIndicator {
                     LOG.warn("Error closing SMTP transport: {}", e.getMessage());
                 }
             }
-        }
-    }
-
-    // Inner class for caching health results
-    private static class CachedHealthResult {
-        private final Health health;
-        private final LocalDateTime timestamp;
-
-        public CachedHealthResult(Health health, LocalDateTime timestamp) {
-            this.health = health;
-            this.timestamp = timestamp;
-        }
-
-        public boolean isValid(int cacheDurationSeconds) {
-            return Duration.between(timestamp, LocalDateTime.now())
-                    .getSeconds() < cacheDurationSeconds;
         }
     }
 }

@@ -201,11 +201,12 @@ public interface UserService {
   /**
    * Reset the password for the user with the token and new password given.
    *
-   * @param token the token
+   * @param token       the token
    * @param newPassword the new password
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   CustomResponse<String> resetPassword(String token, String newPassword);
+
   /**
    * Update the password for the user with the publicId and new password given.
    *
@@ -214,6 +215,26 @@ public interface UserService {
    * @param newPassword the new password
    */
   CustomResponse<String> updatePassword(String publicId, String oldPassword, String newPassword);
+
+  /**
+   * Generates a secure temporary password.
+   */
+  @NonNull
+  String generateSecureTemporaryPassword();
+
+  /**
+   * Updates user password directly without token validation.
+   *
+   * @param publicId    the user's public identifier
+   * @param newPassword the new password
+   * @return CustomResponse with operation result
+   */
+  @NonNull
+  CustomResponse<Boolean> updatePasswordDirectly(@NonNull String publicId, @NonNull String newPassword);
+
+  // =========================================================================
+  // UTILITY OPERATIONS
+  // =========================================================================
 
   /**
    * Generate unique username for the user.

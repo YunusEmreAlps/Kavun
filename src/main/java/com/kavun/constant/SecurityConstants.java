@@ -70,7 +70,7 @@ public final class SecurityConstants {
     "/resources/**",
     "/static/**",
     "/console/**",
-    "/actuator/health",
+    "/actuator/health/**",
     "/actuator/prometheus",
     "/v3/api-docs/**",
     "/swagger-ui/**",

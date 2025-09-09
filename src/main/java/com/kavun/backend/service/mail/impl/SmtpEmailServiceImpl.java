@@ -1,9 +1,10 @@
 package com.kavun.backend.service.mail.impl;
 
+import com.kavun.backend.persistent.domain.email.Email;
+import com.kavun.backend.persistent.repository.EmailRepository;
 import com.kavun.config.properties.SystemProperties;
-import com.kavun.constant.EmailConstants;
 import com.kavun.constant.EnvConstants;
-import com.kavun.shared.dto.EmailDto;
+import com.kavun.constant.email.EmailConstants;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
 import com.kavun.web.payload.response.CustomResponse;
 
@@ -56,6 +57,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   private final SystemProperties systemProps;
   private final JavaMailSender mailSender;
   private final TemplateEngine templateEngine;
+  private final EmailRepository emailRepository;
 
   /**
    * Sends an email with the provided simple mail message object.
@@ -448,16 +450,15 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   private void saveMailStatusToDatabase(SimpleMailMessage simpleMailMessage, String requestId,
       String result, boolean status) {
     try {
-      EmailDto emailDto = new EmailDto();
-      emailDto.setTitle(StringUtils.defaultIfBlank(simpleMailMessage.getSubject(), "No Subject"));
-      emailDto.setMail(getRecipientsAsString(simpleMailMessage));
-      emailDto.setMessage(StringUtils.defaultIfBlank(simpleMailMessage.getText(), ""));
-      emailDto.setResult(result);
-      emailDto.setRequestId(requestId);
-      emailDto.setBodyHtml(false);
-      emailDto.setStatus(status);
+      Email email = new Email();
+      email.setTitle(StringUtils.defaultIfBlank(simpleMailMessage.getSubject(), "No Subject"));
+      email.setMail(getRecipientsAsString(simpleMailMessage));
+      email.setMessage(StringUtils.defaultIfBlank(simpleMailMessage.getText(), ""));
+      email.setResult(result);
+      email.setBodyHtml(false);
+      email.setStatus(status);
 
-      // mailService.save(emailDto);
+      emailRepository.save(email);
 
     } catch (Exception e) {
       LOG.error("Failed to save email status to database. RequestId: {}", requestId, e);
@@ -478,16 +479,15 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   private void saveHtmlEmailToDatabase(HtmlEmailRequest emailRequest, String requestId,
       String htmlBody, String result, boolean status) {
     try {
-      EmailDto emailDto = new EmailDto();
-      emailDto.setTitle(StringUtils.defaultIfBlank(emailRequest.getSubject(), "No Subject"));
-      emailDto.setMail(getHtmlEmailRecipients(emailRequest));
-      emailDto.setMessage(StringUtils.defaultIfBlank(htmlBody, "HTML content not available"));
-      emailDto.setResult(result);
-      emailDto.setRequestId(requestId);
-      emailDto.setBodyHtml(true);
-      emailDto.setStatus(status);
+      Email email = new Email();
+      email.setTitle(StringUtils.defaultIfBlank(emailRequest.getSubject(), "No Subject"));
+      email.setMail(getHtmlEmailRecipients(emailRequest));
+      email.setMessage(StringUtils.defaultIfBlank(htmlBody, "HTML content not available"));
+      email.setResult(result);
+      email.setBodyHtml(true);
+      email.setStatus(status);
 
-      // mailService.save(emailDto);
+      emailRepository.save(email);
       LOG.debug("Saved HTML email to database. RequestId: {}", requestId);
 
     } catch (Exception e) {
@@ -605,4 +605,3 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
 }
-

@@ -3,7 +3,7 @@ package com.kavun.shared.dto;
 import java.io.Serial;
 import java.io.Serializable;
 
-import com.kavun.constant.EmailConstants;
+import com.kavun.constant.email.EmailConstants;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;

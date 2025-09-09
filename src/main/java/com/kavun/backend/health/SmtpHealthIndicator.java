@@ -50,7 +50,7 @@ public class SmtpHealthIndicator implements HealthIndicator {
                 LOG.error("SMTP Health Check Failed After {}ms: {}", connectionTime, e.getMessage());
                 return createSecureHealthResult(false, "Connection Error");
             }
-            
+
         } catch (Exception e) {
             LOG.error("SMTP Health Check Failed: {}", e.getMessage());
             return createSecureHealthResult(false, "Health Check Failed");

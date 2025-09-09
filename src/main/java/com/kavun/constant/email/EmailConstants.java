@@ -1,4 +1,6 @@
-package com.kavun.constant;
+package com.kavun.constant.email;
+
+import com.kavun.constant.ErrorConstants;
 
 /**
  * This class holds all constants used in Email operations.

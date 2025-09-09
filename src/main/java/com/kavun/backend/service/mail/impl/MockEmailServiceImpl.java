@@ -1,7 +1,7 @@
 package com.kavun.backend.service.mail.impl;
 
-import com.kavun.constant.EmailConstants;
 import com.kavun.constant.EnvConstants;
+import com.kavun.constant.email.EmailConstants;
 import com.kavun.web.payload.request.mail.EmailRequest;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
 import com.kavun.web.payload.response.CustomResponse;

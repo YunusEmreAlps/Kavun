@@ -1,7 +1,7 @@
 package com.kavun.backend.service.mail;
 
 import com.kavun.IntegrationTestUtils;
-import com.kavun.constant.EmailConstants;
+import com.kavun.constant.email.EmailConstants;
 import com.kavun.exception.InvalidServiceRequestException;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.WebUtils;

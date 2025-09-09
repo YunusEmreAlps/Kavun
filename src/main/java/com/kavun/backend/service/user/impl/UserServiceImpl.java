@@ -44,7 +44,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The UserServiceImpl class provides implementation for the UserService definitions.
+ * The UserServiceImpl class provides implementation for the UserService
+ * definitions.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -64,7 +65,7 @@ public class UserServiceImpl implements UserService {
   /**
    * Saves or updates the user with the user instance given.
    *
-   * @param user the user with updated information
+   * @param user     the user with updated information
    * @param isUpdate if the operation is an update
    * @return the updated user.
    * @throws NullPointerException in case the given entity is {@literal null}
@@ -95,7 +96,7 @@ public class UserServiceImpl implements UserService {
   /**
    * Create the userDto with the userDto instance given.
    *
-   * @param userDto the userDto with updated information
+   * @param userDto   the userDto with updated information
    * @param roleTypes the roleTypes.
    * @return the updated userDto.
    * @throws NullPointerException in case the given entity is {@literal null}
@@ -107,7 +108,8 @@ public class UserServiceImpl implements UserService {
 
     var localUser = userRepository.findByEmail(userDto.getEmail());
     if (Objects.nonNull(localUser)) {
-      // If the user exists but has not been verified, then treat this as a new sign-up.
+      // If the user exists but has not been verified, then treat this as a new
+      // sign-up.
       if (!localUser.isEnabled()) {
         // check if the email in the localUser is the same as the email ini userDto,
         // then it's the same account creation being recreated.
@@ -117,7 +119,8 @@ public class UserServiceImpl implements UserService {
         }
 
         // user signed up
-        // and could not verify and attempting sign up with either email or username but not both.
+        // and could not verify and attempting sign up with either email or username but
+        // not both.
         LOG.warn("Username or email already exists and either user is using different credentials.");
         throw new UserAlreadyExistsException(UserConstants.USERNAME_OR_EMAIL_EXISTS);
       }
@@ -126,7 +129,8 @@ public class UserServiceImpl implements UserService {
       throw new UserAlreadyExistsException(UserConstants.USER_ALREADY_EXIST);
     }
 
-    // Assign a public id to the user. This is used to identify the user in the system and can be
+    // Assign a public id to the user. This is used to identify the user in the
+    // system and can be
     // shared publicly over the internet.
     userDto.setPublicId(UUID.randomUUID().toString());
 
@@ -150,7 +154,8 @@ public class UserServiceImpl implements UserService {
   }
 
   /**
-   * Returns users according to the details in the dataTablesInput or null if no user exists.
+   * Returns users according to the details in the dataTablesInput or null if no
+   * user exists.
    *
    * @param dataTablesInput the dataTablesInput
    * @return the dataTablesOutput
@@ -249,7 +254,8 @@ public class UserServiceImpl implements UserService {
   }
 
   /**
-   * Returns a userDetails for the given username or null if a user could not be found.
+   * Returns a userDetails for the given username or null if a user could not be
+   * found.
    *
    * @param username The username associated to the user to find
    * @return a user for the given username or null if a user could not be found
@@ -280,7 +286,7 @@ public class UserServiceImpl implements UserService {
    * Checks if the username or email already exists and enabled.
    *
    * @param username the username
-   * @param email the email
+   * @param email    the email
    * @return <code>true</code> if username exists
    * @throws NullPointerException in case the given entity is {@literal null}
    */
@@ -294,10 +300,11 @@ public class UserServiceImpl implements UserService {
   }
 
   /**
-   * Validates the username exists and the token belongs to the user with the username.
+   * Validates the username exists and the token belongs to the user with the
+   * username.
    *
    * @param username the username
-   * @param token the token
+   * @param token    the token
    * @return if token is valid
    */
   @Override
@@ -310,19 +317,18 @@ public class UserServiceImpl implements UserService {
   /**
    * Update the user with the user instance given and the update type for record.
    *
-   * @param userDto The user with updated information
+   * @param userDto         The user with updated information
    * @param userHistoryType the history type to be recorded
    * @return the updated user
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Override
-  @Caching(
-      evict = {
-        @CacheEvict(value = CacheConstants.USERS, key = "#userDto.username"),
-        @CacheEvict(value = CacheConstants.USERS, key = "#userDto.publicId"),
-        @CacheEvict(value = CacheConstants.USERS, key = "#userDto.email"),
-        @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
-      })
+  @Caching(evict = {
+      @CacheEvict(value = CacheConstants.USERS, key = "#userDto.username"),
+      @CacheEvict(value = CacheConstants.USERS, key = "#userDto.publicId"),
+      @CacheEvict(value = CacheConstants.USERS, key = "#userDto.email"),
+      @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
+  })
   @Transactional
   public UserDto updateUser(UserDto userDto, UserHistoryType userHistoryType) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
@@ -339,11 +345,10 @@ public class UserServiceImpl implements UserService {
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Override
-  @Caching(
-      evict = {
-        @CacheEvict(value = CacheConstants.USERS),
-        @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
-      })
+  @Caching(evict = {
+      @CacheEvict(value = CacheConstants.USERS),
+      @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
+  })
   @Transactional
   public UserDto enableUser(final String publicId) {
     Validate.notNull(publicId, UserConstants.BLANK_PUBLIC_ID);
@@ -368,11 +373,10 @@ public class UserServiceImpl implements UserService {
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Override
-  @Caching(
-      evict = {
-        @CacheEvict(value = CacheConstants.USERS),
-        @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
-      })
+  @Caching(evict = {
+      @CacheEvict(value = CacheConstants.USERS),
+      @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
+  })
   @Transactional
   public UserDto disableUser(final String publicId) {
     Validate.notNull(publicId, UserConstants.BLANK_PUBLIC_ID);
@@ -394,11 +398,10 @@ public class UserServiceImpl implements UserService {
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Override
-  @Caching(
-      evict = {
-        @CacheEvict(value = CacheConstants.USERS, key = "#publicId"),
-        @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
-      })
+  @Caching(evict = {
+      @CacheEvict(value = CacheConstants.USERS, key = "#publicId"),
+      @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
+  })
   @Transactional
   public void deleteUser(final String publicId) {
     ValidationUtils.validateInputsWithMessage(UserConstants.BLANK_PUBLIC_ID, publicId);
@@ -411,10 +414,10 @@ public class UserServiceImpl implements UserService {
   /**
    * Transfers user details to a user object then persist to a database.
    *
-   * @param userDto the userDto
-   * @param roleTypes the roleTypes
+   * @param userDto     the userDto
+   * @param roleTypes   the roleTypes
    * @param historyType the user history type
-   * @param isUpdate if the operation is an update
+   * @param isUpdate    if the operation is an update
    * @return the userDto
    */
   private UserDto persistUser(
@@ -439,7 +442,7 @@ public class UserServiceImpl implements UserService {
     return saveOrUpdate(user, isUpdate);
   }
 
-    /**
+  /**
    * Reset the user password with the new password.
    *
    * @param token       the token
@@ -498,7 +501,42 @@ public class UserServiceImpl implements UserService {
         HttpStatus.OK, null, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY, null);
   }
 
-    /**
+  /**
+   * Generates a secure temporary password.
+   */
+  @Override
+  public @NonNull String generateSecureTemporaryPassword() {
+    String tempPassword = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    LOG.info("Generated temporary password: {}", tempPassword);
+    return tempPassword;
+  }
+
+  /**
+   * Updates user password directly without token validation.
+   *
+   * @param publicId    the user's public identifier
+   * @param newPassword the new password
+   * @return CustomResponse with operation result
+   */
+  @Override
+  @Transactional
+  public @NonNull CustomResponse<Boolean> updatePasswordDirectly(@NonNull String publicId,
+      @NonNull String newPassword) {
+    validateNotNull(publicId, UserConstants.BLANK_PUBLIC_ID);
+    validateNotNull(newPassword, UserConstants.BLANK_PASSWORD);
+
+    User storedUser = userRepository.findByPublicId(publicId);
+    if (storedUser == null) {
+      return CustomResponse.of(HttpStatus.NOT_FOUND, null, UserConstants.USER_NOT_FOUND, null);
+    }
+
+    storedUser.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(storedUser);
+
+    return CustomResponse.of(HttpStatus.OK, true, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY, null);
+  }
+
+  /**
    * Generate unique username for the user.
    *
    * @param firstName the first name
@@ -517,7 +555,7 @@ public class UserServiceImpl implements UserService {
 
     // Fallback if names are empty after cleaning
     if (baseFirst.isEmpty())
-      baseFirst = "ziyaret";
+      baseFirst = "kavun";
     if (baseLast.isEmpty())
       baseLast = "user";
 
@@ -550,4 +588,9 @@ public class UserServiceImpl implements UserService {
     }
     return username;
   }
+
+  private void validateNotNull(Object obj, String message) {
+    Validate.notNull(obj, message);
+  }
+
 }

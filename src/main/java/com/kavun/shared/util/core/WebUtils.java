@@ -1,9 +1,10 @@
 package com.kavun.shared.util.core;
 
 import com.kavun.constant.ContactConstants;
-import com.kavun.constant.EmailConstants;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.HomeConstants;
+import com.kavun.constant.email.EmailConstants;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;

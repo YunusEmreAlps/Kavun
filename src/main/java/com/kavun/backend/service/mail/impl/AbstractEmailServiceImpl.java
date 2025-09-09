@@ -1,7 +1,7 @@
 package com.kavun.backend.service.mail.impl;
 
 import com.kavun.backend.service.mail.EmailService;
-import com.kavun.constant.EmailConstants;
+import com.kavun.constant.email.EmailConstants;
 import com.kavun.constant.user.PasswordConstants;
 import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.SignUpConstants;

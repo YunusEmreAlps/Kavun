@@ -1,8 +1,8 @@
 package com.kavun.web.rest.v1.controller.user;
 
 import com.kavun.IntegrationTestUtils;
-import com.kavun.constant.EmailConstants;
 import com.kavun.constant.ErrorConstants;
+import com.kavun.constant.email.EmailConstants;
 import com.kavun.constant.user.PasswordConstants;
 import com.kavun.shared.util.UserUtils;
 import jakarta.mail.Message;

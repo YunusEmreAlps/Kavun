@@ -71,6 +71,7 @@ public final class UserConstants {
   public static final String USER_UPDATED_SUCCESSFULLY = "User updated successfully";
   public static final String PROFILE_UPDATED_SUCCESSFULLY = "Profile updated successfully";
   public static final String INVALID_PROFILE_UPDATE = "Invalid profile update. Please check your input and try again.";
+  public static final String PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY = "Password reset email sent successfully";
 
   // Password messages
   public static final String PASSWORD_RESET_FAILED = "Password reset failed. Please try again.";

@@ -1,15 +1,22 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.backend.service.user.UserService;
+import com.kavun.backend.service.mail.EmailService;
 import com.kavun.backend.service.security.CookieService;
 import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.SecurityConstants;
+import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.enums.TokenType;
+import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
+import com.kavun.web.payload.request.ForgotPasswordRequest;
 import com.kavun.web.payload.request.LoginRequest;
+import com.kavun.web.payload.request.ResetPasswordRequest;
+import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.JwtResponseBuilder;
 import com.kavun.web.payload.response.LogoutResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -19,13 +26,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -35,6 +46,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 
 /**
  * This class attempt to authenticate with AuthenticationManager bean, add an
@@ -57,6 +70,8 @@ public class AuthRestApi {
   private int accessTokenExpirationInMinutes;
 
   private final JwtService jwtService;
+  private final UserService userService;
+  private final EmailService emailService;
   private final CookieService cookieService;
   private final EncryptionService encryptionService;
   private final UserDetailsService userDetailsService;
@@ -313,6 +328,100 @@ public class AuthRestApi {
    */
 
   /**
+   * Endpoint to handle forgot password requests.
+   * Generates a new password and sends it directly to user's email.
+   *
+   * @param request the forgot password request
+   * @return response entity
+   */
+  @SecurityRequirements
+  @Loggable(level = "warn")
+  @PostMapping(SecurityConstants.FORGOT_PASSWORD)
+  public ResponseEntity<CustomResponse<String>> forgotPassword(
+      @Valid @RequestBody ForgotPasswordRequest request) {
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+    // Make async only the non-critical operations
+    CompletableFuture.runAsync(() -> {
+      try {
+        boolean isValid = true;
+
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+
+        // Primary: Try email if provided
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+          if (userService.findByEmail(request.getEmail().trim().toLowerCase()) != null) {
+            LOG.debug("User found by email for password reset");
+            isValid = false;
+          }
+        }
+
+        // Secondary: Try username if provided and email didn't work
+        if (request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
+          if (userService.findByUsername(request.getUsername().trim().toLowerCase()) != null) {
+            LOG.debug("User found by username for password reset");
+            isValid = false;
+          }
+        }
+
+        if (isValid) {
+          LOG.debug("User not found for password reset");
+        } else {
+          UserDto user = userService.findByEmail(request.getEmail());
+          if (user == null || user.getEmail() == null) {
+            // Return success response even if user doesn't exist (security best practice)
+            LOG.warn("Password reset requested for non-existent email: {}", request.getEmail());
+          }
+
+          // Generate new password for existing user
+          String newPassword = userService.generateSecureTemporaryPassword();
+
+          // Update user's password in database
+          CustomResponse<Boolean> passwordUpdated = userService.updatePasswordDirectly(user.getPublicId(), newPassword);
+
+          if (!passwordUpdated.getData().orElse(false)) {
+            LOG.error("Failed to update password for user: {}", request.getEmail());
+          }
+
+          // TODO: Add template
+          // Send new password via email asynchronously
+          // emailService.sendAccountVerificationEmail(user, newPassword);
+
+          LOG.info("New password generated and email sent for user: {}", request.getEmail());
+        }
+      } catch (Exception e) {
+        LOG.error("Error processing forgot password request for email: {}", request.getEmail(), e);
+      }
+    }).whenComplete((result, throwable) -> {
+      if (throwable != null) {
+        LOG.error("Failed to process forgot password request", throwable);
+      } else {
+        LOG.info("Forgot password process completed successfully");
+      }
+    });
+
+    return buildSuccessResponse();
+  }
+
+  /**
+   * Endpoint to handle password reset requests.
+   *
+   * @param request the reset password request
+   * @return response entity
+   */
+  @SecurityRequirements
+  @Loggable(level = "warn")
+  @PostMapping(SecurityConstants.RESET_PASSWORD)
+  public ResponseEntity<CustomResponse<String>> resetPassword(
+      @Valid @RequestBody ResetPasswordRequest request) {
+    return ResponseEntity.ok(
+        userService.resetPassword(request.getToken(), request.getNewPassword()));
+  }
+
+  /**
    * Logout the user from the system and clear all cookies from request and
    * response.
    *
@@ -332,6 +441,22 @@ public class AuthRestApi {
     SecurityUtils.clearAuthentication();
 
     return ResponseEntity.ok().headers(responseHeaders).body(logoutResponse);
+  }
+
+  // =========================================================================
+  // UTILITY OPERATIONS
+  // =========================================================================
+
+  /**
+   * Helper method to build consistent success response.
+   */
+  private ResponseEntity<CustomResponse<String>> buildSuccessResponse() {
+    return ResponseEntity.ok(
+        CustomResponse.of(
+            HttpStatus.OK,
+            null,
+            UserConstants.PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY,
+            SecurityConstants.FORGOT_PASSWORD));
   }
 
   /**

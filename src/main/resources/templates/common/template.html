@@ -1,135 +1,180 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      xmlns:th="http://www.thymeleaf.org">
-<head th:fragment="common-head (title)">
-  <!-- Required meta tags -->
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1" name="viewport">
-  <meta id="_csrf" name="_csrf" th:content="${_csrf.token}" th:if="${_csrf}"/>
-  <meta id="_csrf_header" th:content="${_csrf.headerName}" th:if="${_csrf}" th:name="_csrf_header"/>
+<html
+  lang="en"
+  xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+  xmlns:th="http://www.thymeleaf.org"
+>
+  <head th:fragment="common-head (title)">
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <meta id="_csrf" name="_csrf" th:content="${_csrf.token}" th:if="${_csrf}" />
+    <meta
+      id="_csrf_header"
+      th:content="${_csrf.headerName}"
+      th:if="${_csrf}"
+      th:name="_csrf_header"
+    />
 
-  <link rel="stylesheet" th:href="@{/webjars/font-awesome/css/all.min.css}" type="text/css">
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}" type="text/css">
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/css/all.min.css}" type="text/css" />
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}" type="text/css" />
 
-  <!-- jQuery UI -->
-  <link rel="stylesheet" th:href="@{/webjars/jquery-ui/jquery-ui.css}" type="text/css">
+    <!-- jQuery UI -->
+    <link rel="stylesheet" th:href="@{/webjars/jquery-ui/jquery-ui.css}" type="text/css" />
 
-  <!--Data Tables CSS-->
-  <link rel="stylesheet" th:href="@{/webjars/datatables/css/dataTables.bootstrap5.min.css}">
+    <!--Data Tables CSS-->
+    <link rel="stylesheet" th:href="@{/webjars/datatables/css/dataTables.bootstrap5.min.css}" />
 
-  <!--/*@thymesVar id="formValidation" type="java.lang.Boolean"*/-->
-  <link rel="stylesheet" th:href="@{/css/formValidation.min.css}" th:if="${formValidation}"
-        type="text/css">
+    <!--/*@thymesVar id="formValidation" type="java.lang.Boolean"*/-->
+    <link
+      rel="stylesheet"
+      th:href="@{/css/formValidation.min.css}"
+      th:if="${formValidation}"
+      type="text/css"
+    />
 
-  <!--/*@thymesVar id="togglePassword" type="java.lang.Boolean"*/-->
-  <link rel="stylesheet" th:href="@{/css/show-password-toggle.min.css}" th:if="${togglePassword}"
-        type="text/css">
-  <link rel="stylesheet" th:href="@{/css/main.css}" type="text/css">
+    <!--/*@thymesVar id="togglePassword" type="java.lang.Boolean"*/-->
+    <link
+      rel="stylesheet"
+      th:href="@{/css/show-password-toggle.min.css}"
+      th:if="${togglePassword}"
+      type="text/css"
+    />
+    <link rel="stylesheet" th:href="@{/css/main.css}" type="text/css" />
 
-  <title th:text="${title} ? '..:: Kavun | ' + ${title} + ' ::..' : _"></title>
-</head>
+    <title th:text="${title} ? '..:: Kavun | ' + ${title} + ' ::..' : _"></title>
+  </head>
 
-
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg fixed-top bg-light navbar-light" th:fragment="common-navbar">
-  <div class="container">
-    <a class="navbar-brand" th:href="@{/}" th:text="#{navbar.logo.text}"></a>
-    <button aria-controls="navbarSupportedContent" aria-expanded="false"
-            aria-label="Toggle navigation"
-            class="navbar-toggler" data-bs-target="#navbarSupportedContent"
-            data-bs-toggle="collapse" type="button">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav mr-auto">
-        <li class="nav-item">
-          <a class="nav-link" target="_blank" href="/swagger-ui">Swagger UI</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link mx-2" th:href="@{/contact}">
-            <i class="fas fa-mail-bulk pe-2"></i> <span th:text="#{navbar.contact.text}"></span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link mx-2" th:href="@{/users}">
-            <i class="fas fa-user-circle pe-2"></i> <span>Users</span>
-          </a>
-        </li>
-      </ul>
-      <ul class="navbar-nav ms-auto align-items-center">
-        <li class="nav-item">
-          <select class="nav-link mx-2" data-width="fit" id="locale">
-            <option data-content='<span class="fa-regular fa-flag-usa"></span> English'
-                    th:selected="__${#locale}__== 'en'" value="en">English
-            </option>
-            <option data-content='<i class="flag-icon flag-icon-mx"></i> Español'
-                    th:selected="__${#locale}__== 'es'" value="es">Español
-            </option>
-          </select>
-        </li>
-        <li class="nav-item" sec:authorize="isAnonymous()">
-          <a class="dropdown-item" th:href="@{/login}">
-            <i class="fa fa-sign-in"></i> <span th:text="#{login.text}"></span>
-          </a>
-        </li>
-        <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
-          <a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
-             href="#"
-             id="navbarDropdown" role="button">
-            <span sec:authentication="name"></span>
-          </a>
-          <ul aria-labelledby="navbarDropdown" class="dropdown-menu">
-            <li><a class="dropdown-item" th:href="@{/profile}">
-              <i class="ti-user"></i> <span th:text="#{navbar.user.profile.text}"></span></a>
-            </li>
-            <li><a class="dropdown-item" sec:authorize="hasRole('ROLE_USER')"
-                   th:href="@{/users/stuff}">
-              <i class="ti-user"></i> <span th:text="#{navbar.user.stuff.text}"></span></a>
-            </li>
-            <li><a class="dropdown-item" sec:authorize="hasRole('ROLE_ADMIN')"
-                   th:href="@{/admin/stuff}">
-              <i class="ti-user"></i> <span th:text="#{navbar.admin.stuff.text}"></span></a></li>
-            <li><a class="dropdown-item" th:href="@{/logout}">
-              <i class="fa fa-power-off"></i> <span th:text="#{navbar.logout.text}"></span></a>
-            </li>
-          </ul>
-        </li>
-      </ul>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg fixed-top bg-light navbar-light" th:fragment="common-navbar">
+    <div class="container">
+      <a class="navbar-brand" th:href="@{/}" th:text="#{navbar.logo.text}"></a>
+      <button
+        aria-controls="navbarSupportedContent"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+        class="navbar-toggler"
+        data-bs-target="#navbarSupportedContent"
+        data-bs-toggle="collapse"
+        type="button"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" target="_blank" href="/swagger-ui">Swagger UI</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link mx-2" th:href="@{/contact}">
+              <i class="fas fa-mail-bulk pe-2"></i> <span th:text="#{navbar.contact.text}"></span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link mx-2" th:href="@{/users}">
+              <i class="fas fa-user-circle pe-2"></i> <span>Users</span>
+            </a>
+          </li>
+        </ul>
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <select class="nav-link mx-2" data-width="fit" id="locale">
+              <option
+                data-content='<span class="fa-regular fa-flag-usa"></span> English'
+                th:selected="__${#locale}__== 'en'"
+                value="en"
+              >
+                English
+              </option>
+              <option
+                data-content='<i class="flag-icon flag-icon-mx"></i> Español'
+                th:selected="__${#locale}__== 'es'"
+                value="es"
+              >
+                Español
+              </option>
+            </select>
+          </li>
+          <li class="nav-item" sec:authorize="isAnonymous()">
+            <a class="dropdown-item" th:href="@{/login}">
+              <i class="fa fa-sign-in"></i> <span th:text="#{login.text}"></span>
+            </a>
+          </li>
+          <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
+            <a
+              aria-expanded="false"
+              class="nav-link dropdown-toggle"
+              data-bs-toggle="dropdown"
+              href="#"
+              id="navbarDropdown"
+              role="button"
+            >
+              <span sec:authentication="name"></span>
+            </a>
+            <ul aria-labelledby="navbarDropdown" class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" th:href="@{/profile}">
+                  <i class="ti-user"></i> <span th:text="#{navbar.user.profile.text}"></span
+                ></a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  sec:authorize="hasRole('ROLE_USER')"
+                  th:href="@{/users/stuff}"
+                >
+                  <i class="ti-user"></i> <span th:text="#{navbar.user.stuff.text}"></span
+                ></a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  sec:authorize="hasRole('ROLE_ADMIN')"
+                  th:href="@{/admin/stuff}"
+                >
+                  <i class="ti-user"></i> <span th:text="#{navbar.admin.stuff.text}"></span
+                ></a>
+              </li>
+              <li>
+                <a class="dropdown-item" th:href="@{/logout}">
+                  <i class="fa fa-power-off"></i> <span th:text="#{navbar.logout.text}"></span
+                ></a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
-</nav>
-<!-- Navbar -->
+  </nav>
+  <!-- Navbar -->
 
-
-<th:block th:fragment="common-scripts">
-  <!-- Optional JavaScript -->
-  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-  <script th:src="@{/webjars/jquery/jquery.min.js}"></script>
-  <script>
-    $(document).ready(() => {
-      let token = $('meta[name="_csrf"]').attr('content');
-      $.ajaxSetup({
-        headers: {'X-CSRF-TOKEN': token, 'X-XSRF-TOKEN': token}
+  <th:block th:fragment="common-scripts">
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script th:src="@{/webjars/jquery/jquery.min.js}"></script>
+    <script>
+      $(document).ready(() => {
+        let token = $('meta[name="_csrf"]').attr("content");
+        $.ajaxSetup({
+          headers: { "X-CSRF-TOKEN": token, "X-XSRF-TOKEN": token },
+        });
       });
-    });
-  </script>
-  <script th:src="@{/webjars/jquery-ui/jquery-ui.js}"></script>
-  <script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
-  <script th:src="@{/webjars/datatables/js/dataTables.min.js}"></script>
-  <script th:src="@{/webjars/datatables/js/dataTables.bootstrap5.min.js}"></script>
+    </script>
+    <script th:src="@{/webjars/jquery-ui/jquery-ui.js}"></script>
+    <script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+    <script th:src="@{/webjars/datatables/js/dataTables.min.js}"></script>
+    <script th:src="@{/webjars/datatables/js/dataTables.bootstrap5.min.js}"></script>
 
-  <!--/*@thymesVar id="formValidation" type="java.lang.Boolean"*/-->
-  <th:block th:if="${formValidation}">
-    <script th:src="@{/js/form-validation/FormValidation.min.js}"></script>
-    <script th:src="@{/js/form-validation/Bootstrap5.min.js}"></script>
-    <script th:src="@{/js/form-validation/FormValidationScript.js}"></script>
+    <!--/*@thymesVar id="formValidation" type="java.lang.Boolean"*/-->
+    <th:block th:if="${formValidation}">
+      <script th:src="@{/js/form-validation/FormValidation.min.js}"></script>
+      <script th:src="@{/js/form-validation/Bootstrap5.min.js}"></script>
+      <script th:src="@{/js/form-validation/FormValidationScript.js}"></script>
+    </th:block>
+
+    <!--/*@thymesVar id="togglePassword" type="java.lang.Boolean"*/-->
+    <script th:if="${togglePassword}" th:src="@{/js/show-password-toggle.min.js}"></script>
+
+    <script th:src="@{/js/main.js}"></script>
   </th:block>
-
-  <!--/*@thymesVar id="togglePassword" type="java.lang.Boolean"*/-->
-  <script th:if="${togglePassword}" th:src="@{/js/show-password-toggle.min.js}"></script>
-
-  <script th:src="@{/js/main.js}"></script>
-</th:block>
-
-
 </html>

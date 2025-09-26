@@ -14,7 +14,7 @@
 
 Welcome to the **Kavun** project! It is a modern, opinionated, and production-ready starter for Spring Boot projects. It is designed to help developers get started with Spring Boot projects quickly and efficiently. The project includes a wide range of features and tools to help developers build robust and scalable applications. It is built using the latest technologies and best practices to ensure high performance, security, and maintainability.
 
-# Meaning of Kavun
+## Meaning of Kavun
 
 It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turkey and other countries. It is known for its refreshing taste and high nutritional value. The name **Kavun** is chosen to represent the project's goal of providing a fresh, modern, and healthy start for developers working on Spring Boot projects.
 

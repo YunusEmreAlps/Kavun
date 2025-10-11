@@ -74,9 +74,9 @@ public class UserRestApi {
    * @param page         pagination information
    * @return a paginated list of users that match the search criteria
    */
+  @Loggable
   @PageableAsQueryParam
   @PreAuthorize(AUTHORIZE)
-  @Loggable(ignoreResponseData = true)
   @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<CustomResponse<Page<UserResponse>>> searchUsers(
       @RequestParam Map<String, Object> paramaterMap,
@@ -97,9 +97,9 @@ public class UserRestApi {
    * @param page Allows for pagination of the search results.
    * @return The ResponseEntity containing the search results as a Page of users
    */
+  @Loggable
   @PageableAsQueryParam
   @PreAuthorize(AUTHORIZE)
-  @Loggable(ignoreResponseData = true)
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Page<UserResponse>> getUsers(final Pageable page) {
 
@@ -113,6 +113,7 @@ public class UserRestApi {
    * @param publicId the publicId
    * @return if the operation is success
    */
+  @Loggable
   @PreAuthorize(AUTHORIZE)
   @DeleteMapping(value = "/{publicId}", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> deleteUser(@PathVariable String publicId) {
@@ -121,6 +122,12 @@ public class UserRestApi {
     return ResponseEntity.ok(OperationStatus.SUCCESS);
   }
 
+  /**
+   * Creates a new user.
+   *
+   * @param signUpRequest the user details
+   * @return ResponseEntity with location header of the created user
+   */
   @Loggable
   @PostMapping
   @SecurityRequirements
@@ -183,6 +190,7 @@ public class UserRestApi {
    * @param publicId the publicId
    * @return if the operation is success
    */
+  @Loggable
   @PreAuthorize(AUTHORIZE)
   @PutMapping(value = "/{publicId}/enable")
   public ResponseEntity<OperationStatus> enableUser(@PathVariable String publicId) {
@@ -198,6 +206,7 @@ public class UserRestApi {
    * @param publicId the publicId
    * @return if the operation is success
    */
+  @Loggable
   @PreAuthorize(AUTHORIZE)
   @PutMapping(value = "/{publicId}/disable", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> disableUser(@PathVariable String publicId) {

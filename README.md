@@ -1,14 +1,6 @@
 <!-- KAVUN -->
 
-<br />
-
-<p align="center">
-  <a href="docs/images/kavun_only.png" target="_blank">
-    <picture>
-      <img src="docs/images/kavun_only - Copy.png" alt="Kavun Logo" width="200" height="200" align="center">
-    </picture>
-  </a>
-</p>
+![Kavun Logo](docs/images/kavun-transparent2.png)
 
 # Kavun🍈
 
@@ -21,7 +13,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 ## Table of Contents
 
 - [Kavun🍈](#kavun)
-- [Meaning of Kavun](#meaning-of-kavun)
+  - [Meaning of Kavun](#meaning-of-kavun)
   - [Table of Contents](#table-of-contents)
   - [Built With](#built-with)
   - [Key Features](#key-features)
@@ -38,8 +30,6 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
   - [Database Schema](#database-schema)
   - [Roadmap](#roadmap)
   - [Development Workflow](#development-workflow)
-  - [Code of Conduct](#code-of-conduct)
-  - [Security Policy](#security-policy)
   - [Contributing](#contributing)
   - [Contact](#contact)
 
@@ -336,73 +326,11 @@ The project is structured in a layered architecture with the following layers:
 
 ## Roadmap
 
-- **Database**:
-  - [X] PostgreSQL for production
-  - [X] H2 for development and testing
-  - [X] Liquibase for database migrations
-  - [X] Hibernate Envers for auditing
-  - [X] Add database connection pooling (HikariCP)
-  - [ ] Add database read replicas for scalability
-  - [ ] Automate database backups
-
-- **Logging**:
-  - [X] Log4j2 for logging
-  - [X] Syslog and Web Access Logging
-  - [ ] Add log rotation and retention policies
-  - [ ] Integrate with ELK stack for centralized logging
-
-- **Monitoring**:
-  - [X] Prometheus for monitoring
-  - [X] Grafana for visualization
-  - [ ] Add alerts and notifications for critical metrics
-  - [ ] Integrate with external monitoring tools (e.g., New Relic, Datadog)
-
-- **Testing**:
-  - [X] Unit tests with JUnit and Mockito
-  - [X] Integration tests with Testcontainers
-  - [ ] End-to-end tests with Selenium or Cypress
-  - [ ] Code coverage reports with JaCoCo
-  - [ ] Performance tests with JMeter or Gatling
-
-- **Security**:
-  - [X] Spring Security for authentication and authorization
-  - [X] JWT for token-based authentication
-  - [ ] Implement rate limiting and throttling
-
-- **Deployment**:
-  - [X] Docker for containerization
-  - [X] Kubernetes for orchestration
-  - [ ] GitHub Actions for CI/CD
-  - [X] GitLab for CI/CD
-
-- **Documentation**:
-  - [X] API documentation with Swagger/OpenAPI
-  - [X] User documentation with Markdown
-  - [X] Code documentation with Javadoc
-  - [ ] Deployment documentation with diagrams and flowcharts
-  - [ ] Architecture documentation with diagrams and flowcharts
-  - [X] Contributing guidelines and code of conduct
-  - [X] Roadmap and future plans
-
-- **Others**:
-  - [X] SMTP and Email Support
-  - [ ] Cache Support (Redis, Memcached, etc.)
-  - [ ] Queue Support (RabbitMQ, Kafka, etc.)
-  - [ ] Search Support (Elasticsearch, Solr, etc.)
-  - [ ] Distributed Tracing (Jaeger, Zipkin, etc.)
-  - [ ] Rate Limiting (Bucket4j, etc.)
+Please refer to the [Roadmap](docs/ROADMAP.md) for the project roadmap and future plans.
 
 ## Development Workflow
 
 In the **Kavun** project, we follow a structured development workflow to ensure efficient collaboration and code management. This workflow includes the following key components: branching strategy, versioning, and commit message conventions. By following these guidelines, we aim to maintain a clean and organized codebase that is easy to manage and contribute to. For more information, please refer to the [Development Workflow](docs/DEVELOPMENT_WORKFLOW.md) document.
-
-## Code of Conduct
-
-Please read the [Code of Conduct](docs/CODE_OF_CONDUCT.md) before contributing to the project.
-
-## Security Policy
-
-Please read the [Security Policy](docs/SECURITY.md) before contributing to the project.
 
 ## Contributing
 

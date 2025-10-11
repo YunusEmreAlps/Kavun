@@ -44,8 +44,8 @@ public class RoleRestApi {
      *
      * @return List of roles
      */
+    @Loggable
     @PreAuthorize(AUTHORIZE)
-    @Loggable(ignoreResponseData = true)
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Role>> getAllRoles() {
         // Logic to retrieve all roles
@@ -60,8 +60,8 @@ public class RoleRestApi {
      * @param id the ID of the role to retrieve
      * @return the role with the specified ID
      */
+    @Loggable
     @PreAuthorize(AUTHORIZE)
-    @Loggable(ignoreResponseData = true)
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Role> getRoleById(Long id) {
         Role role = roleService.findById(id);
@@ -77,8 +77,8 @@ public class RoleRestApi {
      * @param publicId the public ID of the role to retrieve
      * @return the role with the specified public ID
      */
+    @Loggable
     @PreAuthorize(AUTHORIZE)
-    @Loggable(ignoreResponseData = true)
     @GetMapping(value = "/public/{publicId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Role> getRoleByPublicId(String publicId) {
         Role role = roleService.findByPublicId(publicId);
@@ -94,8 +94,8 @@ public class RoleRestApi {
      * @param name the name of the role to retrieve
      * @return the role with the specified name
      */
+    @Loggable
     @PreAuthorize(AUTHORIZE)
-    @Loggable(ignoreResponseData = true)
     @GetMapping(value = "/name/{name}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Role> getRoleByName(String name) {
         Role role = roleService.findByName(name);
@@ -111,8 +111,8 @@ public class RoleRestApi {
      * @param pageable the pagination information
      * @return List of roles
      */
+    @Loggable
     @PreAuthorize(AUTHORIZE)
-    @Loggable(ignoreResponseData = true)
     @GetMapping(value = "/pageable", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Page<Role>> getAllRolesPageable(Pageable pageable) {
         // Logic to retrieve all roles with pagination

@@ -1,6 +1,8 @@
 package com.kavun.annotation.impl;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.shared.util.MaskPasswordUtils;
+
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -50,11 +52,11 @@ public class MethodLogger {
     final String format = "=> Starting -  {} args: {}";
 
     switch (level) {
-      case "warn" -> LOG.warn(format, method, args);
-      case "error" -> LOG.error(format, method, args);
-      case "debug" -> LOG.debug(format, method, args);
-      case "trace" -> LOG.trace(format, method, args);
-      default -> LOG.info(format, method, args);
+      case "warn" -> LOG.warn(format, method, MaskPasswordUtils.maskPasswordJson(args));
+      case "error" -> LOG.error(format, method, MaskPasswordUtils.maskPasswordJson(args));
+      case "debug" -> LOG.debug(format, method, MaskPasswordUtils.maskPasswordJson(args));
+      case "trace" -> LOG.trace(format, method, MaskPasswordUtils.maskPasswordJson(args));
+      default -> LOG.info(format, method, MaskPasswordUtils.maskPasswordJson(args));
     }
   }
 

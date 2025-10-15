@@ -13,7 +13,7 @@
 	<!-- Base pattern for application logs (audit) -->
 	<property name="BASE_APP_PATTERN" value="kavun-audit %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %X{hostname:-N/A} | %X{ip:-N/A} | %X{userIp:-N/A} | %X{user:-N/A} | %X{url:-N/A} | %X{action:-N/A} | %X{queryParams:-N/A} | %X{body:-N/A} | %msg%n" />
 	<!-- Base pattern for web access logs -->
-	<property name="BASE_WEB_PATTERN" value="kavun-web-access %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %X{hostname:-N/A} | %X{ip:-N/A} | %X{userIp:-N/A} | %X{user:-N/A} | %X{url:-N/A} | %X{action:-N/A} | %X{queryParams:-N/A} | %X{body:-N/A} | %msg%n" />
+	<property name="BASE_WEB_ACCESS_PATTERN" value="kavun-web-access - %X{ip:-0.0.0.0} - - [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0}%n %d{dd-MMM-yyyy HH:mm:ss Z} | [%thread] | Date/Time : %d{dd.MM.yyyy HH:mm:ss} | HTTP Request Method : %X{action} | URI : %X{url} | Protocol : %X{protocol} | Status Code : %X{status} | Client IP : %X{ip}%n" />
 	
 	<!-- Appender for system logs (simple log pattern) -->
 	<appender name="SYSTEM_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -32,10 +32,10 @@
 		</encoder>
 	</appender>
 	<!-- Appender for web access logs (detailed log pattern with MDC) -->
-	<appender name="WEB_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+	<appender name="WEB_ACCESS_LOGS" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
 			<pattern>
-				${BASE_WEB_PATTERN}
+				${BASE_WEB_ACCESS_PATTERN}
 			</pattern>
 		</encoder>
 	</appender>
@@ -67,7 +67,7 @@
 	<!-- Logger for application logs (detailed) -->
 	<springProfile name="development | test | production | docker">
 		<logger name="com.kavun.annotation.LoggingFilter" level="INFO" additivity="false">
-			<appender-ref ref="WEB_CONSOLE" />
+			<appender-ref ref="WEB_ACCESS_LOGS" />
 			<appender-ref ref="SYSLOG" />
 		</logger>
 		<logger name="com.kavun.annotation.impl.MethodLogger" level="INFO" additivity="false">

@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Optional;
 
 import org.slf4j.MDC;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.kavun.backend.persistent.domain.siem.ApplicationLog;
 import com.kavun.backend.persistent.repository.ApplicationLogRepository;
+import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 
 @Slf4j
@@ -37,10 +39,10 @@ public class LoggingFilter extends OncePerRequestFilter {
       @SuppressWarnings("null") @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
-    CachedBodyHttpServletRequest cachedRequest = shouldCacheBody(request) ? new CachedBodyHttpServletRequest(request) : null;
+    CachedBodyHttpServletRequest cachedRequest = shouldCacheBody(request) ? new CachedBodyHttpServletRequest(request)
+        : null;
 
     HttpServletRequest requestToUse = cachedRequest != null ? cachedRequest : request;
-
 
     try {
       String hostname = getHostname();
@@ -84,14 +86,14 @@ public class LoggingFilter extends OncePerRequestFilter {
         applicationLog.setRequestParams(queryParams);
 
         if (requestBody != null) {
-          if("/login".equals(path)) {
-            applicationLog.setStateAfter("[PROTECTED]");
-          } else {
-            applicationLog.setStateAfter(requestBody);
-          }
+          MDC.put("body", Optional.ofNullable(MaskPasswordUtils.maskPasswordJson(requestBody))
+              .map(Object::toString)
+              .orElse(""));
         }
 
-        MDC.put("body", requestBody);
+        MDC.put("body", Optional.ofNullable(MaskPasswordUtils.maskPasswordJson(requestBody))
+            .map(Object::toString)
+            .orElse(""));
 
         // Save the log to the database
         applicationLogRepository.save(applicationLog);
@@ -100,8 +102,18 @@ public class LoggingFilter extends OncePerRequestFilter {
       // Proceed with the filter chain
       filterChain.doFilter(requestToUse, response);
     } finally {
-      LOG.info("{} | {} | {}", request.getRequestURI(), request.getProtocol(), response.getStatus());
-      MDC.clear(); // Ensure MDC is cleared after the request is processed
+      MDC.put("hostname", getHostname());
+      MDC.put("ip", getIp());
+      MDC.put("url", getUrl(request));
+      MDC.put("action", getAction(requestToUse));
+      MDC.put("protocol", request.getProtocol());
+      MDC.put("status", String.valueOf(response.getStatus()));
+      MDC.put("responseSize",
+          response.getHeader("Content-Length") != null ? response.getHeader("Content-Length") : "0");
+
+      LOG.info("");
+
+      MDC.clear();
     }
   }
 

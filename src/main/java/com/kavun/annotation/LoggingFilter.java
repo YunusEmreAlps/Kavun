@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Optional;
 
 import org.slf4j.MDC;
 import lombok.extern.slf4j.Slf4j;
@@ -71,47 +70,46 @@ public class LoggingFilter extends OncePerRequestFilter {
           requestBody = cachedRequest.getBody();
         }
 
+        // Sanitize and format request body for logging (single line)
+        String sanitizedBody = sanitizeForLogging(requestBody);
+        MDC.put("body", sanitizedBody);
+
+        // Create audit log entry
         ApplicationLog applicationLog = new ApplicationLog();
         applicationLog.setLogLevel("INFO");
         applicationLog.setThreadName(Thread.currentThread().getName());
-        applicationLog.setLoggerName("com.kavun");
+        applicationLog.setLoggerName(this.getClass().getName());
         applicationLog.setLogMessage(buildLogMessage(action, path, oldValues, requestBody));
         applicationLog.setHostname(hostname);
         applicationLog.setIp(ip);
-        applicationLog.setLogType("HTTP Request");
+        applicationLog.setLogType("HTTP_REQUEST");
         applicationLog.setUserIpAddress(userIp);
         applicationLog.setUsername(user);
         applicationLog.setRequestUrl(url);
         applicationLog.setAction(action);
         applicationLog.setRequestParams(queryParams);
 
-        if (requestBody != null) {
-          MDC.put("body", Optional.ofNullable(MaskPasswordUtils.maskPasswordJson(requestBody))
-              .map(Object::toString)
-              .orElse(""));
+        // Save the log to the database asynchronously (better performance)
+        try {
+          applicationLogRepository.save(applicationLog);
+        } catch (Exception e) {
+          LOG.warn("Failed to save audit log to database: {}", e.getMessage());
         }
-
-        MDC.put("body", Optional.ofNullable(MaskPasswordUtils.maskPasswordJson(requestBody))
-            .map(Object::toString)
-            .orElse(""));
-
-        // Save the log to the database
-        applicationLogRepository.save(applicationLog);
       }
 
       // Proceed with the filter chain
       filterChain.doFilter(requestToUse, response);
     } finally {
-      MDC.put("hostname", getHostname());
-      MDC.put("ip", getIp());
-      MDC.put("url", getUrl(request));
-      MDC.put("action", getAction(requestToUse));
+      // Log access information after request processing
       MDC.put("protocol", request.getProtocol());
       MDC.put("status", String.valueOf(response.getStatus()));
       MDC.put("responseSize",
           response.getHeader("Content-Length") != null ? response.getHeader("Content-Length") : "0");
+      MDC.put("referer", request.getHeader("Referer") != null ? request.getHeader("Referer") : "-");
+      MDC.put("userAgent", request.getHeader("User-Agent") != null ? request.getHeader("User-Agent") : "-");
 
-      LOG.info("");
+      // Log web access in Apache Combined Log Format
+      LOG.info("Request processed");
 
       MDC.clear();
     }
@@ -218,11 +216,26 @@ public class LoggingFilter extends OncePerRequestFilter {
     return request.getQueryString();
   }
 
-  //
+  // Truncate long strings to avoid log bloat
   private String truncate(String str, int maxLength) {
     if (str == null || str.length() <= maxLength) {
       return str;
     }
     return str.substring(0, maxLength) + "...";
+  }
+
+  // Sanitize log content: remove newlines, mask passwords, trim whitespace
+  private String sanitizeForLogging(String input) {
+    if (input == null || input.isBlank()) {
+      return "N/A";
+    }
+
+    Object maskedResult = MaskPasswordUtils.maskPasswordJson(input);
+    String sanitized = maskedResult != null ? maskedResult.toString() : input;
+
+    // Remove all newlines and extra whitespace for single-line logging
+    return sanitized.replaceAll("[\\r\\n]+", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
   }
 }

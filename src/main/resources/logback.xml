@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
+<configuration debug="false">
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+	
 	<!-- Load properties from application.properties -->
+	<springProperty name="LOG_PATH" source="logging.file.path" defaultValue="logs" />
 	<springProperty name="syslogEnabled" source="syslog.enabled" defaultValue="true" />
 	<springProperty name="syslogHost" source="syslog.host" defaultValue="localhost" />
 	<springProperty name="syslogPort" source="syslog.port" defaultValue="514" />
@@ -10,34 +13,102 @@
 
 	<!-- Base pattern for system logs (simpler) -->
 	<property name="BASE_SYS_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %msg%n" />
-	<!-- Base pattern for application logs (audit) -->
-	<property name="BASE_APP_PATTERN" value="kavun-audit %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %X{hostname:-N/A} | %X{ip:-N/A} | %X{userIp:-N/A} | %X{user:-N/A} | %X{url:-N/A} | %X{action:-N/A} | %X{queryParams:-N/A} | %X{body:-N/A} | %msg%n" />
-	<!-- Base pattern for web access logs -->
-	<property name="BASE_WEB_ACCESS_PATTERN" value="kavun-web-access - %X{ip:-0.0.0.0} - - [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0}%n %d{dd-MMM-yyyy HH:mm:ss Z} | [%thread] | Date/Time : %d{dd.MM.yyyy HH:mm:ss} | HTTP Request Method : %X{action} | URI : %X{url} | Protocol : %X{protocol} | Status Code : %X{status} | Client IP : %X{ip}%n" />
 	
-	<!-- Appender for system logs (simple log pattern) -->
+	<!-- Base pattern for application logs (audit) - single line -->
+	<property name="BASE_APP_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %replace(%msg){'[\r\n]+', ' '}%n" />
+	
+	<!-- Base pattern for web access logs (Apache Combined Log Format) - single line -->
+	<property name="BASE_WEB_ACCESS_PATTERN" value="%X{ip:-0.0.0.0} - %X{user:-} [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0} &quot;%X{referer:--}&quot; &quot;%X{userAgent:--}&quot;%n" />
+	
+	<!-- JSON pattern for structured logging (for log aggregation tools like ELK) -->
+	<property name="JSON_PATTERN" value="{&quot;timestamp&quot;:&quot;%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}&quot;,&quot;level&quot;:&quot;%-5level&quot;,&quot;thread&quot;:&quot;%thread&quot;,&quot;logger&quot;:&quot;%logger{36}&quot;,&quot;message&quot;:&quot;%replace(%msg){'&quot;','\\&quot;'}&quot;,&quot;hostname&quot;:&quot;%X{hostname:-N/A}&quot;,&quot;ip&quot;:&quot;%X{ip:-N/A}&quot;,&quot;userIp&quot;:&quot;%X{userIp:-N/A}&quot;,&quot;user&quot;:&quot;%X{user:-N/A}&quot;,&quot;url&quot;:&quot;%X{url:-N/A}&quot;,&quot;action&quot;:&quot;%X{action:-N/A}&quot;}%n" />
+	
+	<!-- Console Appenders -->
 	<appender name="SYSTEM_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
-			<pattern>
-				${BASE_SYS_PATTERN}
-			</pattern>
+			<pattern>${BASE_SYS_PATTERN}</pattern>
 		</encoder>
 	</appender>
-	<!-- Appender for application logs (detailed log pattern with MDC) -->
+	
 	<appender name="APP_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
-			<pattern>
-				${BASE_APP_PATTERN}
-			</pattern>
+			<pattern>${BASE_APP_PATTERN}</pattern>
 		</encoder>
 	</appender>
-	<!-- Appender for web access logs (detailed log pattern with MDC) -->
-	<appender name="WEB_ACCESS_LOGS" class="ch.qos.logback.core.ConsoleAppender">
+	
+	<appender name="WEB_ACCESS_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
-			<pattern>
-				${BASE_WEB_ACCESS_PATTERN}
-			</pattern>
+			<pattern>${BASE_WEB_ACCESS_PATTERN}</pattern>
 		</encoder>
+	</appender>
+
+	<!-- Rolling File Appenders for persistent logs -->
+	<appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/application.log</file>
+		<encoder>
+			<pattern>${BASE_APP_PATTERN}</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/application-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<maxFileSize>10MB</maxFileSize>
+			<maxHistory>30</maxHistory>
+			<totalSizeCap>1GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/audit.log</file>
+		<encoder>
+			<pattern>${BASE_APP_PATTERN}</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/audit-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<maxFileSize>10MB</maxFileSize>
+			<maxHistory>90</maxHistory>
+			<totalSizeCap>3GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="WEB_ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/access.log</file>
+		<encoder>
+			<pattern>${BASE_WEB_ACCESS_PATTERN}</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/access-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<maxFileSize>10MB</maxFileSize>
+			<maxHistory>30</maxHistory>
+			<totalSizeCap>1GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_PATH}/error.log</file>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>ERROR</level>
+		</filter>
+		<encoder>
+			<pattern>${BASE_SYS_PATTERN}</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_PATH}/error-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<maxFileSize>10MB</maxFileSize>
+			<maxHistory>90</maxHistory>
+			<totalSizeCap>2GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+
+	<!-- Async Appenders for better performance -->
+	<appender name="ASYNC_APP_FILE" class="ch.qos.logback.classic.AsyncAppender">
+		<queueSize>512</queueSize>
+		<discardingThreshold>0</discardingThreshold>
+		<appender-ref ref="APP_FILE" />
+	</appender>
+
+	<appender name="ASYNC_AUDIT_FILE" class="ch.qos.logback.classic.AsyncAppender">
+		<queueSize>512</queueSize>
+		<discardingThreshold>0</discardingThreshold>
+		<appender-ref ref="AUDIT_FILE" />
 	</appender>
 
 	<!-- Appender for syslog, active under specified profiles -->
@@ -60,24 +131,48 @@
 			</suffixPattern>
 		</appender>
 	</springProfile>
-	<!-- Logger for system logs (uses simple pattern) -->
-	<logger name="com.system" level="INFO" additivity="false">
-		<appender-ref ref="SYSTEM_CONSOLE" />
-	</logger>
-	<!-- Logger for application logs (detailed) -->
-	<springProfile name="development | test | production | docker">
-		<logger name="com.kavun.annotation.LoggingFilter" level="INFO" additivity="false">
-			<appender-ref ref="WEB_ACCESS_LOGS" />
-			<appender-ref ref="SYSLOG" />
-		</logger>
-		<logger name="com.kavun.annotation.impl.MethodLogger" level="INFO" additivity="false">
-			<appender-ref ref="APP_CONSOLE" />
-			<appender-ref ref="SYSLOG" />
-		</logger>
+	<!-- Package-specific loggers -->
+	<logger name="com.kavun" level="INFO" />
+	<logger name="com.kavun.backend.service" level="DEBUG" />
+	<logger name="com.kavun.web.rest" level="DEBUG" />
+	<logger name="org.springframework.web" level="INFO" />
+	<logger name="org.springframework.security" level="INFO" />
+	<logger name="org.hibernate.SQL" level="DEBUG" />
+	<logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE" />
+	<logger name="liquibase" level="INFO" />
 
+	<!-- Web Access Logger (HTTP requests) -->
+	<logger name="com.kavun.annotation.LoggingFilter" level="INFO" additivity="false">
+		<appender-ref ref="WEB_ACCESS_CONSOLE" />
+		<appender-ref ref="WEB_ACCESS_FILE" />
+		<springProfile name="production | docker">
+			<appender-ref ref="SYSLOG" />
+		</springProfile>
+	</logger>
+
+	<!-- Audit Logger (method execution and business operations) -->
+	<logger name="com.kavun.annotation.impl.MethodLogger" level="INFO" additivity="false">
+		<appender-ref ref="APP_CONSOLE" />
+		<appender-ref ref="ASYNC_AUDIT_FILE" />
+		<springProfile name="production | docker">
+			<appender-ref ref="SYSLOG" />
+		</springProfile>
+	</logger>
+
+	<!-- Root logger -->
+	<springProfile name="development | test">
+		<root level="INFO">
+			<appender-ref ref="SYSTEM_CONSOLE" />
+			<appender-ref ref="ASYNC_APP_FILE" />
+			<appender-ref ref="ERROR_FILE" />
+		</root>
 	</springProfile>
-	<!-- Root logger (uses simpler system log pattern) -->
-	<root level="INFO">
-		<appender-ref ref="SYSTEM_CONSOLE" />
-	</root>
+
+	<springProfile name="production | docker">
+		<root level="WARN">
+			<appender-ref ref="SYSTEM_CONSOLE" />
+			<appender-ref ref="ASYNC_APP_FILE" />
+			<appender-ref ref="ERROR_FILE" />
+		</root>
+	</springProfile>
 </configuration>

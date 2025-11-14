@@ -61,14 +61,34 @@ public class MethodLogger {
   }
 
   private void switchFinishingLogger(String level, String method, Object response, long start) {
+    long duration = System.currentTimeMillis() - start;
     final String format = "<= {} : {} - Finished, duration: {} ms";
 
-    switch (level) {
-      case "warn" -> LOG.warn(format, method, response, System.currentTimeMillis() - start);
-      case "error" -> LOG.error(format, method, response, System.currentTimeMillis() - start);
-      case "debug" -> LOG.debug(format, method, response, System.currentTimeMillis() - start);
-      case "trace" -> LOG.trace(format, method, response, System.currentTimeMillis() - start);
-      default -> LOG.info(format, method, response, System.currentTimeMillis() - start);
+    // Log performance warning if method execution is too slow
+    if (duration > 3000) {
+      LOG.warn("Slow method execution: {} took {} ms", method, duration);
     }
+
+    switch (level) {
+      case "warn" -> LOG.warn(format, method, truncateResponse(response), duration);
+      case "error" -> LOG.error(format, method, truncateResponse(response), duration);
+      case "debug" -> LOG.debug(format, method, truncateResponse(response), duration);
+      case "trace" -> LOG.trace(format, method, truncateResponse(response), duration);
+      default -> LOG.info(format, method, truncateResponse(response), duration);
+    }
+  }
+
+  // Truncate large response objects to avoid log bloat
+  private Object truncateResponse(Object response) {
+    if (response == null) {
+      return "null";
+    }
+
+    String responseStr = response.toString();
+    if (responseStr.length() > 500) {
+      return responseStr.substring(0, 500) + "... (truncated)";
+    }
+
+    return response;
   }
 }

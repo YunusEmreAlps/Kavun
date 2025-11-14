@@ -1,5 +1,7 @@
+ARG BUILDPLATFORM=linux/amd64
+
 #### Stage 1: Build the application
-FROM amazoncorretto:21 AS BUILD_IMAGE
+FROM amazoncorretto:21 AS build_image
 
 # Set the current working directory inside the image
 WORKDIR /app
@@ -39,7 +41,7 @@ RUN mkdir -p dependency  \
     && (cd dependency || return; jar -xf ../libs/*.jar)
 
 #### Stage 2: A minimal docker image with command to run the app
-FROM --platform=linux/amd64 amazoncorretto:21 AS RUNNER
+FROM --platform=${BUILDPLATFORM} amazoncorretto:21 AS runner
 
 # Set the current working directory inside the image
 WORKDIR /app

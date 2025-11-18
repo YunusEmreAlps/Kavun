@@ -5,13 +5,11 @@ import com.kavun.backend.persistent.repository.OtpRepository;
 import com.kavun.backend.service.user.OtpService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.SecurityConstants;
-import com.kavun.web.payload.response.CustomResponse;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +36,7 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     @Transactional
-    public CustomResponse<Object> generateOtp(String target) {
+    public Map<String, Object> generateOtp(String target) {
         Otp otpEntity = new Otp();
 
         otpEntity.setTarget(target);
@@ -50,8 +48,7 @@ public class OtpServiceImpl implements OtpService {
         params.put("publicId", otpEntity.getPublicId());
         params.put("target", otpEntity.getTarget());
 
-        return CustomResponse.of(
-                HttpStatus.OK, params, AuthConstants.OTP_GENERATED, SecurityConstants.GENERATE_OTP);
+        return params;
     }
 
     /**
@@ -64,7 +61,7 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     @Transactional
-    public CustomResponse<Boolean> validateOtp(String publicId, String target, String code) {
+    public Boolean validateOtp(String publicId, String target, String code) {
         Otp otpEntity = otpRepository.findByPublicId(publicId);
         if (otpEntity != null) {
             if (otpEntity.getCode().equals(code)
@@ -74,8 +71,7 @@ public class OtpServiceImpl implements OtpService {
                 otpEntity.setUsedAt(Instant.now());
                 otpEntity.setActive(false);
                 otpRepository.save(otpEntity);
-                return CustomResponse.of(
-                        HttpStatus.OK, true, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP);
+                return true;
             } else {
                 otpEntity.setFailedAttempts(otpEntity.getFailedAttempts() + 1);
                 if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
@@ -87,32 +83,16 @@ public class OtpServiceImpl implements OtpService {
                 otpRepository.save(otpEntity);
 
                 if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
-                    return CustomResponse.of(
-                            HttpStatus.BAD_REQUEST,
-                            false,
-                            AuthConstants.OTP_MAX_ATTEMPTS,
-                            SecurityConstants.VERIFY_OTP);
+                    throw new IllegalArgumentException(AuthConstants.OTP_MAX_ATTEMPTS);
                 } else if (otpEntity.isExpired()) {
-                    return CustomResponse.of(
-                            HttpStatus.BAD_REQUEST,
-                            false,
-                            AuthConstants.OTP_EXPIRED,
-                            SecurityConstants.VERIFY_OTP);
+                    throw new IllegalArgumentException(AuthConstants.OTP_EXPIRED);
                 } else {
-                    return CustomResponse.of(
-                            HttpStatus.BAD_REQUEST,
-                            false,
-                            AuthConstants.OTP_NOT_VERIFIED,
-                            SecurityConstants.VERIFY_OTP);
+                    throw new IllegalArgumentException(AuthConstants.OTP_NOT_VERIFIED);
                 }
             }
             // otpRepository.delete(otpEntity);
         } else {
-            return CustomResponse.of(
-                    HttpStatus.BAD_REQUEST,
-                    false,
-                    AuthConstants.OTP_NOT_FOUND,
-                    SecurityConstants.VERIFY_OTP);
+            throw new IllegalArgumentException(AuthConstants.OTP_NOT_FOUND);
         }
     }
 }

@@ -15,7 +15,6 @@ import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserDtoMapper;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.ValidationUtils;
-import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.UserResponse;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -31,12 +30,12 @@ import org.apache.commons.lang3.Validate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.datatables.mapping.DataTablesInput;
 import org.springframework.data.jpa.datatables.mapping.DataTablesOutput;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -451,7 +450,7 @@ public class UserServiceImpl implements UserService {
    */
   @Override
   @Transactional
-  public CustomResponse<String> resetPassword(final String token, final String newPassword) {
+  public String resetPassword(final String token, final String newPassword) {
     Validate.notNull(token, UserConstants.USER_ID_MUST_NOT_BE_NULL);
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
 
@@ -460,11 +459,9 @@ public class UserServiceImpl implements UserService {
       storedUser.setPassword(passwordEncoder.encode(newPassword));
       storedUser.setVerificationToken(null);
       userRepository.save(storedUser);
-      return CustomResponse.of(
-          HttpStatus.OK, null, UserConstants.PASSWORD_RESET_SUCCESSFULLY, null);
+      return UserConstants.PASSWORD_RESET_SUCCESSFULLY;
     }
-    return CustomResponse.of(
-        HttpStatus.BAD_REQUEST, null, UserConstants.PASSWORD_RESET_FAILED, null);
+    throw new IllegalArgumentException(UserConstants.PASSWORD_RESET_FAILED);
   }
 
   /**
@@ -477,7 +474,7 @@ public class UserServiceImpl implements UserService {
    */
   @Override
   @Transactional
-  public CustomResponse<String> updatePassword(
+  public String updatePassword(
       final String publicId, final String oldPassword, final String newPassword) {
     Validate.notNull(publicId, UserConstants.BLANK_PUBLIC_ID);
     Validate.notNull(oldPassword, UserConstants.BLANK_PASSWORD);
@@ -485,20 +482,17 @@ public class UserServiceImpl implements UserService {
 
     User storedUser = userRepository.findByPublicId(publicId);
     if (Objects.isNull(storedUser)) {
-      return CustomResponse.of(
-          HttpStatus.NOT_FOUND, null, UserConstants.USER_NOT_FOUND, null);
+      throw new IllegalArgumentException(UserConstants.USER_NOT_FOUND);
     }
 
     if (!passwordEncoder.matches(oldPassword, storedUser.getPassword())) {
-      return CustomResponse.of(
-          HttpStatus.BAD_REQUEST, null, UserConstants.PASSWORD_UPDATED_FAILED, null);
+      throw new IllegalArgumentException(UserConstants.PASSWORD_UPDATED_FAILED);
     }
 
     storedUser.setPassword(passwordEncoder.encode(newPassword));
     userRepository.save(storedUser);
 
-    return CustomResponse.of(
-        HttpStatus.OK, null, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY, null);
+    return UserConstants.PASSWORD_UPDATED_SUCCESSFULLY;
   }
 
   /**
@@ -520,20 +514,20 @@ public class UserServiceImpl implements UserService {
    */
   @Override
   @Transactional
-  public @NonNull CustomResponse<Boolean> updatePasswordDirectly(@NonNull String publicId,
+  public @NonNull Boolean updatePasswordDirectly(@NonNull String publicId,
       @NonNull String newPassword) {
     validateNotNull(publicId, UserConstants.BLANK_PUBLIC_ID);
     validateNotNull(newPassword, UserConstants.BLANK_PASSWORD);
 
     User storedUser = userRepository.findByPublicId(publicId);
     if (storedUser == null) {
-      return CustomResponse.of(HttpStatus.NOT_FOUND, null, UserConstants.USER_NOT_FOUND, null);
+      throw new IllegalArgumentException(UserConstants.USER_NOT_FOUND);
     }
 
     storedUser.setPassword(passwordEncoder.encode(newPassword));
     userRepository.save(storedUser);
 
-    return CustomResponse.of(HttpStatus.OK, true, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY, null);
+    return true;
   }
 
   /**

@@ -74,7 +74,7 @@ public class LoggingFilter extends OncePerRequestFilter {
         String sanitizedBody = sanitizeForLogging(requestBody);
         MDC.put("body", sanitizedBody);
 
-        // Create audit log entry
+        // Build and save the application log
         ApplicationLog applicationLog = new ApplicationLog();
         applicationLog.setLogLevel("INFO");
         applicationLog.setThreadName(Thread.currentThread().getName());
@@ -93,18 +93,16 @@ public class LoggingFilter extends OncePerRequestFilter {
         try {
           applicationLogRepository.save(applicationLog);
         } catch (Exception e) {
-          LOG.warn("Failed to save audit log to database: {}", e.getMessage());
+          LOG.warn("Failed to save application log to database: {}", e.getMessage());
         }
       }
 
-      // Proceed with the filter chain
       filterChain.doFilter(requestToUse, response);
     } finally {
       // Log access information after request processing
       MDC.put("protocol", request.getProtocol());
       MDC.put("status", String.valueOf(response.getStatus()));
-      MDC.put("responseSize",
-          response.getHeader("Content-Length") != null ? response.getHeader("Content-Length") : "0");
+      MDC.put("responseSize", response.getHeader("Content-Length") != null ? response.getHeader("Content-Length") : "0");
       MDC.put("referer", request.getHeader("Referer") != null ? request.getHeader("Referer") : "-");
       MDC.put("userAgent", request.getHeader("User-Agent") != null ? request.getHeader("User-Agent") : "-");
 

@@ -5,7 +5,6 @@ import com.kavun.shared.dto.UserDto;
 import com.kavun.web.payload.request.mail.EmailRequest;
 import com.kavun.web.payload.request.mail.FeedbackRequest;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
-import com.kavun.web.payload.response.CustomResponse;
 
 import org.springframework.mail.SimpleMailMessage;
 
@@ -29,10 +28,9 @@ public interface EmailService {
    * Sends an email with the provided simple mail message object.
    *
    * @param simpleMailMessage the simple mail message.
-   * @return a CustomResponse containing the result of the email sending
-   *         operation.
+   * @return a String message indicating the result of the email sending operation.
    */
-  CustomResponse<String> sendSimpleEmail(final SimpleMailMessage simpleMailMessage);
+  String sendSimpleEmail(final SimpleMailMessage simpleMailMessage);
 
   /**
    * Sends an email with the provided EmailRequestBuilder details.

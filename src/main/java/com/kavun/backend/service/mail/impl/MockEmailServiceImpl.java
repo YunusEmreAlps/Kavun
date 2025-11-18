@@ -4,11 +4,9 @@ import com.kavun.constant.EnvConstants;
 import com.kavun.constant.email.EmailConstants;
 import com.kavun.web.payload.request.mail.EmailRequest;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
-import com.kavun.web.payload.response.CustomResponse;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.stereotype.Service;
 
@@ -37,22 +35,16 @@ public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   @Override
-  public CustomResponse<String> sendSimpleEmail(final SimpleMailMessage simpleMailMessage) {
+  public String sendSimpleEmail(final SimpleMailMessage simpleMailMessage) {
     try {
       sendMail(simpleMailMessage);
       String recipients = simpleMailMessage.getTo() != null ? String.join(", ", simpleMailMessage.getTo()) : "unknown";
 
-      return CustomResponse.of(
-          HttpStatus.OK,
-          EmailConstants.MAIL_SUCCESS_MESSAGE,
-          simpleMailMessage.getSubject() + " sent to " + recipients);
+      return EmailConstants.MAIL_SUCCESS_MESSAGE + ": " + simpleMailMessage.getSubject() + " sent to " + recipients;
 
     } catch (Exception e) {
       LOG.error("Failed to send simple email", e);
-      return CustomResponse.of(
-          HttpStatus.INTERNAL_SERVER_ERROR,
-          "Failed to send email: " + e.getMessage(),
-          null);
+      return "Failed to send email: " + e.getMessage();
     }
   }
 

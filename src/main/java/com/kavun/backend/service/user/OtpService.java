@@ -1,6 +1,6 @@
 package com.kavun.backend.service.user;
 
-import com.kavun.web.payload.response.CustomResponse;
+import java.util.Map;
 
 /**
  * This OtpService interface is the contract for the otp service operations.
@@ -14,9 +14,9 @@ public interface OtpService {
    * Generates the otp code for the user with the given email or sms.
    *
    * @param target the target to email or sms
-   * @return the generated otp code
+   * @return Map containing publicId and target
    */
-  public CustomResponse<Object> generateOtp(String target);
+  public Map<String, Object> generateOtp(String target);
 
   /**
    * Validates the otp code for the user with the given email or sms.
@@ -26,5 +26,5 @@ public interface OtpService {
    * @param otp the otp code to validate
    * @return true if the otp code is valid, false otherwise
    */
-  public CustomResponse<Boolean> validateOtp(String publicId, String target, String otp);
+  public Boolean validateOtp(String publicId, String target, String otp);
 }

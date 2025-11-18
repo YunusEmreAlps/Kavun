@@ -6,7 +6,6 @@ import com.kavun.config.properties.SystemProperties;
 import com.kavun.constant.EnvConstants;
 import com.kavun.constant.email.EmailConstants;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
-import com.kavun.web.payload.response.CustomResponse;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
@@ -28,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -98,7 +96,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
   @Override
   @Async("emailTaskExecutor")
-  public CustomResponse<String> sendSimpleEmail(final SimpleMailMessage simpleMailMessage) {
+  public String sendSimpleEmail(final SimpleMailMessage simpleMailMessage) {
     String requestId = generateRequestId();
 
     try {
@@ -106,7 +104,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       if (!isValidMailMessage(simpleMailMessage)) {
         String error = "Invalid mail message provided";
         LOG.warn("{}. RequestId: {}", error, requestId);
-        return CustomResponse.of(HttpStatus.BAD_REQUEST, error, null);
+        return error;
       }
 
       // Configure and send
@@ -121,7 +119,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
           simpleMailMessage.getSubject(), recipients);
 
       LOG.info("Simple email sent successfully. RequestId: {}", requestId);
-      return CustomResponse.of(HttpStatus.OK, EmailConstants.MAIL_SUCCESS_MESSAGE, successMessage);
+      return EmailConstants.MAIL_SUCCESS_MESSAGE + ": " + successMessage;
 
     } catch (Exception e) {
       String errorMessage = getDetailedErrorMessage(e);
@@ -130,8 +128,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       // Save failure
       saveFailedMailToDatabase(simpleMailMessage, requestId, errorMessage);
 
-      return CustomResponse.of(HttpStatus.INTERNAL_SERVER_ERROR,
-          "Failed to send email: " + errorMessage, null);
+      return "Failed to send email: " + errorMessage;
     }
   }
 

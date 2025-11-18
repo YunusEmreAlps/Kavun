@@ -1,0 +1,9 @@
+ ____    _  __                          ____
+ \ \ \  | |/ /__ ___   ___   _ _ __    / / /
+  \ \ \ | ' // _` \ \ / / | | | '_ \  / / / 
+  / / / | . \ (_| |\ V /| |_| | | | | \ \ \ 
+ /_/_/  |_|\_\__,_| \_/  \__,_|_| |_|  \_\_\
+                                            
+:: Kavun :: ${spring-boot.version}
+:: Profile: ${spring.profiles.active:default} :: Port: ${server.port:8080}
+ 

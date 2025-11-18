@@ -16,7 +16,6 @@ import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
 import com.kavun.web.payload.request.LoginRequest;
 import com.kavun.web.payload.request.ResetPasswordRequest;
-import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.JwtResponseBuilder;
 import com.kavun.web.payload.response.LogoutResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -33,7 +32,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -337,7 +335,7 @@ public class AuthRestApi {
   @Loggable
   @SecurityRequirements
   @PostMapping(SecurityConstants.FORGOT_PASSWORD)
-  public ResponseEntity<CustomResponse<String>> forgotPassword(
+  public ResponseEntity<String> forgotPassword(
       @Valid @RequestBody ForgotPasswordRequest request) {
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -380,9 +378,9 @@ public class AuthRestApi {
           String newPassword = userService.generateSecureTemporaryPassword();
 
           // Update user's password in database
-          CustomResponse<Boolean> passwordUpdated = userService.updatePasswordDirectly(user.getPublicId(), newPassword);
+          Boolean passwordUpdated = userService.updatePasswordDirectly(user.getPublicId(), newPassword);
 
-          if (!passwordUpdated.getData().orElse(false)) {
+          if (!passwordUpdated) {
             LOG.error("Failed to update password for user: {}", request.getEmail());
           }
 
@@ -415,7 +413,7 @@ public class AuthRestApi {
   @Loggable
   @SecurityRequirements
   @PostMapping(SecurityConstants.RESET_PASSWORD)
-  public ResponseEntity<CustomResponse<String>> resetPassword(
+  public ResponseEntity<String> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
     return ResponseEntity.ok(
         userService.resetPassword(request.getToken(), request.getNewPassword()));
@@ -450,13 +448,8 @@ public class AuthRestApi {
   /**
    * Helper method to build consistent success response.
    */
-  private ResponseEntity<CustomResponse<String>> buildSuccessResponse() {
-    return ResponseEntity.ok(
-        CustomResponse.of(
-            HttpStatus.OK,
-            null,
-            UserConstants.PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY,
-            SecurityConstants.FORGOT_PASSWORD));
+  private ResponseEntity<String> buildSuccessResponse() {
+    return ResponseEntity.ok(UserConstants.PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY);
   }
 
   /**

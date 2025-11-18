@@ -9,13 +9,11 @@ import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.AdminConstants;
 import com.kavun.constant.ErrorConstants;
-import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.request.SignUpRequest;
-import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.UserResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -78,17 +76,14 @@ public class UserRestApi {
   @PageableAsQueryParam
   @PreAuthorize(AUTHORIZE)
   @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<CustomResponse<Page<UserResponse>>> searchUsers(
+  public ResponseEntity<Page<UserResponse>> searchUsers(
       @RequestParam Map<String, Object> paramaterMap,
       Pageable page) {
 
     Specification<User> spec = userSpecification.search(paramaterMap);
 
     Page<UserResponse> users = userService.findAll(spec, page);
-    return ResponseEntity.ok(
-        CustomResponse.of(HttpStatus.OK, users,
-            "Users retrieved successfully",
-            AdminConstants.API_V1_USERS_ROOT_URL + "/search"));
+    return ResponseEntity.ok(users);
   }
 
   /**
@@ -167,21 +162,19 @@ public class UserRestApi {
   @Loggable
   @PreAuthorize(AUTHORIZE)
   @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<CustomResponse<String>> updatePassword(
+  public ResponseEntity<String> updatePassword(
       @RequestParam String oldPassword, @RequestParam String newPassword) {
 
     var userDetails = SecurityUtils.getAuthenticatedUserDetails();
     if (Objects.isNull(userDetails)) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-          .body(CustomResponse.of(HttpStatus.UNAUTHORIZED, null, ErrorConstants.UNAUTHORIZED_ACCESS,
-              AdminConstants.API_V1_USERS_ROOT_URL + ProfileConstants.PROFILE_MAPPING));
+          .body(ErrorConstants.UNAUTHORIZED_ACCESS);
     }
 
     // Update the password
-    userService.updatePassword(userDetails.getPublicId(), oldPassword, newPassword);
+    String result = userService.updatePassword(userDetails.getPublicId(), oldPassword, newPassword);
 
-    return ResponseEntity.ok(CustomResponse.of(HttpStatus.OK, null, UserConstants.PASSWORD_UPDATED_SUCCESSFULLY,
-        ProfileConstants.REDIRECT_TO_PROFILE));
+    return ResponseEntity.ok(result);
   }
 
   /**

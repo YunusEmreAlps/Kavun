@@ -4,7 +4,6 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.enums.RoleType;
 import com.kavun.enums.UserHistoryType;
 import com.kavun.shared.dto.UserDto;
-import com.kavun.web.payload.response.CustomResponse;
 import com.kavun.web.payload.response.UserResponse;
 import java.util.List;
 import java.util.Set;
@@ -203,9 +202,10 @@ public interface UserService {
    *
    * @param token       the token
    * @param newPassword the new password
+   * @return String message indicating the result
    * @throws NullPointerException in case the given entity is {@literal null}
    */
-  CustomResponse<String> resetPassword(String token, String newPassword);
+  String resetPassword(String token, String newPassword);
 
   /**
    * Update the password for the user with the publicId and new password given.
@@ -213,8 +213,9 @@ public interface UserService {
    * @param publicId    the publicId
    * @param oldPassword the old password
    * @param newPassword the new password
+   * @return String message indicating the result
    */
-  CustomResponse<String> updatePassword(String publicId, String oldPassword, String newPassword);
+  String updatePassword(String publicId, String oldPassword, String newPassword);
 
   /**
    * Generates a secure temporary password.
@@ -227,10 +228,10 @@ public interface UserService {
    *
    * @param publicId    the user's public identifier
    * @param newPassword the new password
-   * @return CustomResponse with operation result
+   * @return Boolean indicating success or failure
    */
   @NonNull
-  CustomResponse<Boolean> updatePasswordDirectly(@NonNull String publicId, @NonNull String newPassword);
+  Boolean updatePasswordDirectly(@NonNull String publicId, @NonNull String newPassword);
 
   // =========================================================================
   // UTILITY OPERATIONS

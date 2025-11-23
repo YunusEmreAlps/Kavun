@@ -1,7 +1,5 @@
 # Enterprise API Response Standards
 
-## Overview
-
 This document describes the standardized API response format used across the **Kavun** application. All API endpoints follow consistent response structures for better client integration and debugging.
 
 ## Response Structure

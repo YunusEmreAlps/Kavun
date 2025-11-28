@@ -111,12 +111,12 @@ public class MailConfig {
     }
 
     private void logConfiguration() {
-        LOG.info("=".repeat(50));
+        LOG.info("-".repeat(32));
         LOG.info("CONFIGURING MAIL SENDER");
         LOG.info("Host: {}", host);
         LOG.info("Port: {}", port);
         LOG.info("Username: {}", username);
         LOG.info("Protocol: {}", protocol);
-        LOG.info("=".repeat(50));
+        LOG.info("-".repeat(32));
     }
 }

@@ -2,27 +2,27 @@
 <configuration debug="false">
 	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
 	
-	<!-- Load properties from application.properties -->
+	<!-- Properties -->
 	<springProperty name="LOG_PATH" source="logging.file.path" defaultValue="logs" />
-	<springProperty name="syslogEnabled" source="syslog.enabled" defaultValue="true" />
-	<springProperty name="syslogHost" source="syslog.host" defaultValue="localhost" />
-	<springProperty name="syslogPort" source="syslog.port" defaultValue="514" />
-	<springProperty name="syslogProtocol" source="syslog.protocol" defaultValue="UDP" />
-	<springProperty name="syslogFacility" source="syslog.facility" defaultValue="LOCAL0" />
-	<springProperty name="syslogAppName" source="syslog.app-name" defaultValue="kavun" />
+	<springProperty name="SYSLOG_HOST" source="syslog.host" defaultValue="localhost" />
+	<springProperty name="SYSLOG_PORT" source="syslog.port" defaultValue="514" />
+	<springProperty name="SYSLOG_PROTOCOL" source="syslog.protocol" defaultValue="UDP" />
+	<springProperty name="SYSLOG_FACILITY" source="syslog.facility" defaultValue="LOCAL0" />
+	<springProperty name="APP_NAME" source="spring.application.name" defaultValue="kavun" />
+
 
 	<!-- System logs (simpler) -->
-	<property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | %msg%n" />
+	<property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | %-40.40logger{39} | %.-500msg%n" />
 	
 	<!-- Audit/Application logs -->
-	<property name="AUDIT_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%thread] | %logger{36} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %replace(%msg){'[\r\n]+', ' '}%n" />
+	<property name="AUDIT_LOG_PATTERN" value="${APP_NAME}-audit | %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | %-40.40logger{39} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %.-500replace(%msg){'[\r\n]+', ' '}%n" />
 	
 	<!-- Web access logs (Apache Combined Log Format) -->
-	<property name="ACCESS_LOG_PATTERN" value="%X{ip:-0.0.0.0} - %X{user:-} [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0} &quot;%X{referer:--}&quot; &quot;%X{userAgent:--}&quot;%n" />
+	<property name="ACCESS_LOG_PATTERN" value="${APP_NAME}-access | %X{ip:-0.0.0.0} - %X{user:-} [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0} &quot;%X{referer:--}&quot; &quot;%X{userAgent:--}&quot;%n" />
 	
 	<!-- Elasticsearch JSON logs -->
-	<property name="JSON_PATTERN" value="{&quot;timestamp&quot;:&quot;%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}&quot;,&quot;level&quot;:&quot;%-5level&quot;,&quot;thread&quot;:&quot;%thread&quot;,&quot;logger&quot;:&quot;%logger{36}&quot;,&quot;message&quot;:&quot;%replace(%msg){'&quot;','\\&quot;'}&quot;,&quot;hostname&quot;:&quot;%X{hostname:-N/A}&quot;,&quot;ip&quot;:&quot;%X{ip:-N/A}&quot;,&quot;userIp&quot;:&quot;%X{userIp:-N/A}&quot;,&quot;user&quot;:&quot;%X{user:-N/A}&quot;,&quot;url&quot;:&quot;%X{url:-N/A}&quot;,&quot;action&quot;:&quot;%X{action:-N/A}&quot;}%n" />
-	
+	<property name="JSON_PATTERN" value="{&quot;timestamp&quot;:&quot;%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}&quot;,&quot;level&quot;:&quot;%-5level&quot;,&quot;thread&quot;:&quot;%15.15thread&quot;,&quot;logger&quot;:&quot;%-40.40logger{39}&quot;,&quot;message&quot;:&quot;%.-500replace(%msg){'&quot;','\\&quot;'}&quot;,&quot;hostname&quot;:&quot;%X{hostname:-N/A}&quot;,&quot;ip&quot;:&quot;%X{ip:-N/A}&quot;,&quot;userIp&quot;:&quot;%X{userIp:-N/A}&quot;,&quot;user&quot;:&quot;%X{user:-N/A}&quot;,&quot;url&quot;:&quot;%X{url:-N/A}&quot;,&quot;action&quot;:&quot;%X{action:-N/A}&quot;}%n" />
+		
 	<!-- Console Appenders -->
 	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<encoder>
@@ -49,7 +49,7 @@
 			<pattern>${AUDIT_LOG_PATTERN}</pattern>
 		</encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>${LOG_PATH}/application-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<fileNamePattern>${LOG_PATH}/archive/application-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
 			<maxFileSize>10MB</maxFileSize>
 			<maxHistory>30</maxHistory>
 			<totalSizeCap>1GB</totalSizeCap>
@@ -62,7 +62,7 @@
 			<pattern>${AUDIT_LOG_PATTERN}</pattern>
 		</encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>${LOG_PATH}/audit-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<fileNamePattern>${LOG_PATH}/archive/audit-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
 			<maxFileSize>10MB</maxFileSize>
 			<maxHistory>90</maxHistory>
 			<totalSizeCap>3GB</totalSizeCap>
@@ -75,7 +75,7 @@
 			<pattern>${ACCESS_LOG_PATTERN}</pattern>
 		</encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>${LOG_PATH}/access-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<fileNamePattern>${LOG_PATH}/archive/access-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
 			<maxFileSize>10MB</maxFileSize>
 			<maxHistory>30</maxHistory>
 			<totalSizeCap>1GB</totalSizeCap>
@@ -91,7 +91,7 @@
 			<pattern>${CONSOLE_LOG_PATTERN}</pattern>
 		</encoder>
 		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>${LOG_PATH}/error-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+			<fileNamePattern>${LOG_PATH}/archive/error-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
 			<maxFileSize>10MB</maxFileSize>
 			<maxHistory>90</maxHistory>
 			<totalSizeCap>2GB</totalSizeCap>
@@ -114,33 +114,14 @@
 	<!-- Appender for syslog, active under specified profiles -->
 	<springProfile name="development | test | production | docker">
 		<appender name="SYSLOG" class="ch.qos.logback.classic.net.SyslogAppender">
-			<syslogHost>
-				${syslogHost}
-			</syslogHost>
-			<port>
-				${syslogPort}
-			</port>
-			<facility>
-				${syslogFacility}
-			</facility>
-			<protocol>
-				${syslogProtocol}
-			</protocol>
-			<suffixPattern>
-				${AUDIT_LOG_PATTERN}
-			</suffixPattern>
+			<syslogHost>${SYSLOG_HOST}</syslogHost>
+			<port>${SYSLOG_PORT}</port>
+			<facility>${SYSLOG_FACILITY}</facility>
+			<protocol>${SYSLOG_PROTOCOL}</protocol>
+			<localHostName> ${APP_NAME} </localHostName>
+			<suffixPattern>${AUDIT_LOG_PATTERN}</suffixPattern>
 		</appender>
 	</springProfile>
-
-	<!-- Package-specific loggers -->
-	<logger name="com.kavun" level="INFO" />
-	<logger name="com.kavun.backend.service" level="DEBUG" />
-	<logger name="com.kavun.web.rest" level="DEBUG" />
-	<logger name="org.springframework.web" level="INFO" />
-	<logger name="org.springframework.security" level="INFO" />
-	<logger name="org.hibernate.SQL" level="DEBUG" />
-	<logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE" />
-	<logger name="liquibase" level="INFO" />
 
 	<!-- Web Access Logger (HTTP requests) -->
 	<logger name="com.kavun.annotation.LoggingFilter" level="INFO" additivity="false">

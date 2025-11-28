@@ -43,24 +43,18 @@ public class RoleServiceImpl implements RoleService {
   public Role save(Role roleEntity) {
     Validate.notNull(roleEntity, "The roleEntity cannot be null");
 
-    var persistedRole = new Role();
-    Role role = findByName(roleEntity.getName());
-
-    // If the roleEntity already exists, merge it with the existing one.
-    if(role != null) {
-      LOG.info("Role already exists, merging with existing roleEntity {}", roleEntity);
-      roleEntity.setId(role.getId());
-      roleEntity.setPublicId(role.getPublicId());
-      roleEntity.setVersion(role.getVersion());
-      persistedRole = roleRepository.saveAndFlush(roleEntity);
-      LOG.info("Role merged successfully {}", persistedRole);
-    } else {
-      LOG.info("Role does not exist, creating new roleEntity {}", roleEntity);
-      persistedRole = roleRepository.save(roleEntity);
-      LOG.info("Role merged successfully {}", persistedRole);
-    }
-
-    return persistedRole;
+    return roleRepository.findFirstByName(roleEntity.getName())
+        .map(existingRole -> {
+          LOG.debug("Updating existing role: {}", existingRole.getName());
+          roleEntity.setId(existingRole.getId());
+          roleEntity.setPublicId(existingRole.getPublicId());
+          roleEntity.setVersion(existingRole.getVersion());
+          return roleRepository.saveAndFlush(roleEntity);
+        })
+        .orElseGet(() -> {
+          LOG.debug("Creating new role: {}", roleEntity.getName());
+          return roleRepository.save(roleEntity);
+        });
   }
 
   /**

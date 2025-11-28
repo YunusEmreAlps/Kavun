@@ -13,14 +13,15 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.http.server.ServletServerHttpResponse;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 /**
  * Enterprise-grade response handler for consistent API responses.
  * Wraps all controller responses in ApiResponse for standardization.
+ *
+ * Note: Exception handling is managed in RestResponseEntityExceptionHandler.
+ * This class only handles successful response wrapping.
  *
  * @author Yunus Emre Alpu
  * @version 2.0
@@ -106,70 +107,6 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
 
         return ResponseCode.SUCCESS;
     }
-
-    /**
-     * Global exception handler for non-database exceptions.
-     * Database exceptions are handled separately in DatabaseExceptionHandler.
-     */
-    @ExceptionHandler(Exception.class)
-    public ApiResponse<Object> handleGeneralException(Exception ex, WebRequest request) {
-        // Check if it's a database exception - if so, don't handle it here
-        if (isDatabaseException(ex)) {
-            LOG.debug("Database exception detected, letting DatabaseExceptionHandler handle it: {}",
-                    ex.getClass().getSimpleName());
-            throw new RuntimeException(ex); // Re-throw as unchecked to let DatabaseExceptionHandler handle it
-        }
-
-        LOG.error("General Exception (non-database): {}", ex.getMessage(), ex);
-        String path = request != null ? request.getContextPath() : DEFAULT_PATH;
-        return ApiResponse.error(ResponseCode.INTERNAL_ERROR,
-                "An error occurred. Please try again.", path);
-    }
-
-    private boolean isDatabaseException(Exception ex) {
-        String className = ex.getClass().getName();
-        String simpleName = ex.getClass().getSimpleName();
-        String message = ex.getMessage();
-
-        boolean isDbClass = className.contains("SQLException") ||
-                className.contains("DataAccessException") ||
-                className.contains("PersistenceException") ||
-                className.contains("TransactionSystemException") ||
-                className.contains("TransactionException") ||
-                className.contains("JpaSystemException") ||
-                className.contains("HibernateException") ||
-                className.contains("ConstraintViolationException") ||
-                className.contains("RollbackException") ||
-                className.contains("EntityNotFoundException") ||
-                className.contains("EmptyResultDataAccessException") ||
-                className.contains("DataIntegrityViolationException") ||
-                simpleName.contains("SQL") ||
-                simpleName.contains("Transaction") ||
-                simpleName.contains("Persistence") ||
-                simpleName.contains("Hibernate") ||
-                simpleName.contains("JPA");
-
-        boolean isDbMessage = message != null && (message.toLowerCase().contains("transaction") ||
-                message.toLowerCase().contains("commit") ||
-                message.toLowerCase().contains("rollback") ||
-                message.toLowerCase().contains("constraint") ||
-                message.toLowerCase().contains("sql") ||
-                message.toLowerCase().contains("database") ||
-                message.toLowerCase().contains("hibernate") ||
-                message.toLowerCase().contains("jpa") ||
-                message.toLowerCase().contains("persistence"));
-
-        boolean isDatabase = isDbClass || isDbMessage;
-
-        if (isDatabase) {
-            LOG.debug("Identified as database exception: {} - Class: {}, Message contains DB terms: {}",
-                    simpleName, isDbClass, isDbMessage);
-        }
-
-        return isDatabase;
-    }
-
-    // ... rest of the existing methods remain the same ...
 
     private HttpStatus getHttpStatus(ServerHttpResponse response) {
         if (!(response instanceof ServletServerHttpResponse servletResponse)) {

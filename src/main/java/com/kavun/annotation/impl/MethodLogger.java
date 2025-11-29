@@ -2,15 +2,17 @@ package com.kavun.annotation.impl;
 
 import com.kavun.annotation.Loggable;
 import com.kavun.shared.util.MaskPasswordUtils;
-
+import java.util.Arrays;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.event.Level;
 import org.springframework.stereotype.Component;
 
 /**
- * Ensures that method calls can be logged with entry-exit logs in console or log file.
+ * Aspect for logging method entry, exit, and execution time for methods
+ * annotated with {@link Loggable}.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -21,74 +23,98 @@ import org.springframework.stereotype.Component;
 @Component
 public class MethodLogger {
 
+  private static final int MAX_RESPONSE_LENGTH = 500;
+  private static final long SLOW_THRESHOLD_MS = 3000L;
+  private static final String ENTRY_FORMAT = "=> Starting - {} args: {}";
+  private static final String EXIT_FORMAT = "<= {} : {} - Finished, duration: {} ms";
+
   /**
-   * - visibility modifier is * (public, protected or private) - name is * (any name); - arguments
-   * are .. (any arguments); and - is annotated with @Loggable.
+   * Intercepts and logs methods annotated with {@link Loggable}.
    *
-   * @param joinPoint the joinPoint
-   * @return the log object
-   * @throws Throwable if an error occurs
+   * @param joinPoint AOP join point
+   * @param loggable  annotation info
+   * @return method return value
+   * @throws Throwable errors occurring during method execution
    */
   @Around("execution(* *(..)) && @annotation(loggable)")
   public Object log(final ProceedingJoinPoint joinPoint, final Loggable loggable) throws Throwable {
+    final String method = joinPoint.toShortString();
+    final Level level = parseLevel(loggable.level());
 
-    var method = joinPoint.toShortString();
-    var start = System.currentTimeMillis();
-
-    switchStartingLogger(loggable.level(), method, joinPoint.getArgs());
-    Object response = joinPoint.proceed();
-
-    // if a response object is ignored, don't include response data.
-    if (loggable.ignoreResponseData()) {
-      switchFinishingLogger(loggable.level(), method, "{...}", start);
-    } else {
-      switchFinishingLogger(loggable.level(), method, response, start);
+    // Entry log - skip if log level is not enabled
+    if (isLevelEnabled(level)) {
+      logEntry(level, method, joinPoint.getArgs());
     }
 
-    return response;
+    final long start = System.nanoTime();
+
+    try {
+      Object response = joinPoint.proceed();
+      final long durationMs = (System.nanoTime() - start) / 1_000_000;
+
+      // Exit log
+      if (isLevelEnabled(level)) {
+        Object loggedResponse = loggable.ignoreResponseData() ? "{...}" : response;
+        logExit(level, method, loggedResponse, durationMs);
+      }
+
+      // Slow method warning
+      if (durationMs > SLOW_THRESHOLD_MS) {
+        LOG.warn("Slow method: {} took {} ms (threshold: {} ms)", method, durationMs, SLOW_THRESHOLD_MS);
+      }
+
+      return response;
+    } catch (Exception e) {
+      LOG.error("Exception in method: {} with message: {}", method, e.getMessage());
+      throw e;
+    }
   }
 
-  private void switchStartingLogger(final String level, final String method, final Object args) {
-    final String format = "=> Starting -  {} args: {}";
+  private Level parseLevel(String level) {
+    try {
+      return Level.valueOf(level.toUpperCase());
+    } catch (IllegalArgumentException e) {
+      return Level.INFO;
+    }
+  }
 
+  private boolean isLevelEnabled(Level level) {
+    return switch (level) {
+      case TRACE -> LOG.isTraceEnabled();
+      case DEBUG -> LOG.isDebugEnabled();
+      case WARN -> LOG.isWarnEnabled();
+      case ERROR -> LOG.isErrorEnabled();
+      default -> LOG.isInfoEnabled();
+    };
+  }
+
+  private void logEntry(Level level, String method, Object[] args) {
+    String maskedArgs = MaskPasswordUtils.maskPasswordJson(Arrays.toString(args)).toString();
+    logAtLevel(level, ENTRY_FORMAT, method, maskedArgs);
+  }
+
+  private void logExit(Level level, String method, Object response, long durationMs) {
+    String truncatedResponse = truncateResponse(response);
+    logAtLevel(level, EXIT_FORMAT, method, truncatedResponse, durationMs);
+  }
+
+  private void logAtLevel(Level level, String format, Object... args) {
     switch (level) {
-      case "warn" -> LOG.warn(format, method, MaskPasswordUtils.maskPasswordJson(args));
-      case "error" -> LOG.error(format, method, MaskPasswordUtils.maskPasswordJson(args));
-      case "debug" -> LOG.debug(format, method, MaskPasswordUtils.maskPasswordJson(args));
-      case "trace" -> LOG.trace(format, method, MaskPasswordUtils.maskPasswordJson(args));
-      default -> LOG.info(format, method, MaskPasswordUtils.maskPasswordJson(args));
+      case TRACE -> LOG.trace(format, args);
+      case DEBUG -> LOG.debug(format, args);
+      case WARN -> LOG.warn(format, args);
+      case ERROR -> LOG.error(format, args);
+      default -> LOG.info(format, args);
     }
   }
 
-  private void switchFinishingLogger(String level, String method, Object response, long start) {
-    long duration = System.currentTimeMillis() - start;
-    final String format = "<= {} : {} - Finished, duration: {} ms";
-
-    // Log performance warning if method execution is too slow
-    if (duration > 3000) {
-      LOG.warn("Slow method execution: {} took {} ms", method, duration);
-    }
-
-    switch (level) {
-      case "warn" -> LOG.warn(format, method, truncateResponse(response), duration);
-      case "error" -> LOG.error(format, method, truncateResponse(response), duration);
-      case "debug" -> LOG.debug(format, method, truncateResponse(response), duration);
-      case "trace" -> LOG.trace(format, method, truncateResponse(response), duration);
-      default -> LOG.info(format, method, truncateResponse(response), duration);
-    }
-  }
-
-  // Truncate large response objects to avoid log bloat
-  private Object truncateResponse(Object response) {
+  private String truncateResponse(Object response) {
     if (response == null) {
       return "null";
     }
-
-    String responseStr = response.toString();
-    if (responseStr.length() > 500) {
-      return responseStr.substring(0, 500) + "... (truncated)";
-    }
-
-    return response;
+    String str = response.toString();
+    return str.length() > MAX_RESPONSE_LENGTH
+        ? str.substring(0, MAX_RESPONSE_LENGTH) + "... (truncated)"
+        : str;
   }
 }

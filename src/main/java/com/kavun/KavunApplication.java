@@ -2,6 +2,7 @@ package com.kavun;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -12,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @since 1.0
  */
 @EnableScheduling
-@SpringBootApplication
+@SpringBootApplication(exclude = {OAuth2ClientAutoConfiguration.class})
 public class KavunApplication {
 
   /**

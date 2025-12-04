@@ -7,6 +7,7 @@ import com.kavun.constant.HomeConstants;
 import com.kavun.constant.SecurityConstants;
 import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,12 +27,18 @@ import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
  * before ApiWebSecurityConfigurationAdapter since it has an @Order value after 1 (no @Order
  * defaults to last).
  *
+ * DEPRECATED: This configuration is disabled when Keycloak is enabled.
+ * Use KeycloakFormLoginConfig instead.
+ *
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
+ * @deprecated Use Keycloak-based configuration when Keycloak is enabled
  */
+@Deprecated
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
 public class FormLoginSecurityConfig {
 
   private final Environment environment;

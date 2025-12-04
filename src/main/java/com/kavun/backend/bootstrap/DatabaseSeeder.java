@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.env.Environment;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 /**
@@ -54,6 +55,12 @@ public class DatabaseSeeder implements CommandLineRunner {
 
   private void persistDefaultAdminUser() {
     try {
+      // First check if user already exists by username
+      if (userService.existsByUsername(adminUsername)) {
+        LOG.warn("Admin user already exists with username: {}", adminUsername);
+        return;
+      }
+
       var adminDto = UserUtils.createUserDto(adminUsername, adminPassword, adminEmail, true);
       LOG.info("Creating default admin user with username: {}", adminUsername);
       Set<RoleType> adminRoleType = Collections.singleton(RoleType.ROLE_ADMIN);
@@ -61,6 +68,8 @@ public class DatabaseSeeder implements CommandLineRunner {
       userService.createUser(adminDto, adminRoleType);
     } catch (UserAlreadyExistsException e) {
       LOG.warn("Admin user already exists!");
+    } catch (DataIntegrityViolationException e) {
+      LOG.warn("Admin user already exists (database constraint): {}", e.getMessage());
     }
   }
 }

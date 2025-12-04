@@ -49,6 +49,7 @@ ext {
   set('javadocScribeVersion', '0.15.0')
   set('mapstructVersion', '1.6.3')
   set('awsSdkS3Version', '2.30.15')
+  set('keycloakVersion', '26.0.7')
 }
 
 dependencies {
@@ -62,8 +63,12 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-data-rest'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
   implementation 'org.springframework.boot:spring-boot-starter-logging'
+  implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
   implementation 'io.micrometer:micrometer-registry-prometheus'
   implementation 'ch.qos.logback:logback-classic'
+
+  // Keycloak Admin Client
+  implementation "org.keycloak:keycloak-admin-client:${keycloakVersion}"
 
   // Dev Tools
   compileOnly 'org.projectlombok:lombok'

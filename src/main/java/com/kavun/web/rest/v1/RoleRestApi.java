@@ -18,21 +18,27 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
  * This class handles all rest calls for managing roles in the system.
  *
+ * <p><b>Note:</b> This controller is only active when {@code keycloak.enabled=false}.
+ * When Keycloak is enabled, use {@link KeycloakRoleRestApi} instead.</p>
+ *
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
+ * @see KeycloakRoleRestApi
  */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@Tag(name = "03. Role Management", description = "APIs for managing roles")
+@Tag(name = "03. Role Management", description = "Role management APIs (Local mode)")
 @RequestMapping(AdminConstants.API_V1_ROLE_ROOT_URL)
+@ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
 public class RoleRestApi {
 
     private final RoleService roleService;

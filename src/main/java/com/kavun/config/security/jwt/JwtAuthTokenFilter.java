@@ -11,6 +11,7 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * This is a filter base class used to guarantee a single execution per request dispatch.
+ * This filter handles JWT token authentication for non-API endpoints when using local JWT.
+ * When Keycloak is enabled, API endpoints (/api/**) are handled by Keycloak's BearerTokenAuthenticationFilter.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -31,6 +34,21 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
   private final JwtService jwtService;
   private final EncryptionService encryptionService;
   private final UserDetailsService userDetailsService;
+
+  @Value("${keycloak.enabled:true}")
+  private boolean keycloakEnabled;
+
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    // Skip this filter for API endpoints when Keycloak is enabled
+    // Keycloak's BearerTokenAuthenticationFilter handles API JWT authentication
+    String path = request.getRequestURI();
+    if (keycloakEnabled && path.startsWith("/api/")) {
+      LOG.debug("Skipping JwtAuthTokenFilter for API endpoint: {} (Keycloak handles JWT)", path);
+      return true;
+    }
+    return false;
+  }
 
   @Override
   protected void doFilterInternal(
@@ -48,13 +66,17 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
     }
 
     if (StringUtils.isNotBlank(jwt)) {
-      var accessToken = encryptionService.decrypt(jwt);
+      try {
+        var accessToken = encryptionService.decrypt(jwt);
 
-      if (StringUtils.isNotBlank(accessToken) && jwtService.isValidJwtToken(accessToken)) {
-
-        var username = jwtService.getUsernameFromToken(accessToken);
-        var userDetails = userDetailsService.loadUserByUsername(username);
-        SecurityUtils.authenticateUser(request, userDetails);
+        if (StringUtils.isNotBlank(accessToken) && jwtService.isValidJwtToken(accessToken)) {
+          var username = jwtService.getUsernameFromToken(accessToken);
+          var userDetails = userDetailsService.loadUserByUsername(username);
+          SecurityUtils.authenticateUser(request, userDetails);
+        }
+      } catch (Exception e) {
+        // Log and continue - token might be a Keycloak JWT that shouldn't be decrypted
+        LOG.debug("Failed to process JWT token: {}", e.getMessage());
       }
     }
     filterChain.doFilter(request, response);

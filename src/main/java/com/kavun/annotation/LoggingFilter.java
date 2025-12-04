@@ -182,8 +182,9 @@ public class LoggingFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.isAuthenticated()
         && !"anonymousUser".equals(authentication.getPrincipal())) {
-      // immutable user object (username can be changed but publicId cannot)
-      return SecurityUtils.getAuthenticatedUserDetails().getPublicId();
+      // Use the new method that supports both UserDetailsBuilder and JWT
+      String publicId = SecurityUtils.getAuthenticatedPublicId();
+      return publicId != null ? publicId : "system";
     }
     return "system";
   }
@@ -193,7 +194,9 @@ public class LoggingFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.isAuthenticated()
         && !"anonymousUser".equals(authentication.getPrincipal())) {
-      return SecurityUtils.getAuthenticatedUserDetails().getUsername();
+      // Use the new method that supports both UserDetailsBuilder and JWT
+      String username = SecurityUtils.getAuthenticatedUsername();
+      return username != null ? username : "system";
     }
     return "system";
   }

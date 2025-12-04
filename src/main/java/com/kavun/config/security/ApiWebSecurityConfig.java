@@ -7,6 +7,7 @@ import com.kavun.config.security.jwt.JwtAuthenticationEntryPoint;
 import com.kavun.constant.AdminConstants;
 import com.kavun.constant.SecurityConstants;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -21,13 +22,18 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * This configuration handles api web requests with stateless session.
+ * DEPRECATED: This configuration is disabled when Keycloak is enabled.
+ * Use KeycloakSecurityConfig instead for OAuth2 Resource Server configuration.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
+ * @deprecated Use {@link KeycloakSecurityConfig} when Keycloak is enabled
  */
+@Deprecated
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
 public class ApiWebSecurityConfig {
 
   private final JwtAuthTokenFilter jwtAuthTokenFilter;

@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -53,15 +54,20 @@ import org.springframework.security.core.context.SecurityContext;
  * to SecurityContextHolder then Generate JWT token, then return JWT to a
  * client.
  *
+ * <p><b>Note:</b> This controller is only active when {@code keycloak.enabled=false}.
+ * When Keycloak is enabled, use {@link KeycloakAuthRestApi} instead.</p>
+ *
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
+ * @see KeycloakAuthRestApi
  */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(SecurityConstants.API_V1_AUTH_ROOT_URL)
-@Tag(name = "01. Authentication", description = "APIs for user authentication and authorization")
+@Tag(name = "01. Authentication", description = "APIs for user authentication (Local JWT mode)")
+@ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
 public class AuthRestApi {
 
   @Value("${access-token-expiration-in-minutes}")

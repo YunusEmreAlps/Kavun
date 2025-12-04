@@ -34,4 +34,10 @@ public final class SignUpRequest {
   @NotBlank(message = UserConstants.BLANK_PASSWORD)
   @Size(min = 4, max = 15, message = UserConstants.PASSWORD_SIZE)
   private String password;
+
+  @Size(max = 50)
+  private String firstName;
+
+  @Size(max = 50)
+  private String lastName;
 }

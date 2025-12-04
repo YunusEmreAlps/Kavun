@@ -7,6 +7,8 @@ import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.UserUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AccountExpiredException;
@@ -17,8 +19,11 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
@@ -132,14 +137,136 @@ public final class SecurityUtils {
 
   /**
    * Returns the user details from the authenticated object if authenticated.
+   * Supports both UserDetailsBuilder (form login) and Jwt (Keycloak OAuth2).
    *
-   * @return the user details
+   * @return the user details or null if not authenticated or using JWT
    */
   public static UserDetailsBuilder getAuthenticatedUserDetails() {
     if (isAuthenticated()) {
-      return (UserDetailsBuilder) getAuthentication().getPrincipal();
+      Object principal = getAuthentication().getPrincipal();
+      if (principal instanceof UserDetailsBuilder) {
+        return (UserDetailsBuilder) principal;
+      }
+      // For JWT authentication, return null - use getJwtPrincipal() instead
+      return null;
     }
     return null;
+  }
+
+  /**
+   * Returns the JWT from the authenticated object if using Keycloak/OAuth2.
+   *
+   * @return the JWT or null if not using JWT authentication
+   */
+  public static Jwt getJwtPrincipal() {
+    if (isAuthenticated()) {
+      Object principal = getAuthentication().getPrincipal();
+      if (principal instanceof Jwt) {
+        return (Jwt) principal;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Checks if the current authentication is JWT-based (Keycloak).
+   *
+   * @return true if using JWT authentication
+   */
+  public static boolean isJwtAuthentication() {
+    return getAuthentication() instanceof JwtAuthenticationToken;
+  }
+
+  /**
+   * Gets the username from either UserDetailsBuilder or JWT.
+   *
+   * @return the username or null if not authenticated
+   */
+  public static String getAuthenticatedUsername() {
+    if (!isAuthenticated()) {
+      return null;
+    }
+
+    Object principal = getAuthentication().getPrincipal();
+    if (principal instanceof UserDetailsBuilder userDetails) {
+      return userDetails.getUsername();
+    } else if (principal instanceof Jwt jwt) {
+      return jwt.getClaimAsString("preferred_username");
+    } else if (principal instanceof String) {
+      return (String) principal;
+    }
+    return null;
+  }
+
+  /**
+   * Gets the user's public ID from either UserDetailsBuilder or JWT (sub claim).
+   *
+   * @return the public ID or null if not authenticated
+   */
+  public static String getAuthenticatedPublicId() {
+    if (!isAuthenticated()) {
+      return null;
+    }
+
+    Object principal = getAuthentication().getPrincipal();
+    if (principal instanceof UserDetailsBuilder userDetails) {
+      return userDetails.getPublicId();
+    } else if (principal instanceof Jwt jwt) {
+      return jwt.getSubject(); // Keycloak user ID
+    }
+    return null;
+  }
+
+  /**
+   * Gets the user's email from either UserDetailsBuilder or JWT.
+   *
+   * @return the email or null if not authenticated
+   */
+  public static String getAuthenticatedEmail() {
+    if (!isAuthenticated()) {
+      return null;
+    }
+
+    Object principal = getAuthentication().getPrincipal();
+    if (principal instanceof UserDetailsBuilder userDetails) {
+      return userDetails.getEmail();
+    } else if (principal instanceof Jwt jwt) {
+      return jwt.getClaimAsString("email");
+    }
+    return null;
+  }
+
+  /**
+   * Gets the authorities/roles from either UserDetailsBuilder or JWT.
+   *
+   * @return the collection of granted authorities
+   */
+  public static Collection<? extends GrantedAuthority> getAuthenticatedAuthorities() {
+    if (!isAuthenticated()) {
+      return List.of();
+    }
+
+    Authentication auth = getAuthentication();
+    if (auth.getAuthorities() != null) {
+      return auth.getAuthorities();
+    }
+    return List.of();
+  }
+
+  /**
+   * Checks if the authenticated user has a specific role.
+   *
+   * @param role the role to check (with or without ROLE_ prefix)
+   * @return true if the user has the role
+   */
+  public static boolean hasRole(String role) {
+    if (!isAuthenticated()) {
+      return false;
+    }
+
+    String roleToCheck = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+    return getAuthenticatedAuthorities().stream()
+        .anyMatch(auth -> auth.getAuthority().equals(roleToCheck));
   }
 
   /**

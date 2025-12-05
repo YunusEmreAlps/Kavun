@@ -13,10 +13,11 @@ import com.kavun.enums.OperationStatus;
 import com.kavun.enums.TokenType;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
+import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
 import com.kavun.web.payload.request.LoginRequest;
 import com.kavun.web.payload.request.ResetPasswordRequest;
-import com.kavun.web.payload.response.JwtResponseBuilder;
+import com.kavun.web.payload.response.AuthResponse;
 import com.kavun.web.payload.response.LogoutResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -90,7 +91,7 @@ public class AuthRestApi {
   @Loggable
   @SecurityRequirements
   @PostMapping(value = SecurityConstants.LOGIN)
-  public ResponseEntity<JwtResponseBuilder> authenticateUser(
+  public ResponseEntity<AuthResponse> authenticateUser(
       @CookieValue(required = false) String refreshToken,
       @Valid @RequestBody LoginRequest loginRequest) {
 
@@ -106,9 +107,12 @@ public class AuthRestApi {
     String newAccessToken = updateCookies(username, isRefreshTokenValid, responseHeaders);
     String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
 
+    // Convert expiration to seconds for OAuth2 compliance
+    long expiresInSeconds = (long) accessTokenExpirationInMinutes * 60;
+
     return ResponseEntity.ok()
         .headers(responseHeaders)
-        .body(JwtResponseBuilder.buildJwtResponse(encryptedAccessToken));
+        .body(AuthResponse.of(encryptedAccessToken, expiresInSeconds, null, null));
   }
 
   /**
@@ -190,7 +194,7 @@ public class AuthRestApi {
   @Loggable
   @SecurityRequirements
   @GetMapping(value = SecurityConstants.REFRESH_TOKEN)
-  public ResponseEntity<JwtResponseBuilder> refreshToken(
+  public ResponseEntity<AuthResponse> refreshToken(
       @CookieValue String refreshToken, HttpServletRequest request) {
 
     var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
@@ -209,7 +213,11 @@ public class AuthRestApi {
     var newAccessToken = jwtService.generateJwtToken(username, expiration);
     var encryptedAccessToken = encryptionService.encrypt(newAccessToken);
 
-    return ResponseEntity.ok(JwtResponseBuilder.buildJwtResponse(encryptedAccessToken));
+    // Cast to UserDetailsBuilder for AuthResponse
+    var userDetailsBuilder = (UserDetailsBuilder) userDetails;
+
+    return ResponseEntity.ok(
+        AuthResponse.of(encryptedAccessToken, accessTokenExpirationInMinutes * 60L, null, userDetailsBuilder));
   }
 
   /**

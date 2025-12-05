@@ -53,14 +53,21 @@ public class DatabaseSeeder implements CommandLineRunner {
   }
 
   private void persistDefaultAdminUser() {
+    // Check if admin user already exists
+    if (userService.existsByUsername(adminUsername)) {
+      LOG.warn("Admin user already exists with username: {}", adminUsername);
+      return;
+    }
+
     try {
       var adminDto = UserUtils.createUserDto(adminUsername, adminPassword, adminEmail, true);
       LOG.info("Creating default admin user with username: {}", adminUsername);
       Set<RoleType> adminRoleType = Collections.singleton(RoleType.ROLE_ADMIN);
 
       userService.createUser(adminDto, adminRoleType);
+      LOG.info("Default admin user created successfully");
     } catch (UserAlreadyExistsException e) {
-      LOG.warn("Admin user already exists!");
+      LOG.warn("Admin user already exists: {}", e.getMessage());
     }
   }
 }

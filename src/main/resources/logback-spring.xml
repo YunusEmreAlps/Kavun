@@ -113,13 +113,21 @@
 
 	<!-- Appender for syslog, active under specified profiles -->
 	<springProfile name="development | test | production | docker">
-		<appender name="SYSLOG" class="ch.qos.logback.classic.net.SyslogAppender">
+		<appender name="SYSLOG_AUDIT" class="ch.qos.logback.classic.net.SyslogAppender">
 			<syslogHost>${SYSLOG_HOST}</syslogHost>
 			<port>${SYSLOG_PORT}</port>
 			<facility>${SYSLOG_FACILITY}</facility>
 			<protocol>${SYSLOG_PROTOCOL}</protocol>
 			<localHostName> ${APP_NAME} </localHostName>
 			<suffixPattern>${AUDIT_LOG_PATTERN}</suffixPattern>
+		</appender>
+		<appender name="SYSLOG_ACCESS" class="ch.qos.logback.classic.net.SyslogAppender">
+			<syslogHost>${SYSLOG_HOST}</syslogHost>
+			<port>${SYSLOG_PORT}</port>
+			<facility>${SYSLOG_FACILITY}</facility>
+			<protocol>${SYSLOG_PROTOCOL}</protocol>
+			<localHostName> ${APP_NAME} </localHostName>
+			<suffixPattern>${ACCESS_LOG_PATTERN}</suffixPattern>
 		</appender>
 	</springProfile>
 
@@ -128,7 +136,7 @@
 		<appender-ref ref="ACCESS_CONSOLE" />
 		<appender-ref ref="WEB_ACCESS_FILE" />
 		<springProfile name="production | docker">
-			<appender-ref ref="SYSLOG" />
+			<appender-ref ref="SYSLOG_ACCESS" />
 		</springProfile>
 	</logger>
 
@@ -137,7 +145,7 @@
 		<appender-ref ref="AUDIT_CONSOLE" />
 		<appender-ref ref="ASYNC_AUDIT_FILE" />
 		<springProfile name="production | docker">
-			<appender-ref ref="SYSLOG" />
+			<appender-ref ref="SYSLOG_AUDIT" />
 		</springProfile>
 	</logger>
 

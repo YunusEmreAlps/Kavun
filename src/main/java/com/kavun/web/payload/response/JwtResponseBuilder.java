@@ -19,9 +19,12 @@ import org.springframework.security.core.GrantedAuthority;
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
+ * @deprecated Use {@link AuthResponse} instead. This class does not follow OAuth2 standards.
+ *             Will be removed in a future version.
  */
 @Data
 @Builder
+@Deprecated(since = "1.1", forRemoval = true)
 public class JwtResponseBuilder implements Serializable {
   @Serial private static final long serialVersionUID = -3625429150594757621L;
 

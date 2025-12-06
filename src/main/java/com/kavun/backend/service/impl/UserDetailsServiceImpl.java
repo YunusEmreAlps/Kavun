@@ -46,18 +46,21 @@ class UserDetailsServiceImpl implements UserDetailsService {
   @Cacheable(key = "{ #root.methodName, #usernameOrEmail }", value = CacheConstants.USER_DETAILS)
   public UserDetails loadUserByUsername(final String usernameOrEmail) {
     // Ensure that usernameOrEmail is not empty or null.
-    if (StringUtils.isNotBlank(usernameOrEmail)) {
-      var storedUser =
-          UserUtils.isEmail(usernameOrEmail)
-              ? userRepository.findByEmail(usernameOrEmail)
-              : userRepository.findByUsername(usernameOrEmail);
-      if (Objects.isNull(storedUser)) {
-        LOG.warn("No record found for storedUser with usernameOrEmail {}", usernameOrEmail);
-        throw new UsernameNotFoundException(
-            "User with usernameOrEmail " + usernameOrEmail + " not found");
-      }
-      return UserDetailsBuilder.buildUserDetails(storedUser);
+    if (StringUtils.isBlank(usernameOrEmail)) {
+      throw new UsernameNotFoundException("Username or email cannot be blank");
     }
-    return null;
+
+    var storedUser =
+        UserUtils.isEmail(usernameOrEmail)
+            ? userRepository.findByEmail(usernameOrEmail)
+            : userRepository.findByUsername(usernameOrEmail);
+
+    if (Objects.isNull(storedUser)) {
+      LOG.warn("No record found for storedUser with usernameOrEmail {}", usernameOrEmail);
+      throw new UsernameNotFoundException(
+          "User with usernameOrEmail " + usernameOrEmail + " not found");
+    }
+
+    return UserDetailsBuilder.buildUserDetails(storedUser);
   }
 }

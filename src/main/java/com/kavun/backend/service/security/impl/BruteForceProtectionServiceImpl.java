@@ -12,9 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -30,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BruteForceProtectionServiceImpl implements BruteForceProtectionService {
 
@@ -42,12 +39,11 @@ public class BruteForceProtectionServiceImpl implements BruteForceProtectionServ
 
   private final UserRepository userRepository;
 
-  private final Map<String, FailedLogin> cache;
+  private Map<String, FailedLogin> cache;
 
-  @Autowired
   public BruteForceProtectionServiceImpl(UserRepository userRepository) {
     this.userRepository = userRepository;
-    this.cache = new ConcurrentHashMap<>(cacheMaxLimit); // setting max limit for cache
+    this.cache = new ConcurrentHashMap<>();
   }
 
   @Override

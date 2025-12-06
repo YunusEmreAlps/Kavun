@@ -74,7 +74,7 @@ public final class UserDetailsBuilder implements UserDetails {
         .password(user.getPassword())
         .firstName(user.getFirstName())
         .lastName(user.getLastName())
-        .publicId(user.getPublicId())
+        .phone(user.getPhone())
         .enabled(user.isEnabled())
         .failedLoginAttempts(user.getFailedLoginAttempts())
         .lastSuccessfulLogin(user.getLastSuccessfulLogin())

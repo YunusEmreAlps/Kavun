@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.converters.models.PageableAsQueryParam;
@@ -166,7 +165,7 @@ public class UserRestApi {
       @RequestParam String oldPassword, @RequestParam String newPassword) {
 
     var userDetails = SecurityUtils.getAuthenticatedUserDetails();
-    if (Objects.isNull(userDetails)) {
+    if (userDetails == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
           .body(ErrorConstants.UNAUTHORIZED_ACCESS);
     }
@@ -189,8 +188,7 @@ public class UserRestApi {
   public ResponseEntity<OperationStatus> enableUser(@PathVariable String publicId) {
     var userDto = userService.enableUser(publicId);
 
-    return ResponseEntity.ok(
-        Objects.isNull(userDto) ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
+    return ResponseEntity.ok(userDto == null ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
   }
 
   /**
@@ -205,8 +203,7 @@ public class UserRestApi {
   public ResponseEntity<OperationStatus> disableUser(@PathVariable String publicId) {
     var userDto = userService.disableUser(publicId);
 
-    return ResponseEntity.ok(
-        Objects.isNull(userDto) ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
+    return ResponseEntity.ok(userDto == null ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
   }
 
 }

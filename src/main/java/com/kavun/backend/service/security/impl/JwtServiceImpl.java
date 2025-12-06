@@ -36,6 +36,7 @@ public class JwtServiceImpl implements JwtService {
 
   private static final String TOKEN_CREATED_SUCCESS = "Token successfully created as {}";
   private static final int NUMBER_OF_DAYS_TO_EXPIRE = 1;
+  private static final int BEARER_TOKEN_INDEX = 1;
   private final transient String jwtSecret;
 
   public JwtServiceImpl(@Value("${jwt.secret}") String jwtSecret) {
@@ -148,7 +149,7 @@ public class JwtServiceImpl implements JwtService {
 
     if (StringUtils.isNotBlank(headerAuth)
         && headerAuth.startsWith(SecurityConstants.BEARER_PREFIX)) {
-      return headerAuth.split(StringUtils.SPACE)[NUMBER_OF_DAYS_TO_EXPIRE];
+      return headerAuth.split(StringUtils.SPACE)[BEARER_TOKEN_INDEX];
     }
     return null;
   }

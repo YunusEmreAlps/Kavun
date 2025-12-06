@@ -35,7 +35,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -45,8 +44,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 
 /**
  * This class attempt to authenticate with AuthenticationManager bean, add an
@@ -346,70 +343,61 @@ public class AuthRestApi {
   public ResponseEntity<String> forgotPassword(
       @Valid @RequestBody ForgotPasswordRequest request) {
 
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    // Process async for security (prevent timing attacks)
+    CompletableFuture.runAsync(() -> processForgotPassword(request));
 
-    // Make async only the non-critical operations
-    CompletableFuture.runAsync(() -> {
-      try {
-        boolean isValid = true;
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-
-        // Primary: Try email if provided
-        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
-          if (userService.findByEmail(request.getEmail().trim().toLowerCase()) != null) {
-            LOG.debug("User found by email for password reset");
-            isValid = false;
-          }
-        }
-
-        // Secondary: Try username if provided and email didn't work
-        if (request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
-          if (userService.findByUsername(request.getUsername().trim().toLowerCase()) != null) {
-            LOG.debug("User found by username for password reset");
-            isValid = false;
-          }
-        }
-
-        if (isValid) {
-          LOG.debug("User not found for password reset");
-        } else {
-          UserDto user = userService.findByEmail(request.getEmail());
-          if (user == null || user.getEmail() == null) {
-            // Return success response even if user doesn't exist (security best practice)
-            LOG.warn("Password reset requested for non-existent email: {}", request.getEmail());
-          }
-
-          // Generate new password for existing user
-          String newPassword = userService.generateSecureTemporaryPassword();
-
-          // Update user's password in database
-          Boolean passwordUpdated = userService.updatePasswordDirectly(user.getPublicId(), newPassword);
-
-          if (!passwordUpdated) {
-            LOG.error("Failed to update password for user: {}", request.getEmail());
-          }
-
-          // TODO: Add template
-          // Send new password via email asynchronously
-          // emailService.sendAccountVerificationEmail(user, newPassword);
-
-          LOG.info("New password generated and email sent for user: {}", request.getEmail());
-        }
-      } catch (Exception e) {
-        LOG.error("Error processing forgot password request for email: {}", request.getEmail(), e);
-      }
-    }).whenComplete((result, throwable) -> {
-      if (throwable != null) {
-        LOG.error("Failed to process forgot password request", throwable);
-      } else {
-        LOG.info("Forgot password process completed successfully");
-      }
-    });
-
+    // Always return success to prevent user enumeration
     return buildSuccessResponse();
+  }
+
+  /**
+   * Process forgot password request asynchronously.
+   */
+  private void processForgotPassword(ForgotPasswordRequest request) {
+    try {
+      UserDto user = findUserByEmailOrUsername(request);
+
+      if (user == null) {
+        LOG.debug("Password reset requested for non-existent user");
+        return;
+      }
+
+      String newPassword = userService.generateSecureTemporaryPassword();
+      Boolean passwordUpdated = userService.updatePasswordDirectly(user.getPublicId(), newPassword);
+
+      if (!passwordUpdated) {
+        LOG.error("Failed to update password for user: {}", user.getEmail());
+        return;
+      }
+
+      // TODO: Send new password via email
+      // emailService.sendPasswordResetEmail(user, newPassword);
+
+      LOG.info("Password reset completed for user: {}", user.getEmail());
+    } catch (Exception e) {
+      LOG.error("Error processing forgot password request", e);
+    }
+  }
+
+  /**
+   * Find user by email or username from the request.
+   */
+  private UserDto findUserByEmailOrUsername(ForgotPasswordRequest request) {
+    String email = request.getEmail();
+    String username = request.getUsername();
+
+    if (email != null && !email.isBlank()) {
+      UserDto user = userService.findByEmail(email.trim().toLowerCase());
+      if (user != null) {
+        return user;
+      }
+    }
+
+    if (username != null && !username.isBlank()) {
+      return userService.findByUsername(username.trim().toLowerCase());
+    }
+
+    return null;
   }
 
   /**

@@ -30,7 +30,6 @@ import org.apache.commons.lang3.Validate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.datatables.mapping.DataTablesInput;
@@ -501,7 +500,7 @@ public class UserServiceImpl implements UserService {
   @Override
   public @NonNull String generateSecureTemporaryPassword() {
     String tempPassword = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-    LOG.info("Generated temporary password: {}", tempPassword);
+    LOG.debug("Temporary password generated for user");
     return tempPassword;
   }
 

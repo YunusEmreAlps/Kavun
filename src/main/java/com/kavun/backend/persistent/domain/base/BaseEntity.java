@@ -25,6 +25,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.kavun.constant.base.BaseConstants;
+import com.kavun.shared.util.core.SecurityUtils;
 
 /**
  * BaseEntity class allows an entity to inherit common properties from it.
@@ -110,6 +111,11 @@ public abstract class BaseEntity<T extends Serializable> {
   protected void onDelete() {
     deleted = true;
     deletedAt = LocalDateTime.now();
-    deletedBy = new ApplicationAuditorAware().getCurrentAuditor().orElse("system");
+    var authentication = SecurityUtils.getAuthentication();
+    if (SecurityUtils.isAuthenticated(authentication)) {
+      deletedBy = authentication.getName();
+    } else {
+      deletedBy = "system";
+    }
   }
 }

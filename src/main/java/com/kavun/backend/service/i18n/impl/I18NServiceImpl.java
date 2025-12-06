@@ -2,7 +2,6 @@ package com.kavun.backend.service.i18n.impl;
 
 import com.kavun.backend.service.i18n.I18NService;
 import java.util.Locale;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -25,7 +24,6 @@ public class I18NServiceImpl implements I18NService {
    *
    * @param messageSource the source.
    */
-  @Autowired
   public I18NServiceImpl(final MessageSource messageSource) {
     this.source = messageSource;
   }

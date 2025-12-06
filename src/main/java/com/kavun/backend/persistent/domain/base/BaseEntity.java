@@ -8,7 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreRemove;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
 import java.io.Serializable;

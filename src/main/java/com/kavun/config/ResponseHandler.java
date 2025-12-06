@@ -3,12 +3,14 @@ package com.kavun.config;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.LinkedHashMap;
+
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -31,12 +33,21 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 @RestControllerAdvice
 @Order(10)
 public class ResponseHandler implements ResponseBodyAdvice<Object> {
+
     private static final String DEFAULT_PATH = "";
-    private static final String NOT_FOUND_MESSAGE = "Resource not found";
+
+    /** Swagger/OpenAPI path prefixes to exclude from response wrapping. */
+    private static final String[] EXCLUDED_PATH_PREFIXES = {
+        "/v3/api-docs", "/swagger", "/swagger-ui", "/actuator"
+    };
+
+    /** Swagger/OpenAPI path patterns to exclude from response wrapping. */
+    private static final String[] EXCLUDED_PATH_PATTERNS = {"/api-docs"};
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-        return converterType.isAssignableFrom(MappingJackson2HttpMessageConverter.class);
+        // Support all converters - we'll filter by content type in beforeBodyWrite
+        return true;
     }
 
     @Override
@@ -51,30 +62,26 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
             return body;
         }
 
-        // Only wrap JSON responses and skip byte arrays
-        if (!MediaType.APPLICATION_JSON.includes(selectedContentType) || body instanceof byte[]) {
+        // Only wrap JSON-like responses (application/json, application/hal+json, etc.)
+        if (!isJsonMediaType(selectedContentType)) {
             return body;
         }
 
-        // If it's already an ApiResponse, skip wrapping
-        if (body instanceof ApiResponse<?>) {
+        // Skip types that should not be wrapped
+        if (shouldSkipWrapping(body)) {
             return body;
         }
 
-        // Handle regular responses
-        HttpStatus status = getHttpStatus(response);
-
-        if (body == null) {
-            return ApiResponse.error(
-                    status.is2xxSuccessful() ? ResponseCode.NOT_FOUND : ResponseCode.INTERNAL_ERROR,
-                    NOT_FOUND_MESSAGE,
-                    path);
+        // Safely wrap response in try-catch to prevent errors for unexpected types
+        try {
+            HttpStatus status = getHttpStatus(response);
+            ResponseCode responseCode = determineResponseCode(returnType, status);
+            Object data = (body != null) ? body : new LinkedHashMap<>();
+            return ApiResponse.success(responseCode, data, path);
+        } catch (Exception e) {
+            LOG.warn("Failed to wrap response, returning original body: {}", e.getMessage());
+            return body;
         }
-
-        // Generate appropriate response code
-        ResponseCode responseCode = determineResponseCode(returnType, status);
-
-        return ApiResponse.success(responseCode, body, path);
     }
 
     /**
@@ -133,15 +140,44 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
         return uri != null ? uri : DEFAULT_PATH;
     }
 
+    /**
+     * Checks if the media type is JSON-compatible.
+     */
+    private boolean isJsonMediaType(MediaType mediaType) {
+        if (mediaType == null) {
+            return false;
+        }
+        return mediaType.includes(MediaType.APPLICATION_JSON)
+                || "json".equalsIgnoreCase(mediaType.getSubtype())
+                || mediaType.getSubtype().endsWith("+json");
+    }
+
+    /**
+     * Determines if the response body should skip wrapping.
+     */
+    private boolean shouldSkipWrapping(Object body) {
+        return body instanceof byte[]
+                || body instanceof String
+                || body instanceof ApiResponse<?>;
+    }
+
     private boolean isSwaggerPath(String path) {
-        if (path == null || path.trim().isEmpty()) {
+        if (path == null || path.isBlank()) {
             return false;
         }
 
-        return path.startsWith("/v3/api-docs") ||
-                path.startsWith("/swagger") ||
-                path.startsWith("/swagger-ui") ||
-                path.startsWith("/actuator") ||
-                path.contains("/api-docs");
+        for (String prefix : EXCLUDED_PATH_PREFIXES) {
+            if (path.startsWith(prefix)) {
+                return true;
+            }
+        }
+
+        for (String pattern : EXCLUDED_PATH_PATTERNS) {
+            if (path.contains(pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

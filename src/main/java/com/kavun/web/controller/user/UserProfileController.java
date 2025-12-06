@@ -98,7 +98,7 @@ public class UserProfileController {
     }
 
     UserUtils.enableUser(user);
-    user.setId(userDetails.getId());
+    user.setPublicId(userDetails.getPublicId());
     userService.updateUser(user, UserHistoryType.PROFILE_UPDATE);
 
     // Authenticate user with the updated profile.

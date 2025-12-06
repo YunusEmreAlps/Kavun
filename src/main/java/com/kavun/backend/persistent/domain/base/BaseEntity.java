@@ -40,13 +40,13 @@ import com.kavun.shared.util.core.SecurityUtils;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity<T extends Serializable> {
-
-  private static final String SEQUENCE_NAME = "kavun_sequence";
-  private static final String SEQUENCE_GENERATOR_NAME = "kavun_sequence_generator";
+  // private static final String SEQUENCE_NAME = "kavun_sequence";
+  // private static final String SEQUENCE_GENERATOR_NAME = "kavun_sequence_generator";
 
   @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = SEQUENCE_GENERATOR_NAME)
-  @SequenceGenerator(name = SEQUENCE_GENERATOR_NAME, sequenceName = SEQUENCE_NAME, allocationSize = 1)
+  // @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = SEQUENCE_GENERATOR_NAME)
+  // @SequenceGenerator(name = SEQUENCE_GENERATOR_NAME, sequenceName = SEQUENCE_NAME, allocationSize = 1)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   private T id;
 
   @Column(unique = true, nullable = false, updatable = false)

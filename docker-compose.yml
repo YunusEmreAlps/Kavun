@@ -1,18 +1,19 @@
 services:
-  # Postgres Database
   postgres-db:
-    image: postgres:alpine
-    restart: always
+    image: postgres:16-alpine
+    container_name: kavun-postgres
+    restart: unless-stopped
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_DB: kavun
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-kavun}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-kavun}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,82 +72,125 @@ services:
   # Kavun service
   # kavun:
   #   image: 23yea193/kavun
+  #   container_name: kavun-app
   #   build:
   #     context: .
   #     dockerfile: Dockerfile
   #   ports:
   #     - '8080:8080'
-  #   restart: always
+  #   restart: unless-stopped
   #   depends_on:
-  #     - postgres-db
+  #     postgres-db:
+  #       condition: service_healthy
   #   environment:
-  #     - SPRING_PROFILES_ACTIVE=docker
-  #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/kavun
-  #     - SPRING_DATASOURCE_USERNAME=postgres
-  #     - SPRING_DATASOURCE_PASSWORD=postgres
-  #     - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+  #     SPRING_PROFILES_ACTIVE: docker
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/${POSTGRES_DB:-kavun}
+  #     SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+  #     SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
   #   healthcheck:
-  #     test: "curl --fail --silent localhost:8080/actuator/health | grep UP || exit 1"
-  #     interval: 20s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 40s
-  
-  # Grafana service
-  grafana:
-    image: grafana/grafana:latest
-    restart: always
-    ports:
-      - '3000:3000'
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-    volumes:
-      - ./grafana:/var/lib/grafana
+  #     test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+  #   networks:
+  #     - kavun-network
 
-  # Prometheus service
   prometheus:
     image: prom/prometheus:latest
-    restart: always
+    container_name: kavun-prometheus
+    restart: unless-stopped
     ports:
       - '9090:9090'
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus.rules.yml:/etc/prometheus/prometheus.rules.yml
-  
-  # PGExporter service
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.rules.yml:/etc/prometheus/prometheus.rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - kavun-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: kavun-grafana
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - kavun-network
+
   pgexporter:
-    image: wrouesnel/postgres_exporter:latest
-    restart: always
+    image: quay.io/prometheuscommunity/postgres-exporter:latest
+    container_name: kavun-pgexporter
+    restart: unless-stopped
     ports:
       - '9187:9187'
     environment:
-      DATA_SOURCE_NAME: postgres://postgres:postgres@postgres-db:5432/kavun
-  
-  # AlertManager service
+      DATA_SOURCE_URI: postgres-db:5432/${POSTGRES_DB:-kavun}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER:-postgres}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - kavun-network
+
   alertmanager:
     image: prom/alertmanager:latest
-    restart: always
+    container_name: kavun-alertmanager
+    restart: unless-stopped
     ports:
       - '9093:9093'
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/config.yml
+      - ./alertmanager.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager-data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
-  
-  # Syslog
+    networks:
+      - kavun-network
+
   syslog:
     image: balabit/syslog-ng:latest
-    container_name: syslog
+    container_name: kavun-syslog
+    restart: unless-stopped
     entrypoint: /usr/sbin/syslog-ng
-    command: "-F -edv"
+    command: ["-F", "-e", "-d"]
     ports:
-      - 514:514
-      - 601:601
-# Volumes
+      - '514:514/udp'
+      - '514:514/tcp'
+      - '601:601/tcp'
+    volumes:
+      - syslog-data:/var/log/syslog-ng
+    networks:
+      - kavun-network
+
+networks:
+  kavun-network:
+    driver: bridge
+
 volumes:
   postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  syslog-data:
     driver: local
   keycloak-postgres-data:
     driver: local

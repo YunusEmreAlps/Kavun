@@ -1,18 +1,29 @@
 package com.kavun.shared.dto;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 import com.kavun.constant.email.EmailConstants;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
+/**
+ * The EmailDto transfers email details from outside into the application and vice versa.
+ *
+ * @author Yunus Emre Alpu
+ * @version 1.0
+ * @since 1.0
+ */
 @Data
-@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
-public class EmailDto extends BaseDto implements Serializable {
+@SuperBuilder
+@NoArgsConstructor
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class EmailDto extends BaseDto {
+
   @Serial private static final long serialVersionUID = -6342630857637389028L;
 
   @Size(max = EmailConstants.TITLE_MAX_SIZE, message = EmailConstants.TITLE_SIZE)
@@ -26,6 +37,6 @@ public class EmailDto extends BaseDto implements Serializable {
   private String result;
   private String requestId;
 
-  private boolean isBodyHtml;
+  private boolean bodyHtml;
   private boolean status;
 }

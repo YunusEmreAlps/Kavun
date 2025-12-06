@@ -2,12 +2,14 @@ package com.kavun.shared.dto.mapper;
 
 import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
+import com.kavun.enums.OtpDeliveryMethod;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.web.payload.request.SignUpRequest;
 import com.kavun.web.payload.response.UserResponse;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
@@ -68,6 +70,7 @@ public interface UserDtoMapper {
    * @param userDto the userDto
    * @return the user
    */
+  @Mapping(target = "otpDeliveryMethod", source = "otpDeliveryMethod", qualifiedByName = "mapOtpDeliveryMethod")
   User toUser(UserDto userDto);
 
   /**
@@ -77,4 +80,15 @@ public interface UserDtoMapper {
    * @return the userResponse
    */
   UserResponse toUserResponse(User user);
+
+  /**
+   * Maps OTP delivery method, providing default value if null.
+   *
+   * @param otpDeliveryMethod the OTP delivery method from DTO
+   * @return the OTP delivery method or default EMAIL
+   */
+  @Named("mapOtpDeliveryMethod")
+  default String mapOtpDeliveryMethod(String otpDeliveryMethod) {
+    return otpDeliveryMethod != null ? otpDeliveryMethod : OtpDeliveryMethod.EMAIL.name();
+  }
 }

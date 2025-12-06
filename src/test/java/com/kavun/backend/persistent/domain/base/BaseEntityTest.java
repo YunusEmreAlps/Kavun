@@ -1,8 +1,8 @@
 package com.kavun.backend.persistent.domain.base;
 
-import com.kavun.TestUtils;
 import com.jparams.verifier.tostring.NameStyle;
 import com.jparams.verifier.tostring.ToStringVerifier;
+import com.kavun.TestUtils;
 import java.io.Serializable;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -42,18 +42,18 @@ class BaseEntityTest {
 
   @Test
   void equalsContract() {
-    EqualsVerifier.forClass(BaseEntity.class)
+    EqualsVerifier.forClass(TestableBaseEntity.class)
         .withOnlyTheseFields(TestUtils.getBaseEqualsAndHashCodeFields().toArray(new String[0]))
         .verify();
   }
 
   @Test
   void testToString() {
-    ToStringVerifier.forClass(BaseEntity.class).withClassName(NameStyle.SIMPLE_NAME).verify();
+    ToStringVerifier.forClass(TestableBaseEntity.class).withClassName(NameStyle.SIMPLE_NAME).verify();
   }
 
   private <T extends Serializable> BaseEntity<T> createBaseEntity(T id) {
-    var baseEntity = new BaseEntity<T>();
+    var baseEntity = new TestableBaseEntity<T>();
     baseEntity.setId(id);
     baseEntity.setCreatedBy("system");
     baseEntity.setUpdatedBy(baseEntity.getCreatedBy());
@@ -62,5 +62,10 @@ class BaseEntityTest {
     baseEntity.setUpdatedAt(LocalDateTime.now(Clock.systemUTC()));
 
     return baseEntity;
+  }
+
+  /** Concrete implementation of BaseEntity for testing purposes. */
+  private static class TestableBaseEntity<T extends Serializable> extends BaseEntity<T> {
+    // No additional implementation needed
   }
 }

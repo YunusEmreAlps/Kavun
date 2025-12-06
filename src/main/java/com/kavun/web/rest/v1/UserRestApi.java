@@ -125,12 +125,12 @@ public class UserRestApi {
   @Loggable
   @PostMapping
   @SecurityRequirements
-  public ResponseEntity<String> createUser(@Valid @RequestBody SignUpRequest signUpRequest) {
+  public ResponseEntity<Object> createUser(@Valid @RequestBody SignUpRequest signUpRequest) {
     var userDto = UserUtils.convertToUserDto(signUpRequest);
 
     if (userService.existsByUsernameOrEmailAndEnabled(userDto.getUsername(), userDto.getEmail())) {
       LOG.warn(UserConstants.USERNAME_OR_EMAIL_EXISTS);
-      return ResponseEntity.badRequest().body(UserConstants.USERNAME_OR_EMAIL_EXISTS);
+      return ResponseEntity.badRequest().body(Map.of("error", UserConstants.USERNAME_OR_EMAIL_EXISTS));
     }
 
     var verificationToken = jwtService.generateJwtToken(userDto.getUsername());

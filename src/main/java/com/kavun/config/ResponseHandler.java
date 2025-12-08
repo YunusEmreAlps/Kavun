@@ -38,11 +38,11 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
 
     /** Swagger/OpenAPI path prefixes to exclude from response wrapping. */
     private static final String[] EXCLUDED_PATH_PREFIXES = {
-        "/v3/api-docs", "/swagger", "/swagger-ui", "/actuator"
+            "/v3/api-docs", "/swagger", "/swagger-ui", "/actuator"
     };
 
     /** Swagger/OpenAPI path patterns to exclude from response wrapping. */
-    private static final String[] EXCLUDED_PATH_PATTERNS = {"/api-docs"};
+    private static final String[] EXCLUDED_PATH_PATTERNS = { "/api-docs" };
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
@@ -88,8 +88,9 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
      * Determines the appropriate ResponseCode based on method name and HTTP status.
      */
     private ResponseCode determineResponseCode(MethodParameter returnType, HttpStatus status) {
+        // Handle non-2xx status codes based on HTTP status
         if (!status.is2xxSuccessful()) {
-            return ResponseCode.INTERNAL_ERROR;
+            return mapHttpStatusToResponseCode(status);
         }
 
         var method = returnType.getMethod();
@@ -113,6 +114,22 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
         }
 
         return ResponseCode.SUCCESS;
+    }
+
+    /**
+     * Maps HTTP status to appropriate ResponseCode for non-2xx responses.
+     */
+    private ResponseCode mapHttpStatusToResponseCode(HttpStatus status) {
+        return switch (status) {
+            case NOT_FOUND -> ResponseCode.NOT_FOUND;
+            case BAD_REQUEST -> ResponseCode.BAD_REQUEST;
+            case UNAUTHORIZED -> ResponseCode.UNAUTHORIZED;
+            case FORBIDDEN -> ResponseCode.FORBIDDEN;
+            case CONFLICT -> ResponseCode.CONFLICT;
+            case NO_CONTENT -> ResponseCode.NO_CONTENT;
+            case SERVICE_UNAVAILABLE -> ResponseCode.SERVICE_UNAVAILABLE;
+            default -> ResponseCode.INTERNAL_ERROR;
+        };
     }
 
     private HttpStatus getHttpStatus(ServerHttpResponse response) {

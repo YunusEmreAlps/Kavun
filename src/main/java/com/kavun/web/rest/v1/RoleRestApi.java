@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -63,7 +64,7 @@ public class RoleRestApi {
     @Loggable
     @PreAuthorize(AUTHORIZE)
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Role> getRoleById(Long id) {
+    public ResponseEntity<Role> getRoleById(@PathVariable Long id) {
         Role role = roleService.findById(id);
         if (role == null) {
             return ResponseEntity.notFound().build();
@@ -80,7 +81,7 @@ public class RoleRestApi {
     @Loggable
     @PreAuthorize(AUTHORIZE)
     @GetMapping(value = "/public/{publicId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Role> getRoleByPublicId(String publicId) {
+    public ResponseEntity<Role> getRoleByPublicId(@PathVariable String publicId) {
         Role role = roleService.findByPublicId(publicId);
         if (role == null) {
             return ResponseEntity.notFound().build();
@@ -97,7 +98,7 @@ public class RoleRestApi {
     @Loggable
     @PreAuthorize(AUTHORIZE)
     @GetMapping(value = "/name/{name}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Role> getRoleByName(String name) {
+    public ResponseEntity<Role> getRoleByName(@PathVariable String name) {
         Role role = roleService.findByName(name);
         if (role == null) {
             return ResponseEntity.notFound().build();

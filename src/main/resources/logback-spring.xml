@@ -12,16 +12,16 @@
 
 
 	<!-- System logs (simpler) -->
-	<property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | %-40.40logger{39} | %.-500msg%n" />
+	<property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | %X{correlationId:-} | %-40.40logger{39} | %.-500msg%n" />
 	
 	<!-- Audit/Application logs -->
-	<property name="AUDIT_LOG_PATTERN" value="${APP_NAME}-audit | %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | %-40.40logger{39} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %.-500replace(%msg){'[\r\n]+', ' '}%n" />
+	<property name="AUDIT_LOG_PATTERN" value="${APP_NAME}-audit | %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | correlationId=%X{correlationId:-N/A} | %-40.40logger{39} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | duration=%X{duration:-0}ms | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %.-500replace(%msg){'[\r\n]+', ' '}%n" />
 	
-	<!-- Web access logs (Apache Combined Log Format) -->
-	<property name="ACCESS_LOG_PATTERN" value="${APP_NAME}-access | %X{ip:-0.0.0.0} - %X{user:-} [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0} &quot;%X{referer:--}&quot; &quot;%X{userAgent:--}&quot;%n" />
+	<!-- Web access logs (Apache Combined Log Format with correlation ID and duration) -->
+	<property name="ACCESS_LOG_PATTERN" value="${APP_NAME}-access | %X{correlationId:-} | %X{ip:-0.0.0.0} - %X{user:-} [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0} %X{duration:-0}ms &quot;%X{referer:--}&quot; &quot;%X{userAgent:--}&quot;%n" />
 	
 	<!-- Elasticsearch JSON logs -->
-	<property name="JSON_PATTERN" value="{&quot;timestamp&quot;:&quot;%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}&quot;,&quot;level&quot;:&quot;%-5level&quot;,&quot;thread&quot;:&quot;%15.15thread&quot;,&quot;logger&quot;:&quot;%-40.40logger{39}&quot;,&quot;message&quot;:&quot;%.-500replace(%msg){'&quot;','\\&quot;'}&quot;,&quot;hostname&quot;:&quot;%X{hostname:-N/A}&quot;,&quot;ip&quot;:&quot;%X{ip:-N/A}&quot;,&quot;userIp&quot;:&quot;%X{userIp:-N/A}&quot;,&quot;user&quot;:&quot;%X{user:-N/A}&quot;,&quot;url&quot;:&quot;%X{url:-N/A}&quot;,&quot;action&quot;:&quot;%X{action:-N/A}&quot;}%n" />
+	<property name="JSON_PATTERN" value="{&quot;timestamp&quot;:&quot;%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}&quot;,&quot;level&quot;:&quot;%-5level&quot;,&quot;correlationId&quot;:&quot;%X{correlationId:-}&quot;,&quot;thread&quot;:&quot;%15.15thread&quot;,&quot;logger&quot;:&quot;%-40.40logger{39}&quot;,&quot;message&quot;:&quot;%.-500replace(%msg){'&quot;','\\&quot;'}&quot;,&quot;hostname&quot;:&quot;%X{hostname:-N/A}&quot;,&quot;ip&quot;:&quot;%X{ip:-N/A}&quot;,&quot;userIp&quot;:&quot;%X{userIp:-N/A}&quot;,&quot;user&quot;:&quot;%X{user:-N/A}&quot;,&quot;url&quot;:&quot;%X{url:-N/A}&quot;,&quot;action&quot;:&quot;%X{action:-N/A}&quot;,&quot;duration&quot;:%X{duration:-0}}%n" />
 		
 	<!-- Console Appenders -->
 	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

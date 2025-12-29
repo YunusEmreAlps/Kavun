@@ -2,69 +2,68 @@ package com.kavun.backend.persistent.domain.user;
 
 import com.kavun.backend.persistent.domain.base.BaseEntity;
 import com.kavun.enums.RoleType;
-import jakarta.persistence.Cacheable;
-import jakarta.persistence.Entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.SQLDelete;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
-/**
- * The role entity.
- *
- * @author Yunus Emre Alpu
- * @version 1.0
- * @since 1.0
- */
 @Entity
+@Table(uniqueConstraints = {
+    @UniqueConstraint(columnNames = "name")
+})
 @Getter
 @Setter
-@ToString
-@Cacheable
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(callSuper = true, onlyExplicitlyIncluded = true)
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+@SQLDelete(sql = "UPDATE roles SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 public class Role extends BaseEntity<Long> implements Serializable {
-  @Serial private static final long serialVersionUID = 7008351760784988067L;
 
-  // @Id private Integer id;
+  @Serial
+  private static final long serialVersionUID = 1L;
+
+  @Column(nullable = false, length = 100, unique = true)
+  @ToString.Include
   private String name;
+
+  @Column(length = 100)
+  private String label;
+
+  @Column(length = 500)
   private String description;
 
-  /**
-   * The Role class creates a role for the user.
-   *
-   * @param roleType assigns the role properties.
-   */
+  // System Role
+  @Column(name = "is_system_role", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+  private boolean systemRole;
+
   public Role(RoleType roleType) {
-    // this.id = roleType.getId();
-    this.name = roleType.getName();
+    this.name = roleType.name();
+    this.label = roleType.getLabel();
     this.description = roleType.getDescription();
+    this.systemRole = roleType.isSystemRole();
   }
 
-  /**
-   * Evaluate the equality of Role class.
-   *
-   * @param other is the object to use in equality test.
-   * @return the equality of both objects.
-   */
   @Override
-  public boolean equals(Object other) {
-    if (this == other) {
+  public boolean equals(Object o) {
+    if (this == o)
       return true;
-    }
-
-    return (other instanceof Role that) && Objects.equals(name, that.name);
+    if (!(o instanceof Role that))
+      return false;
+    return getId() != null && Objects.equals(getId(), that.getId());
   }
 
-  /**
-   * Hashcode of Role base on name.
-   *
-   * @return the hash value.
-   */
   @Override
   public int hashCode() {
-    return Objects.hash(name);
+    return Objects.hash(getId());
   }
 }

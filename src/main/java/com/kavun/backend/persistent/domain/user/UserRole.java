@@ -8,6 +8,7 @@ import jakarta.persistence.ManyToOne;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -43,6 +44,7 @@ public class UserRole extends BaseEntity<Long> implements Serializable {
    * @param role user for object instantiation.
    */
   public UserRole(User user, Role role) {
+    this.setPublicId(UUID.randomUUID().toString());
     this.user = user;
     this.role = role;
   }
@@ -64,7 +66,6 @@ public class UserRole extends BaseEntity<Long> implements Serializable {
     return Objects.hash(super.hashCode(), getUser(), getRole());
   }
 
-  @Override
   protected boolean canEqual(Object other) {
     return other instanceof UserRole;
   }

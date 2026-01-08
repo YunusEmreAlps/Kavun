@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -39,6 +40,7 @@ public class Role extends BaseEntity<Long> implements Serializable {
    */
   public Role(RoleType roleType) {
     // this.id = roleType.getId();
+    this.setPublicId(UUID.randomUUID().toString());
     this.name = roleType.getName();
     this.description = roleType.getDescription();
   }

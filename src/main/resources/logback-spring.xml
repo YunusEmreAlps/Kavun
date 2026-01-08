@@ -3,12 +3,12 @@
 	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
 	
 	<!-- Properties -->
-	<springProperty name="LOG_PATH" source="logging.file.path" defaultValue="logs" />
-	<springProperty name="SYSLOG_HOST" source="syslog.host" defaultValue="localhost" />
-	<springProperty name="SYSLOG_PORT" source="syslog.port" defaultValue="514" />
-	<springProperty name="SYSLOG_PROTOCOL" source="syslog.protocol" defaultValue="UDP" />
-	<springProperty name="SYSLOG_FACILITY" source="syslog.facility" defaultValue="LOCAL0" />
-	<springProperty name="APP_NAME" source="spring.application.name" defaultValue="kavun" />
+	<springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="logs" />
+	<springProperty scope="context" name="SYSLOG_HOST" source="syslog.host" defaultValue="localhost" />
+	<springProperty scope="context" name="SYSLOG_PORT" source="syslog.port" defaultValue="514" />
+	<springProperty scope="context" name="SYSLOG_PROTOCOL" source="syslog.protocol" defaultValue="UDP" />
+	<springProperty scope="context" name="SYSLOG_FACILITY" source="syslog.facility" defaultValue="LOCAL0" />
+	<springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="kavun" />
 
 
 	<!-- System logs (simpler) -->

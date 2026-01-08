@@ -6,14 +6,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreRemove;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotBlank;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -24,7 +21,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.kavun.constant.base.BaseConstants;
-import com.kavun.shared.util.core.SecurityUtils;
 
 /**
  * BaseEntity class allows an entity to inherit common properties from it.
@@ -61,7 +57,7 @@ public abstract class BaseEntity<T extends Serializable> {
 
   @CreatedBy
   @Column(nullable = false, updatable = false)
-  private String createdBy;
+  private Long createdBy;
 
   @LastModifiedDate
   @Column
@@ -69,13 +65,13 @@ public abstract class BaseEntity<T extends Serializable> {
 
   @LastModifiedBy
   @Column
-  private String updatedBy;
+  private Long updatedBy;
 
   @Column
   private LocalDateTime deletedAt;
 
   @Column
-  private String deletedBy;
+  private long deletedBy;
 
   @Column(nullable = false)
   private boolean deleted = false;
@@ -96,25 +92,5 @@ public abstract class BaseEntity<T extends Serializable> {
   @Override
   public int hashCode() {
     return Objects.hash(version, publicId);
-  }
-
-  @PrePersist
-  protected void onCreate() {
-    if (publicId == null) { // Avoid overwriting if set by subclass
-      publicId = UUID.randomUUID().toString();
-    }
-    version = 0;
-  }
-
-  @PreRemove
-  protected void onDelete() {
-    deleted = true;
-    deletedAt = LocalDateTime.now();
-    var authentication = SecurityUtils.getAuthentication();
-    if (SecurityUtils.isAuthenticated(authentication)) {
-      deletedBy = authentication.getName();
-    } else {
-      deletedBy = "system";
-    }
   }
 }

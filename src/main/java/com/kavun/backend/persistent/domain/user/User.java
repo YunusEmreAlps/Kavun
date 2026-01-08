@@ -98,7 +98,6 @@ public class User extends BaseEntity<Long> implements Serializable {
         && Objects.equals(getEmail(), user.getEmail());
   }
 
-  @Override
   protected boolean canEqual(Object other) {
     return other instanceof User;
   }

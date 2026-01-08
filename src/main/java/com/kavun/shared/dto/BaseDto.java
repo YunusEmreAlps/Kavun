@@ -3,6 +3,11 @@ package com.kavun.shared.dto;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.kavun.backend.serializer.UserInfoObjectSerializer;
+
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -44,20 +49,21 @@ public abstract class BaseDto implements Serializable {
   private LocalDateTime createdAt;
 
   /** Username of the creator. */
-  private String createdBy;
+  @JsonSerialize(using = UserInfoObjectSerializer.class)
+  private Long createdBy;
 
   /** Timestamp when the entity was last updated. */
   private LocalDateTime updatedAt;
 
   /** Username of the last updater. */
-  private String updatedBy;
+  @JsonSerialize(using = UserInfoObjectSerializer.class)
+  private Long updatedBy;
 
-  /**
-   * Checks if this DTO represents a new (unsaved) entity.
-   *
-   * @return true if publicId is null or blank
-   */
-  public boolean isNew() {
-    return publicId == null || publicId.isBlank();
-  }
+  @Builder.Default
+  private boolean deleted = false;
+
+  private LocalDateTime deletedAt;
+
+  @JsonSerialize(using = UserInfoObjectSerializer.class)
+  private Long deletedBy;
 }

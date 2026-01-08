@@ -1,6 +1,8 @@
 package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.shared.dto.UserInfoDto;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -8,6 +10,8 @@ import lombok.NonNull;
 import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.EntityGraph.EntityGraphType;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
 import org.springframework.stereotype.Repository;
@@ -109,4 +113,32 @@ public interface UserRepository
      * @return the user
      */
     User findByVerificationToken(String verificationToken);
+
+    /**
+     * Get user information by UUID for display purposes
+     */
+    @Query("""
+        SELECT new com.kavun.shared.dto.UserInfoDto(
+            u.id,
+            u.firstName,
+            u.lastName
+        )
+        FROM User u
+        WHERE u.id = :userId AND u.deleted = false
+        """)
+    Optional<UserInfoDto> findUserInfoById(@Param("userId") Long userId);
+
+    /**
+     * Get multiple user information by UUIDs for display purposes
+     */
+    @Query("""
+        SELECT new com.kavun.shared.dto.UserInfoDto(
+            u.id,
+            u.firstName,
+            u.lastName
+        )
+        FROM User u
+        WHERE u.id IN :userIds AND u.deleted = false
+        """)
+    List<UserInfoDto> findUserInfoByIds(@Param("userIds") List<Long> userIds);
 }

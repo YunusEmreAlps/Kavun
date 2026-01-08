@@ -13,6 +13,11 @@ import org.hibernate.annotations.SQLDelete;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(uniqueConstraints = {
@@ -47,8 +52,9 @@ public class Role extends BaseEntity<Long> implements Serializable {
   private boolean systemRole;
 
   public Role(RoleType roleType) {
-    this.name = roleType.name();
-    this.label = roleType.getLabel();
+    // this.id = roleType.getId();
+    this.setPublicId(UUID.randomUUID().toString());
+    this.name = roleType.getName();
     this.description = roleType.getDescription();
     this.systemRole = roleType.isSystemRole();
   }

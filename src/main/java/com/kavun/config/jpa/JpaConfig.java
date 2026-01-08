@@ -1,6 +1,7 @@
 package com.kavun.config.jpa;
 
 import com.kavun.backend.persistent.domain.base.ApplicationAuditorAware;
+import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.constant.CacheConstants;
 import java.util.List;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -42,8 +43,8 @@ public class JpaConfig {
    * @return Application implementation of AuditorAware.
    */
   @Bean
-  public AuditorAware<String> auditorAware() {
-    return new ApplicationAuditorAware();
+  public AuditorAware<Long> auditorAware(UserRepository userRepository) {
+    return new ApplicationAuditorAware(userRepository);
   }
 
   /**

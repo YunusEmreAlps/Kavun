@@ -30,7 +30,7 @@ import lombok.ToString;
  * @since 1.0
  */
 @Entity
-@Table(name = "user_roles", uniqueConstraints = {
+@Table(name = "user_role", uniqueConstraints = {
     @UniqueConstraint(name = "uk_user_role", columnNames = { "user_id", "role_id" })
 }, indexes = {
     @Index(name = "idx_user_role_user", columnList = "user_id"),
@@ -41,7 +41,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @NoArgsConstructor
-@SQLDelete(sql = "UPDATE user_roles SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+@SQLDelete(sql = "UPDATE user_role SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 @ToString(callSuper = true, exclude = { "user", "role" })
 public class UserRole extends BaseEntity<Long> implements Serializable {
   @Serial

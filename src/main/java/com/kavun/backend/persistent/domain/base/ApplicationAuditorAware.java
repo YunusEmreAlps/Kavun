@@ -58,7 +58,7 @@ public final class ApplicationAuditorAware implements AuditorAware<Long> {
         adminUserId = adminUser.getId();
       } else {
         // Fallback to system ID if admin not found
-        adminUserId = 0L;
+        adminUserId = 1L;
       }
     }
     return adminUserId;

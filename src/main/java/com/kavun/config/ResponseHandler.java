@@ -46,7 +46,9 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-        // Support all converters - we'll filter by content type in beforeBodyWrite
+        // Skip StringHttpMessageConverter to avoid casting issues with wrapped ApiResponse
+        // We want JSON converters to handle all responses after wrapping
+        // return !converterType.getName().contains("StringHttpMessageConverter");
         return true;
     }
 
@@ -76,6 +78,18 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
         try {
             HttpStatus status = getHttpStatus(response);
             ResponseCode responseCode = determineResponseCode(returnType, status);
+
+            /*// If body is a String, use it as the message instead of data
+            if (body instanceof String stringBody) {
+                return ApiResponse.builder()
+                        .status(status.value())
+                        .code(responseCode.name())
+                        .message(stringBody)
+                        .data(new LinkedHashMap<>())
+                        .path(path)
+                        .build();
+            }*/
+
             Object data = (body != null) ? body : new LinkedHashMap<>();
             return ApiResponse.success(responseCode, data, path);
         } catch (Exception e) {
@@ -174,7 +188,6 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
      */
     private boolean shouldSkipWrapping(Object body) {
         return body instanceof byte[]
-                || body instanceof String
                 || body instanceof ApiResponse<?>;
     }
 

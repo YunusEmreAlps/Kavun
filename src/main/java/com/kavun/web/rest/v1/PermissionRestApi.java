@@ -12,7 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/permissions")
 @RequiredArgsConstructor
-@Tag(name = "04. Permissions", description = "APIs for managing permissions")
+@Tag(name = "07. Permission Management", description = "APIs for managing permissions")
 public class PermissionRestApi {
     private final PermissionService permissionService;
 

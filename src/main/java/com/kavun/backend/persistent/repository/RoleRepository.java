@@ -1,4 +1,4 @@
-package com.kavun.backend.persistent.repository.impl;
+package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import java.util.Optional;

@@ -1,6 +1,6 @@
-package com.kavun.backend.persistent.repository.impl;
+package com.kavun.backend.persistent.repository;
 
-import com.kavun.backend.persistent.domain.user.Page;
+import com.kavun.backend.persistent.domain.user.Action;
 
 import java.util.Optional;
 
@@ -10,8 +10,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 @RepositoryRestResource(exported = false)
-public interface PageRepository extends JpaRepository<Page, Long> {
-    Optional<Page> findByCode(String code);
+public interface ActionRepository extends JpaRepository<Action, Long> {
+    Optional<Action> findByCode(String code);
 
     boolean existsByCode(String code);
 }

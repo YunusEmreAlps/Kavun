@@ -1,7 +1,7 @@
 package com.kavun.backend.service.user.impl;
 
 import com.kavun.backend.persistent.domain.user.Action;
-import com.kavun.backend.persistent.repository.impl.ActionRepository;
+import com.kavun.backend.persistent.repository.ActionRepository;
 import com.kavun.backend.service.user.ActionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

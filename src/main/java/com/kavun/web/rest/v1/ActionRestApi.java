@@ -12,7 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/actions")
 @RequiredArgsConstructor
-@Tag(name = "05. Actions", description = "APIs for managing actions")
+@Tag(name = "04. Action Management", description = "APIs for managing actions")
 public class ActionRestApi {
     private final ActionService actionService;
 

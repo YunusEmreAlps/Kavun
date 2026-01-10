@@ -6,10 +6,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -20,7 +22,6 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import com.kavun.constant.base.BaseConstants;
 
 /**
  * BaseEntity class allows an entity to inherit common properties from it.
@@ -79,6 +80,13 @@ public abstract class BaseEntity<T extends Serializable> {
 
   @Column(nullable = false)
   private boolean deleted = false;
+
+  @PrePersist
+  protected void generatePublicId() {
+    if (this.publicId == null) {
+      this.publicId = UUID.randomUUID().toString();
+    }
+  }
 
   @Override
   public boolean equals(Object o) {

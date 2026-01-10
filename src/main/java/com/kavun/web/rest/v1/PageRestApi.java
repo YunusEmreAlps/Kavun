@@ -12,7 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/pages")
 @RequiredArgsConstructor
-@Tag(name = "06. Pages", description = "APIs for managing pages")
+@Tag(name = "05. Page Management", description = "APIs for managing pages")
 public class PageRestApi {
     private final PageService pageService;
 

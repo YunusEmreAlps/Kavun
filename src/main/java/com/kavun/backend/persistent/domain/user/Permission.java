@@ -74,4 +74,22 @@ public class Permission extends BaseEntity<Long> implements Serializable {
         // This method can be used to enforce unique constraints programmatically if
         // needed
     }
+
+    /**
+     * Check if the permission is valid (not expired).
+     *
+     * @return true if the permission is valid, false otherwise
+     */
+    public boolean isValid() {
+        return !isExpired();
+    }
+
+    /**
+     * Check if the permission is expired.
+     *
+     * @return true if the permission is expired, false otherwise
+     */
+    public boolean isExpired() {
+        return expiresAt != null && LocalDateTime.now().isAfter(expiresAt);
+    }
 }

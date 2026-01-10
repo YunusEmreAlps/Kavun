@@ -6,8 +6,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Index;
@@ -60,19 +58,9 @@ public class Page extends BaseEntity<Long> implements Serializable {
     private String icon;
 
     @Column(name = "display_order", nullable = false)
-    private Integer order;
+    private Integer displayOrder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Page parent;
-
-    @Column(nullable = false)
-    private Integer level = 0;
-
-    // Calculate level before persisting or updating
-    @PrePersist
-    @PreUpdate
-    private void calculateLevel() {
-        this.level = parent == null ? 0 : parent.getLevel() + 1;
-    }
 }

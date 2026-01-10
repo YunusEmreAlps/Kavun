@@ -1,7 +1,7 @@
 package com.kavun.backend.service.user.impl;
 
 import com.kavun.backend.persistent.domain.user.Permission;
-import com.kavun.backend.persistent.repository.impl.PermissionRepository;
+import com.kavun.backend.persistent.repository.PermissionRepository;
 import com.kavun.backend.service.user.PermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

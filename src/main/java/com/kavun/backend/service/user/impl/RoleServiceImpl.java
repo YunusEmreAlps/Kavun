@@ -1,7 +1,7 @@
 package com.kavun.backend.service.user.impl;
 
 import com.kavun.backend.persistent.domain.user.Role;
-import com.kavun.backend.persistent.repository.impl.RoleRepository;
+import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.service.user.RoleService;
 import com.kavun.constant.CacheConstants;
 

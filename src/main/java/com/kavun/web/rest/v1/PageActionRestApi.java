@@ -12,7 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/page-actions")
 @RequiredArgsConstructor
-@Tag(name = "07. Page Actions", description = "APIs for managing page actions")
+@Tag(name = "06. Page Action Management", description = "APIs for managing page actions relationships")
 public class PageActionRestApi {
     private final PageActionService pageActionService;
 

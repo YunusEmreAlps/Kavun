@@ -1,7 +1,7 @@
 package com.kavun.backend.service.user;
 
 import com.kavun.backend.persistent.domain.user.Role;
-import com.kavun.backend.persistent.repository.impl.RoleRepository;
+import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.service.user.impl.RoleServiceImpl;
 import com.kavun.enums.RoleType;
 import java.util.Optional;

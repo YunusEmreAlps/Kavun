@@ -64,7 +64,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
         validateCreateRequest(request);
         LOG.debug("Creating new entity from request: {}", request);
 
-        ENTITY entity = mapToEntity(request);
+        ENTITY entity = mapper.toEntity(request);
         beforeCreate(entity);
         ENTITY savedEntity = repository.save(entity);
         afterCreate(savedEntity);
@@ -82,7 +82,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
         ENTITY entity = getEntityById(id);
         ensureNotDeleted(entity);
 
-        updateEntity(entity, request);
+        mapper.updateEntityFromDto(request, entity);
         beforeUpdate(entity);
         ENTITY updatedEntity = repository.save(entity);
         afterUpdate(updatedEntity);
@@ -268,27 +268,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
         }
     }
 
-    // Abstract methods for subclasses to implement
-
-    /**
-     * Maps a request object to a new entity instance.
-     * This method is called during create operations.
-     *
-     * @param request the request object
-     * @return new entity instance
-     */
-    protected abstract ENTITY mapToEntity(REQUEST request);
-
-    /**
-     * Updates an existing entity with data from request.
-     * This method is called during update operations.
-     *
-     * @param entity the entity to update
-     * @param request the request object containing update data
-     */
-    protected abstract void updateEntity(ENTITY entity, REQUEST request);
-
-    // Template method hooks for subclasses
+    // Template method hooks for subclasses (optional overrides)
 
     /**
      * Hook method called before entity creation.

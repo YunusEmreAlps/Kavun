@@ -31,16 +31,6 @@ public class PageService
         super(mapper, repository, specification);
     }
 
-    @Override
-    public WebPage mapToEntity(PageRequest request) {
-        WebPage page = new WebPage();
-        return page;
-    }
-
-    @Override
-    public void updateEntity(WebPage entity, PageRequest request) {
-    }
-
     public Specification<WebPage> specification(Map<String, Object> spec) {
         return specification.search(spec);
     }

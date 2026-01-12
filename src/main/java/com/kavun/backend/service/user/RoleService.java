@@ -36,28 +36,6 @@ public class RoleService
         super(mapper, repository, specification);
     }
 
-    @Override
-    public Role mapToEntity(RoleRequest request) {
-        Role role = new Role();
-        role.setName(request.getName());
-        role.setLabel(request.getLabel());
-        role.setDescription(request.getDescription());
-        return role;
-    }
-
-    @Override
-    public void updateEntity(Role entity, RoleRequest request) {
-        if (request.getName() != null) {
-            entity.setName(request.getName());
-        }
-        if (request.getLabel() != null) {
-            entity.setLabel(request.getLabel());
-        }
-        if (request.getDescription() != null) {
-            entity.setDescription(request.getDescription());
-        }
-    }
-
     public Specification<Role> specification(Map<String, Object> spec) {
         return specification.search(spec);
     }

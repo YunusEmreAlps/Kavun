@@ -32,16 +32,6 @@ public class ActionService
         super(mapper, repository, specification);
     }
 
-    @Override
-    public Action mapToEntity(ActionRequest request) {
-        Action action = new Action();
-        return action;
-    }
-
-    @Override
-    public void updateEntity(Action entity, ActionRequest request) {
-    }
-
     public Specification<Action> specification(Map<String, Object> spec) {
         return specification.search(spec);
     }

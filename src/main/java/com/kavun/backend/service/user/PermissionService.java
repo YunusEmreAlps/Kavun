@@ -32,16 +32,6 @@ public class PermissionService
         super(mapper, repository, specification);
     }
 
-    @Override
-    public Permission mapToEntity(PermissionRequest request) {
-        Permission permission = new Permission();
-        return permission;
-    }
-
-    @Override
-    public void updateEntity(Permission entity, PermissionRequest request) {
-    }
-
     public Specification<Permission> specification(Map<String, Object> spec) {
         return specification.search(spec);
     }

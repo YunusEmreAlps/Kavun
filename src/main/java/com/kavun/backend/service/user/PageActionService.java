@@ -32,16 +32,6 @@ public class PageActionService
         super(mapper, repository, specification);
     }
 
-    @Override
-    public PageAction mapToEntity(PageActionRequest request) {
-        PageAction pageAction = new PageAction();
-        return pageAction;
-    }
-
-    @Override
-    public void updateEntity(PageAction entity, PageActionRequest request) {
-    }
-
     public Specification<PageAction> specification(Map<String, Object> spec) {
         return specification.search(spec);
     }

@@ -1,6 +1,8 @@
 package com.kavun.backend.persistent.domain.user;
 
 import com.kavun.backend.persistent.domain.base.BaseEntity;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -67,6 +69,9 @@ public class WebPage extends BaseEntity<Long> implements Serializable {
     @JoinColumn(name = "parent_id")
     private WebPage parent;
 
-    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<WebPage> children = new ArrayList<>();
+
+    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PageAction> pageActions = new ArrayList<>();
 }

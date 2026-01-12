@@ -100,7 +100,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
 
         if (entity.isDeleted()) {
             LOG.warn("Entity with id {} is already deleted", id);
-            throw new IllegalStateException("Kayıt zaten silinmiş durumda");
+            throw new IllegalStateException("Entity is already deleted");
         }
 
         beforeDelete(entity);
@@ -120,7 +120,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
 
         if (!entity.isDeleted()) {
             LOG.warn("Entity with id {} is not in deleted state", id);
-            throw new IllegalStateException("Kayıt silinmemiş durumda, geri yüklenemez");
+            throw new IllegalStateException("Entity is not deleted, cannot restore");
         }
 
         beforeRestore(entity);
@@ -177,13 +177,13 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
     protected ENTITY getEntityById(Long id) {
         if (id == null) {
             LOG.error("Entity ID cannot be null");
-            throw new IllegalArgumentException("ID boş olamaz");
+            throw new IllegalArgumentException("ID cannot be null");
         }
 
         return repository.findById(id)
                 .orElseThrow(() -> {
                     LOG.error("Entity not found with id: {}", id);
-                    return new EntityNotFoundException("Kayıt bulunamadı: " + id);
+                    return new EntityNotFoundException("Entity not found: " + id);
                 });
     }
 
@@ -196,7 +196,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
     protected void validateCreateRequest(REQUEST request) {
         if (request == null) {
             LOG.error("Create request cannot be null");
-            throw new IllegalArgumentException("Gönderilen veri boş olamaz");
+            throw new IllegalArgumentException("Create request cannot be null");
         }
     }
 
@@ -209,7 +209,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
     protected void validateUpdateRequest(REQUEST request) {
         if (request == null) {
             LOG.error("Update request cannot be null");
-            throw new IllegalArgumentException("Gönderilen veri boş olamaz");
+            throw new IllegalArgumentException("Update request cannot be null");
         }
     }
 
@@ -222,7 +222,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
     protected void ensureNotDeleted(ENTITY entity) {
         if (entity.isDeleted()) {
             LOG.error("Cannot operate on deleted entity with id: {}", entity.getId());
-            throw new IllegalStateException("Silinmiş kayıt üzerinde işlem yapılamaz");
+            throw new IllegalStateException("Cannot operate on deleted entity");
         }
     }
 

@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.jackson.JsonComponent;
 
 import java.io.IOException;
 
@@ -16,7 +16,7 @@ import java.io.IOException;
  * Used specifically for createdBy, updatedBy, and deletedBy fields via @JsonSerialize annotation
  */
 @Slf4j
-@Component
+@JsonComponent
 public class UserInfoObjectSerializer extends JsonSerializer<Long> {
 
     private final UserRepository userRepository;

@@ -12,7 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
 /**
- * The PageActionRepository class exposes implementation from JpaRepository on PageAction
+ * The PageActionRepository class exposes implementation from JpaRepository on
+ * PageAction
  * entity .
  *
  * @author Yunus Emre Alpu
@@ -31,4 +32,8 @@ public interface PageActionRepository extends BaseRepository<PageAction> {
     Optional<PageAction> findByPageIdAndActionIdAndDeletedFalse(Long pageId, Long actionId);
 
     Optional<PageAction> findByApiEndpointAndHttpMethodAndDeletedFalse(String apiEndpoint, HttpMethod httpMethod);
+
+    @Query("SELECT pa FROM PageAction pa JOIN FETCH pa.action a JOIN FETCH pa.page p " +
+            "WHERE p.url = :pageUrl AND a.code = :actionCode AND pa.deleted = false AND p.deleted = false")
+    Optional<PageAction> findActionByPageUrlAndActionCode(String pageUrl, String actionCode);
 }

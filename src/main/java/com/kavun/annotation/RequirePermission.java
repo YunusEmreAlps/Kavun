@@ -21,5 +21,8 @@ public @interface RequirePermission {
 
     String method() default "";
 
-    String message() default "Bu işlemi gerçekleştirmek için izniniz bulunmamaktadır.";
+    String message() default "You do not have permission to perform this action.";
+
+    // "VIEW", "EDIT", "DELETE", "CREATE"
+    String fallbackActionCode() default "";
 }

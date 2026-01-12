@@ -44,12 +44,21 @@ public class DatabaseSeeder implements CommandLineRunner {
 
   @Override
   public void run(String... args) {
-    Arrays.stream(RoleType.values()).forEach(roleType -> roleService.create(
-        RoleRequest.builder()
-            .name(roleType.getName())
-            .label(roleType.getLabel())
-            .description(roleType.getDescription())
-            .build()));
+    LOG.info("Checking and seeding roles into the database.");
+    Arrays.stream(RoleType.values()).forEach(roleType -> {
+      if (roleService.findByName(roleType.getName()) == null) {
+        LOG.info("Creating role: {}", roleType.getName());
+        roleService.create(
+            RoleRequest.builder()
+                .name(roleType.getName())
+                .label(roleType.getLabel())
+                .description(roleType.getDescription())
+                .build());
+      } else {
+        LOG.debug("Role already exists: {}", roleType.getName());
+      }
+    });
+
     // only run these initial data if we are not in test mode.
     if (!Arrays.asList(environment.getActiveProfiles()).contains(EnvConstants.TEST)) {
       persistDefaultAdminUser();

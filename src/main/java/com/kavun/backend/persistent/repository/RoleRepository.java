@@ -2,7 +2,6 @@ package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
@@ -11,50 +10,17 @@ import org.springframework.stereotype.Repository;
  * entity .
  *
  * @author Yunus Emre Alpu
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @Repository
 @RepositoryRestResource(exported = false)
-public interface RoleRepository extends JpaRepository<Role, Integer> {
+public interface RoleRepository extends BaseRepository<Role> {
 
-  /**
-   * Is role exists.
-   *
-   * @param name name of role.
-   * @return boolean.
-   */
-  boolean existsByName(String name);
+  Optional<Role> findByName(final String name);
 
-  /**
-   * Gets role associated with required name.
-   *
-   * @param name name of role.
-   * @return Role found.
-   */
-  Optional<Role> findFirstByName(String name);
+  boolean existsById(final Long id);
 
-  /**
-   * Gets role associated with id.
-   *
-   * @param id id of role.
-   * @return Role found.
-   */
-  Optional<Role> getById(Long id);
+  long count();
 
-  /**
-   * Gets role associated with public id.
-   *
-   * @param publicId public id of role.
-   * @return Role found.
-   */
-  Optional<Role> findByPublicId(String publicId);
-
-  /**
-   * Gets role associated with name.
-   *
-   * @param name name of role.
-   * @return Role found.
-   */
-  Optional<Role> findByName(String name);
 }

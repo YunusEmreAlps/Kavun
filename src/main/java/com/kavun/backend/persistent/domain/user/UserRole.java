@@ -35,8 +35,7 @@ import lombok.ToString;
 }, indexes = {
     @Index(name = "idx_user_role_user", columnList = "user_id"),
     @Index(name = "idx_user_role_role", columnList = "role_id"),
-    @Index(name = "idx_user_role_deleted", columnList = "deleted"),
-    @Index(name = "idx_user_role_expires", columnList = "expires_at")
+    @Index(name = "idx_user_role_deleted", columnList = "deleted")
 })
 @Getter
 @Setter

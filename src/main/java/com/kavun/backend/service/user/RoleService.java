@@ -1,9 +1,23 @@
 package com.kavun.backend.service.user;
 
-import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.kavun.backend.persistent.domain.user.Role;
+import com.kavun.backend.persistent.repository.RoleRepository;
+import com.kavun.backend.persistent.specification.RoleSpecification;
+import com.kavun.backend.service.AbstractService;
+import com.kavun.shared.dto.RoleDto;
+import com.kavun.shared.dto.mapper.RoleMapper;
+import com.kavun.shared.request.RoleRequest;
+
+import jakarta.persistence.EntityNotFoundException;
+
+import org.springframework.data.jpa.domain.Specification;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;;
 
 /**
  * Role service to provide implementation for the definitions about a role.
@@ -12,61 +26,54 @@ import com.kavun.backend.persistent.domain.user.Role;
  * @version 1.0
  * @since 1.0
  */
-public interface RoleService {
+@Slf4j
+@Service
+@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+public class RoleService
+        extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
 
-  /**
-   * Create the role with the role instance given.
-   *
-   * @param role the role
-   * @return the persisted role with assigned id
-   */
-  Role save(final Role role);
+    public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification) {
+        super(mapper, repository, specification);
+    }
 
-  /**
-   * Retrieves the role with the specified name.
-   *
-   * @param name the name of the role to retrieve
-   * @return the role tuple that matches the id given
-   */
-  Role findByName(final String name);
+    @Override
+    public Role mapToEntity(RoleRequest request) {
+        Role role = new Role();
+        role.setName(request.getName());
+        role.setLabel(request.getLabel());
+        role.setDescription(request.getDescription());
+        return role;
+    }
 
-  /**
-   * Checks if a role exists by its ID.
-   *
-   * @param id the ID of the role to check
-   * @return true if the role exists, false otherwise
-   */
-  boolean existById(final Integer id);
+    @Override
+    public void updateEntity(Role entity, RoleRequest request) {
+        if (request.getName() != null) {
+            entity.setName(request.getName());
+        }
+        if (request.getLabel() != null) {
+            entity.setLabel(request.getLabel());
+        }
+        if (request.getDescription() != null) {
+            entity.setDescription(request.getDescription());
+        }
+    }
 
-  /**
-   * Retrieves the role with the specified ID.
-   *
-   * @param id the ID of the role to retrieve
-   * @return the role tuple that matches the ID given
-   */
-  Role findById(final Long id);
+    public Specification<Role> specification(Map<String, Object> spec) {
+        return specification.search(spec);
+    }
 
-  /**
-   * Retrieves the role with the specified public ID.
-   *
-   * @param publicId the public ID of the role to retrieve
-   * @return the role tuple that matches the public ID given
-   */
-  Role findByPublicId(final String publicId);
+    public Specification<Role> search(Map<String, Object> paramaterMap) {
+        return specification.search(paramaterMap);
+    }
 
-  /**
-   * Retrieves all roles.
-   *
-   * @return a list of all roles
-   */
-  List<Role> findAll();
+    @Transactional(readOnly = true)
+    public Role findByName(String name) {
+        LOG.debug("Finding role by name: {}", name);
+        return repository.findByName(name)
+                .orElseThrow(() -> {
+                    LOG.error("Role not found with name: {}", name);
+                    return new EntityNotFoundException("Role bulunamadı: " + name);
+                });
+    }
 
-  /**
-   *
-   * Retrieves all roles with pagination support.
-   *
-   * @param pageable the pagination information
-   * @return a paginated list of roles
-   */
-  Page<Role> findAll(Pageable pageable);
 }

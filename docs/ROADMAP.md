@@ -55,7 +55,7 @@ This document outlines the planned features and improvements for the **Kavun** p
 
 - [x] Spring Security for authentication and authorization
 - [x] JWT for token-based authentication
-- [x] Role-based access control (RBAC)
+- [x] Dynamic role and permission management
 - [ ] OAuth2 and OpenID Connect integration
 - [ ] Rate limiting and throttling (Bucket4j, Resilience4j)
 - [ ] API key management

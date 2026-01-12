@@ -1,11 +1,11 @@
 package com.kavun.backend.bootstrap;
 
-import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.service.user.RoleService;
 import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.EnvConstants;
 import com.kavun.enums.RoleType;
 import com.kavun.exception.user.UserAlreadyExistsException;
+import com.kavun.shared.request.RoleRequest;
 import com.kavun.shared.util.UserUtils;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,8 +44,12 @@ public class DatabaseSeeder implements CommandLineRunner {
 
   @Override
   public void run(String... args) {
-    Arrays.stream(RoleType.values()).forEach(roleType -> roleService.save(new Role(roleType)));
-
+    Arrays.stream(RoleType.values()).forEach(roleType -> roleService.create(
+        RoleRequest.builder()
+            .name(roleType.getName())
+            .label(roleType.getLabel())
+            .description(roleType.getDescription())
+            .build()));
     // only run these initial data if we are not in test mode.
     if (!Arrays.asList(environment.getActiveProfiles()).contains(EnvConstants.TEST)) {
       persistDefaultAdminUser();

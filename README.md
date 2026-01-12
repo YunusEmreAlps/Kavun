@@ -71,6 +71,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Production Ready Folder Structure](README.md#architecture)
 - [Authentication and Authorization with JWT](docs/AUTHENTICATION.MD)
 - [Security Configuration Without WebSecurityConfigurerAdapter](https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter#ldap-authentication)
+- Dynamic Role and Permission Management
 
 ## Development Guide
 
@@ -323,6 +324,8 @@ The project is structured in a layered architecture with the following layers:
 ## Database Schema
 
 ![img.png](docs/images/erd.png)
+
+> **Note**: In Permission entity, the entityId field represents the ID of either a Role or a User, depending on the EntityType. This design allows for flexible permission assignments, enabling both role-based and user-specific permissions within the system.
 
 ## Roadmap
 

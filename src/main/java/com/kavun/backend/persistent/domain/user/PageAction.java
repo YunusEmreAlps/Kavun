@@ -47,7 +47,7 @@ public class PageAction extends BaseEntity<Long> implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "page_id", nullable = false)
-    private Page page;
+    private WebPage page;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "action_id", nullable = false)

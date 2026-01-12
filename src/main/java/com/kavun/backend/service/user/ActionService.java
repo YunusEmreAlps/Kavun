@@ -1,24 +1,53 @@
 package com.kavun.backend.service.user;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.kavun.backend.persistent.domain.user.Action;
+import com.kavun.backend.persistent.repository.ActionRepository;
+import com.kavun.backend.persistent.specification.ActionSpecification;
+import com.kavun.backend.service.AbstractService;
+import com.kavun.shared.dto.ActionDto;
+import com.kavun.shared.dto.mapper.ActionMapper;
+import com.kavun.shared.request.ActionRequest;
 
-import jakarta.validation.Valid;
+import org.springframework.data.jpa.domain.Specification;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 /**
-* Action service to provide implementation for the definitions about an action.
-*
-* @author Yunus Emre Alpu
-* @version 1.0
-* @since 1.0
-*/
-public interface ActionService {
-    Action save(@Valid Action action);
-    Optional<Action> findById(Long id);
-    List<Action> findAll();
-    void deleteById(Long id);
-    Optional<Action> findByCode(String code);
-    boolean existsByCode(String code);
+ * Action service to provide implementation for the definitions about an action.
+ *
+ * @author Yunus Emre Alpu
+ * @version 1.0
+ * @since 1.0
+ */
+@Service
+@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+public class ActionService
+        extends AbstractService<ActionRequest, Action, ActionDto, ActionRepository, ActionMapper, ActionSpecification> {
+
+    public ActionService(ActionMapper mapper, ActionRepository repository, ActionSpecification specification) {
+        super(mapper, repository, specification);
+    }
+
+    @Override
+    public Action mapToEntity(ActionRequest request) {
+        Action action = new Action();
+        return action;
+    }
+
+    @Override
+    public void updateEntity(Action entity, ActionRequest request) {
+    }
+
+    public Specification<Action> specification(Map<String, Object> spec) {
+        return specification.search(spec);
+    }
+
+    public Specification<Action> search(Map<String, Object> paramaterMap) {
+        return specification.search(paramaterMap);
+    }
+
 }

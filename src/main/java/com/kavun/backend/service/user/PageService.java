@@ -1,12 +1,20 @@
 package com.kavun.backend.service.user;
 
-import com.kavun.backend.persistent.domain.user.Page;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.validation.Valid;
+import com.kavun.backend.persistent.domain.user.WebPage;
+import com.kavun.backend.persistent.repository.PageRepository;
+import com.kavun.backend.persistent.specification.PageSpecification;
+import com.kavun.backend.service.AbstractService;
+import com.kavun.shared.dto.PageDto;
+import com.kavun.shared.dto.mapper.PageMapper;
+import com.kavun.shared.request.PageRequest;
 
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Map;
 /**
 * Page service to provide implementation for the definitions about a page.
 *
@@ -14,12 +22,31 @@ import java.util.Optional;
 * @version 1.0
 * @since 1.0
 */
-public interface PageService {
+@Service
+@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+public class PageService
+        extends AbstractService<PageRequest, WebPage, PageDto, PageRepository, PageMapper, PageSpecification> {
 
-    Page save(@Valid Page page);
-    Optional<Page> findById(Long id);
-    List<Page> findAll();
-    void deleteById(Long id);
-    Optional<Page> findByCode(String code);
-    boolean existsByCode(String code);
+    public PageService(PageMapper mapper, PageRepository repository, PageSpecification specification) {
+        super(mapper, repository, specification);
+    }
+
+    @Override
+    public WebPage mapToEntity(PageRequest request) {
+        WebPage page = new WebPage();
+        return page;
+    }
+
+    @Override
+    public void updateEntity(WebPage entity, PageRequest request) {
+    }
+
+    public Specification<WebPage> specification(Map<String, Object> spec) {
+        return specification.search(spec);
+    }
+
+    public Specification<WebPage> search(Map<String, Object> paramaterMap) {
+        return specification.search(paramaterMap);
+    }
+
 }

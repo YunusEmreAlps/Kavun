@@ -6,10 +6,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Index;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.hibernate.annotations.SQLDelete;
 
@@ -40,7 +43,7 @@ import lombok.Setter;
 @Getter @Setter
 @SQLDelete(sql = "UPDATE pages SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public class Page extends BaseEntity<Long> implements Serializable {
+public class WebPage extends BaseEntity<Long> implements Serializable {
 
     @Column(nullable = false, length = 100, unique = true)
     private String code;
@@ -62,5 +65,8 @@ public class Page extends BaseEntity<Long> implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private Page parent;
+    private WebPage parent;
+
+    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY)
+    private List<PageAction> pageActions = new ArrayList<>();
 }

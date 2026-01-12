@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/page-actions")
+@RequestMapping("/api/v1/page-action")
 @RequiredArgsConstructor
 @Tag(name = "06. Page Action Management", description = "APIs for managing page actions")
 public class PageActionRestApi {

@@ -12,12 +12,12 @@ import com.kavun.shared.dto.RoleDto;
 import com.kavun.shared.dto.mapper.RoleMapper;
 import com.kavun.shared.request.RoleRequest;
 
-import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.data.jpa.domain.Specification;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Map;;
+import java.util.Map;
+import java.util.Optional;;
 
 /**
  * Role service to provide implementation for the definitions about a role.
@@ -69,11 +69,8 @@ public class RoleService
     @Transactional(readOnly = true)
     public Role findByName(String name) {
         LOG.debug("Finding role by name: {}", name);
-        return repository.findByName(name)
-                .orElseThrow(() -> {
-                    LOG.error("Role not found with name: {}", name);
-                    return new EntityNotFoundException("Role bulunamadı: " + name);
-                });
+        Optional<Role> roleOptional = repository.findByName(name);
+        return roleOptional.orElse(null);
     }
 
 }

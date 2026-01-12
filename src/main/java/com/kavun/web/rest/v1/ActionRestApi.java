@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/actions")
+@RequestMapping("/api/v1/action")
 @RequiredArgsConstructor
 @Tag(name = "04. Action Management", description = "APIs for managing actions")
 public class ActionRestApi {

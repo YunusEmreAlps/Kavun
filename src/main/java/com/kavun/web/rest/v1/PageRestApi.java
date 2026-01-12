@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/pages")
+@RequestMapping("/api/v1/page")
 @RequiredArgsConstructor
 @Tag(name = "05. Page Management", description = "APIs for managing pages")
 public class PageRestApi {

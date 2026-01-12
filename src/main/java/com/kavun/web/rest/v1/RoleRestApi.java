@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/roles")
+@RequestMapping("/api/v1/role")
 @RequiredArgsConstructor
 @Tag(name = "03. Role Management", description = "APIs for managing roles")
 public class RoleRestApi {
@@ -32,7 +32,7 @@ public class RoleRestApi {
     private final RoleService roleService;
 
     /**
-     * Get all pages with pagination and filtering
+     * Get all roles with pagination and filtering
      *
      * @param filters search filters (optional)
      * @param pageable pagination parameters
@@ -51,15 +51,15 @@ public class RoleRestApi {
             ? roleService.search(filters)
             : Specification.where(null);
 
-        Page<RoleDto> pages = roleService.findAll(spec, pageable);
-        return ResponseEntity.ok(pages);
+        Page<RoleDto> roles = roleService.findAll(spec, pageable);
+        return ResponseEntity.ok(roles);
     }
 
     /**
-     * Get all pages as list (without pagination)
+     * Get all roles as list (without pagination)
      *
      * @param filters search filters (optional)
-     * @return list of page DTOs
+     * @return list of role DTOs
      */
     @GetMapping("/list")
     @Operation(summary = "Get all roles as list", description = "Retrieve all roles without pagination")
@@ -70,40 +70,40 @@ public class RoleRestApi {
             ? roleService.search(filters)
             : Specification.where(null);
 
-        List<RoleDto> pages = roleService.findAll(spec);
-        return ResponseEntity.ok(pages);
+        List<RoleDto> roles = roleService.findAll(spec);
+        return ResponseEntity.ok(roles);
     }
 
     /**
-     * Get page by ID
+     * Get role by ID
      *
-     * @param id page ID
-     * @return page DTO
+     * @param id role ID
+     * @return role DTO
      */
     @GetMapping("/{id}")
-    @Operation(summary = "Get permission by ID", description = "Retrieve a specific permission by its ID")
+    @Operation(summary = "Get role by ID", description = "Retrieve a specific role by its ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Permission found"),
-        @ApiResponse(responseCode = "404", description = "Permission not found")
+        @ApiResponse(responseCode = "200", description = "Role found"),
+        @ApiResponse(responseCode = "404", description = "Role not found")
     })
     public ResponseEntity<RoleDto> getById(
-            @Parameter(description = "Permission ID", required = true)
+            @Parameter(description = "Role ID", required = true)
             @PathVariable Long id) {
 
-        RoleDto permission = roleService.findById(id);
-        return ResponseEntity.ok(permission);
+        RoleDto role = roleService.findById(id);
+        return ResponseEntity.ok(role);
     }
 
     /**
-     * Create a new page action
+     * Create a new role
      *
-     * @param request page creation request
-     * @return created page DTO
+     * @param request role creation request
+     * @return created role DTO
      */
     @PostMapping
-    @Operation(summary = "Create permission", description = "Create a new permission")
+    @Operation(summary = "Create role", description = "Create a new role")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Permission created successfully"),
+        @ApiResponse(responseCode = "201", description = "Role created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
     public ResponseEntity<RoleDto> create(
@@ -113,21 +113,21 @@ public class RoleRestApi {
     }
 
     /**
-     * Update an existing page
+     * Update an existing role
      *
-     * @param id page ID
-     * @param request page update request
-     * @return updated page DTO
+     * @param id role ID
+     * @param request role update request
+     * @return updated role DTO
      */
     @PutMapping("/{id}")
-    @Operation(summary = "Update page action", description = "Update an existing page action")
+    @Operation(summary = "Update role", description = "Update an existing role")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Permission updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Permission not found"),
+        @ApiResponse(responseCode = "200", description = "Role updated successfully"),
+        @ApiResponse(responseCode = "404", description = "Role not found"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
     public ResponseEntity<RoleDto> update(
-            @Parameter(description = "Permission ID", required = true)
+            @Parameter(description = "Role ID", required = true)
             @PathVariable Long id,
             @Valid @RequestBody RoleRequest request) {
 
@@ -136,20 +136,20 @@ public class RoleRestApi {
     }
 
     /**
-     * Soft delete page by ID
+     * Soft delete role by ID
      *
-     * @param id page ID
+     * @param id role ID
      * @return response entity with no content
      */
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete permission", description = "Soft delete a permission (marks as deleted)")
+    @Operation(summary = "Delete role", description = "Soft delete a role (marks as deleted)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Permission deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Permission not found"),
-        @ApiResponse(responseCode = "400", description = "Permission already deleted")
+        @ApiResponse(responseCode = "204", description = "Role deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "Role not found"),
+        @ApiResponse(responseCode = "400", description = "Role already deleted")
     })
     public ResponseEntity<Void> delete(
-            @Parameter(description = "Permission ID", required = true)
+            @Parameter(description = "Role ID", required = true)
             @PathVariable Long id) {
 
         roleService.delete(id);
@@ -157,20 +157,20 @@ public class RoleRestApi {
     }
 
     /**
-     * Restore a soft-deleted page
+     * Restore a soft-deleted role
      *
-     * @param id page ID
-     * @return restored page DTO
+     * @param id role ID
+     * @return restored role DTO
      */
     @PostMapping("/{id}/restore")
-    @Operation(summary = "Restore permission", description = "Restore a soft-deleted permission")
+    @Operation(summary = "Restore role", description = "Restore a soft-deleted role")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Permission restored successfully"),
-        @ApiResponse(responseCode = "404", description = "Permission not found"),
-        @ApiResponse(responseCode = "400", description = "Permission is not deleted")
+        @ApiResponse(responseCode = "200", description = "Role restored successfully"),
+        @ApiResponse(responseCode = "404", description = "Role not found"),
+        @ApiResponse(responseCode = "400", description = "Role is not deleted")
     })
     public ResponseEntity<RoleDto> restore(
-            @Parameter(description = "Permission ID", required = true)
+            @Parameter(description = "Role ID", required = true)
             @PathVariable Long id) {
 
         RoleDto restored = roleService.restore(id);
@@ -178,15 +178,15 @@ public class RoleRestApi {
     }
 
     /**
-     * Check if page exists by ID
+     * Check if role exists by ID
      *
-     * @param id page ID
+     * @param id role ID
      * @return true if exists, false otherwise
      */
     @GetMapping("/{id}/exists")
-    @Operation(summary = "Check if page action exists", description = "Check if a page action exists by ID")
+    @Operation(summary = "Check if role exists", description = "Check if a role exists by ID")
     public ResponseEntity<Boolean> existsById(
-            @Parameter(description = "Page action ID", required = true)
+            @Parameter(description = "Role ID", required = true)
             @PathVariable Long id) {
 
         boolean exists = roleService.existsById(id);
@@ -194,10 +194,10 @@ public class RoleRestApi {
     }
 
     /**
-     * Count pages with optional filters
+     * Count roles with optional filters
      *
      * @param filters search filters (optional)
-     * @return number of matching permissions
+     * @return number of matching roles
      */
     @GetMapping("/count")
     @Operation(summary = "Count roles", description = "Count roles matching the given filters")
@@ -213,14 +213,14 @@ public class RoleRestApi {
     }
 
     /**
-     * Search permissions with dynamic criteria
+     * Search roles with dynamic criteria
      *
      * @param searchParams search parameters
      * @param pageable pagination parameters
-     * @return page of matching page actions
+     * @return page of matching roles
      */
     @PostMapping("/search")
-    @Operation(summary = "Search permissions", description = "Search permissions with dynamic criteria")
+    @Operation(summary = "Search roles", description = "Search roles with dynamic criteria")
     public ResponseEntity<Page<RoleDto>> search(
             @RequestBody Map<String, Object> searchParams,
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {

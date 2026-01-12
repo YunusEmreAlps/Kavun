@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/permissions")
+@RequestMapping("/api/v1/permission")
 @RequiredArgsConstructor
 @Tag(name = "07. Permission Management", description = "APIs for managing permissions")
 public class PermissionRestApi {

@@ -4,13 +4,11 @@ import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.PageAction;
 import com.kavun.backend.persistent.repository.PageActionRepository;
 import com.kavun.backend.service.user.PermissionCheckService;
-import com.kavun.enums.HttpMethod;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.aspectj.lang.JoinPoint;
@@ -38,7 +36,6 @@ import java.util.Optional;
 @Slf4j
 @Aspect
 @Component
-@RequiredArgsConstructor
 public class PermissionAspect {
 
     private final PermissionCheckService permissionCheckService;
@@ -46,6 +43,13 @@ public class PermissionAspect {
 
     @Value("${security.permission.admin-bypass-enabled:true}")
     private boolean adminBypassEnabled;
+
+    public PermissionAspect(
+        PermissionCheckService permissionCheckService,
+        PageActionRepository pageActionRepository) {
+        this.permissionCheckService = permissionCheckService;
+        this.pageActionRepository = pageActionRepository;
+    }
 
     @Before("@annotation(requirePermission)")
     public void checkPermission(JoinPoint joinPoint, RequirePermission requirePermission) {
@@ -59,7 +63,7 @@ public class PermissionAspect {
             // Check if user is admin and admin bypass is enabled (from properties)
             if (adminBypassEnabled && isAdmin(userDto)) {
                 LOG.info("Admin user {} bypassing permission check (adminBypassEnabled={})",
-                         userDto.getUsername(), adminBypassEnabled);
+                        userDto.getUsername(), adminBypassEnabled);
                 return;
             }
 
@@ -67,56 +71,34 @@ public class PermissionAspect {
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder
                     .currentRequestAttributes()).getRequest();
 
-            // Determine endpoint and method
-            String endpoint = getEndpoint(joinPoint, requirePermission, request);
             String httpMethod = getHttpMethod(joinPoint, requirePermission, request);
+            String requestUri = request.getRequestURI();
 
-            LOG.debug("Checking permission for user {} on {} {}", userDto.getId(), httpMethod, endpoint);
+            LOG.debug("Checking permission for user {} on {} {}", userDto.getId(), httpMethod, requestUri);
 
-            // Find matching PageAction
-            Optional<PageAction> pageActionOpt = pageActionRepository
-                    .findByApiEndpointAndHttpMethodAndDeletedFalse(
-                            endpoint,
-                            HttpMethod.valueOf(httpMethod)
-                    );
+            // Check permission based on pageActions or endpoint/method
+            String[] pageActions = requirePermission.pageActions();
 
-            // If not found, try to find action fallback
-            if (pageActionOpt.isEmpty()) {
-                String fallbackActionCode = requirePermission.fallbackActionCode();
+            LOG.debug("RequirePermission pageActions: {}", (pageActions != null && pageActions.length > 0)
+                    ? String.join(", ", pageActions) : "[]");
 
-                // If fallbackActionCode is empty, determine action from HTTP method
-                if (fallbackActionCode == null || fallbackActionCode.isEmpty()) {
-                    fallbackActionCode = determineActionFromHttpMethod(httpMethod);
-                    LOG.debug("Specific endpoint not found, auto-determined {} action from {} method",
-                              fallbackActionCode, httpMethod);
-                } else {
-                    LOG.debug("Specific endpoint not found, using specified {} action fallback",
-                              fallbackActionCode);
+            if (pageActions != null && pageActions.length > 0) {
+                // PAGE:ACTION BASED PERMISSION CHECK
+                LOG.debug("Checking if user has any of page:action combinations: {}",
+                        String.join(", ", pageActions));
+
+                boolean hasPermission = checkPageActionPermissions(userDto.getId(), pageActions);
+
+                if (!hasPermission) {
+                    LOG.warn("User {} denied access - no matching page:action permission found", userDto.getId());
+                    throw new AccessDeniedException(requirePermission.message());
                 }
 
-                pageActionOpt = findActionForPage(request.getRequestURI(), fallbackActionCode);
-                if (pageActionOpt.isPresent()) {
-                    LOG.debug("Using {} action fallback for {}", fallbackActionCode, request.getRequestURI());
-                }
+                LOG.debug("User {} granted access via page:action permission", userDto.getId());
+            } else {
+                LOG.debug("No page:action permissions specified, skipping page:action check");
+                throw new AccessDeniedException("No pageActions specified in RequirePermission annotation");
             }
-
-            if (pageActionOpt.isEmpty()) {
-                LOG.warn("No PageAction found for {} {}", httpMethod, endpoint);
-                throw new AccessDeniedException("No permission configuration found for this endpoint");
-            }
-
-            // Check permission
-            boolean hasPermission = permissionCheckService.hasPermissionByUserId(
-                    userDto.getId(),
-                    pageActionOpt.get()
-            );
-
-            if (!hasPermission) {
-                LOG.warn("User {} denied access to {} {}", userDto.getId(), httpMethod, endpoint);
-                throw new AccessDeniedException(requirePermission.message());
-            }
-
-            LOG.debug("User {} granted access to {} {}", userDto.getId(), httpMethod, endpoint);
 
         } catch (AccessDeniedException e) {
             throw e;
@@ -124,19 +106,6 @@ public class PermissionAspect {
             LOG.error("Error checking permission", e);
             throw new AccessDeniedException("Error checking permission: " + e.getMessage());
         }
-    }
-
-    /**
-     * Determine action code from HTTP method
-     */
-    private String determineActionFromHttpMethod(String httpMethod) {
-        return switch (httpMethod.toUpperCase()) {
-            case "GET" -> "VIEW";
-            case "POST" -> "CREATE";
-            case "PUT", "PATCH" -> "EDIT";
-            case "DELETE" -> "DELETE";
-            default -> "VIEW"; // Default to VIEW for unknown methods
-        };
     }
 
     /**
@@ -148,7 +117,7 @@ public class PermissionAspect {
             Authentication authentication = SecurityUtils.getAuthentication();
             if (authentication != null && authentication.getAuthorities() != null) {
                 boolean hasAdminRole = authentication.getAuthorities().stream()
-                    .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
 
                 LOG.info("Admin check from authorities: {}", hasAdminRole);
                 return hasAdminRole;
@@ -157,7 +126,7 @@ public class PermissionAspect {
             // Fallback: check UserDto's userRoles field
             if (userDto.getUserRoles() != null) {
                 boolean hasAdminRole = userDto.getUserRoles().stream()
-                    .anyMatch(ur -> ur.getRole() != null && "ROLE_ADMIN".equals(ur.getRole().getName()));
+                        .anyMatch(ur -> ur.getRole() != null && "ROLE_ADMIN".equals(ur.getRole().getName()));
 
                 LOG.info("Admin check from UserDto.userRoles: {}", hasAdminRole);
                 return hasAdminRole;
@@ -172,72 +141,52 @@ public class PermissionAspect {
     }
 
     /**
-     * Find specific action for a page based on URL
+     * Check if user has permission for any of the specified page:action
+     * combinations.
+     * Format: "PAGE_CODE:ACTION_CODE"
+     *
+     * @param userId      User ID to check permissions for
+     * @param pageActions Array of "PAGE_CODE:ACTION_CODE" strings
+     * @return true if user has any one of the specified permissions (OR logic)
      */
-    private Optional<PageAction> findActionForPage(String requestUri, String actionCode) {
-        try {
-            // Extract base path (remove IDs and query params)
-            String basePath = extractBasePath(requestUri);
-            LOG.debug("Looking for {} action for base path: {}", actionCode, basePath);
-            return pageActionRepository.findActionByPageUrlAndActionCode(basePath, actionCode);
-        } catch (Exception e) {
-            LOG.error("Error finding {} action for page", actionCode, e);
-            return Optional.empty();
-        }
-    }
+    private boolean checkPageActionPermissions(Long userId, String[] pageActions) {
+        for (String pageAction : pageActions) {
+            String[] parts = pageAction.split(":", 2);
+            if (parts.length != 2) {
+                LOG.warn("Invalid pageAction format: {}. Expected 'PAGE_CODE:ACTION_CODE'", pageAction);
+                continue;
+            }
 
-    /**
-     * Extract base path from request URI (removes UUIDs and query params)
-     * Example: /api/v1/page/123e4567-e89b-12d3-a456-426614174000 -> /api/v1/page
-     */
-    private String extractBasePath(String requestUri) {
-        if (requestUri == null) {
-            return "";
-        }
-        // Remove query parameters
-        int queryIndex = requestUri.indexOf('?');
-        if (queryIndex > 0) {
-            requestUri = requestUri.substring(0, queryIndex);
-        }
-        // Remove UUID patterns and trailing segments
-        return requestUri.replaceAll("/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*$", "")
-                         .replaceAll("/\\d+$", "");
-    }
+            String pageCode = parts[0].trim();
+            String actionCode = parts[1].trim();
 
-    /**
-     * Determine the endpoint from annotation, method, or request
-     */
-    private String getEndpoint(JoinPoint joinPoint, RequirePermission requirePermission,
-                               HttpServletRequest request) {
-        // 1. Check annotation
-        if (!requirePermission.endpoint().isEmpty()) {
-            return requirePermission.endpoint();
+            LOG.debug("Checking permission for pageCode={}, actionCode={}", pageCode, actionCode);
+
+            try {
+                Optional<PageAction> pageActionOpt = pageActionRepository
+                        .findActionByPageCodeAndActionCode(pageCode, actionCode);
+
+                if (pageActionOpt.isPresent()) {
+                    boolean hasPermission = permissionCheckService.hasPermissionByUserId(userId, pageActionOpt.get());
+                    if (hasPermission) {
+                        LOG.debug("User has permission for {}:{}", pageCode, actionCode);
+                        return true; // User has at least one matching permission
+                    }
+                }
+            } catch (Exception e) {
+                LOG.error("Error checking permission for {}:{}", pageCode, actionCode, e);
+            }
         }
 
-        // 2. Check method annotations
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
-
-        String path = extractPathFromMethodAnnotations(method);
-        if (path != null) {
-            return path;
-        }
-
-        // 3. Fallback to request URI
-        return request.getRequestURI();
+        return false; // User doesn't have any of the specified permissions
     }
 
     /**
      * Determine HTTP method from annotation, method, or request
      */
     private String getHttpMethod(JoinPoint joinPoint, RequirePermission requirePermission,
-                                 HttpServletRequest request) {
-        // 1. Check annotation
-        if (!requirePermission.method().isEmpty()) {
-            return requirePermission.method();
-        }
-
-        // 2. Check method annotations
+            HttpServletRequest request) {
+        // Check method annotations
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
 
@@ -245,51 +194,20 @@ public class PermissionAspect {
         if (httpMethod != null) {
             return httpMethod;
         }
-
-        // 3. Fallback to request method
         return request.getMethod();
     }
 
-    /**
-     * Extract path from Spring MVC annotations
-     */
-    private String extractPathFromMethodAnnotations(Method method) {
-        if (method.isAnnotationPresent(GetMapping.class)) {
-            String[] paths = method.getAnnotation(GetMapping.class).value();
-            return paths.length > 0 ? paths[0] : null;
-        }
-        if (method.isAnnotationPresent(PostMapping.class)) {
-            String[] paths = method.getAnnotation(PostMapping.class).value();
-            return paths.length > 0 ? paths[0] : null;
-        }
-        if (method.isAnnotationPresent(PutMapping.class)) {
-            String[] paths = method.getAnnotation(PutMapping.class).value();
-            return paths.length > 0 ? paths[0] : null;
-        }
-        if (method.isAnnotationPresent(DeleteMapping.class)) {
-            String[] paths = method.getAnnotation(DeleteMapping.class).value();
-            return paths.length > 0 ? paths[0] : null;
-        }
-        if (method.isAnnotationPresent(PatchMapping.class)) {
-            String[] paths = method.getAnnotation(PatchMapping.class).value();
-            return paths.length > 0 ? paths[0] : null;
-        }
-        if (method.isAnnotationPresent(RequestMapping.class)) {
-            String[] paths = method.getAnnotation(RequestMapping.class).value();
-            return paths.length > 0 ? paths[0] : null;
-        }
-        return null;
-    }
-
-    /**
-     * Extract HTTP method from Spring MVC annotations
-     */
     private String extractHttpMethodFromAnnotations(Method method) {
-        if (method.isAnnotationPresent(GetMapping.class)) return "GET";
-        if (method.isAnnotationPresent(PostMapping.class)) return "POST";
-        if (method.isAnnotationPresent(PutMapping.class)) return "PUT";
-        if (method.isAnnotationPresent(DeleteMapping.class)) return "DELETE";
-        if (method.isAnnotationPresent(PatchMapping.class)) return "PATCH";
+        if (method.isAnnotationPresent(GetMapping.class))
+            return "GET";
+        if (method.isAnnotationPresent(PostMapping.class))
+            return "POST";
+        if (method.isAnnotationPresent(PutMapping.class))
+            return "PUT";
+        if (method.isAnnotationPresent(DeleteMapping.class))
+            return "DELETE";
+        if (method.isAnnotationPresent(PatchMapping.class))
+            return "PATCH";
         if (method.isAnnotationPresent(RequestMapping.class)) {
             RequestMethod[] methods = method.getAnnotation(RequestMapping.class).method();
             return methods.length > 0 ? methods[0].name() : null;

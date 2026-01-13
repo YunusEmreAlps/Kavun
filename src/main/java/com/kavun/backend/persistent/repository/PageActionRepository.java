@@ -34,6 +34,10 @@ public interface PageActionRepository extends BaseRepository<PageAction> {
     Optional<PageAction> findByApiEndpointAndHttpMethodAndDeletedFalse(String apiEndpoint, HttpMethod httpMethod);
 
     @Query("SELECT pa FROM PageAction pa JOIN FETCH pa.action a JOIN FETCH pa.page p " +
-            "WHERE p.url = :pageUrl AND a.code = :actionCode AND pa.deleted = false AND p.deleted = false")
+           "WHERE p.url = :pageUrl AND a.code = :actionCode AND pa.deleted = false AND p.deleted = false")
     Optional<PageAction> findActionByPageUrlAndActionCode(String pageUrl, String actionCode);
+
+    @Query("SELECT pa FROM PageAction pa JOIN FETCH pa.action a JOIN FETCH pa.page p " +
+           "WHERE p.code = :pageCode AND a.code = :actionCode AND pa.deleted = false AND p.deleted = false")
+    Optional<PageAction> findActionByPageCodeAndActionCode(String pageCode, String actionCode);
 }

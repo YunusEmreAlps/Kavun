@@ -1,6 +1,6 @@
 <!-- KAVUN -->
 
-![Kavun Logo](docs/images/kavun-transparent2.png)
+![Kavun Logo](docs/images/kavun.png)
 
 # Kavun🍈
 

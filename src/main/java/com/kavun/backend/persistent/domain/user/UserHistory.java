@@ -69,7 +69,6 @@ public class UserHistory extends BaseEntity<Long> implements Serializable {
     return Objects.hash(super.hashCode(), getPublicId(), getUser(), getUserHistoryType());
   }
 
-  @Override
   protected boolean canEqual(Object other) {
     return other instanceof UserHistory;
   }

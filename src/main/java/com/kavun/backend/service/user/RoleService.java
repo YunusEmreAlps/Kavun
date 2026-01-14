@@ -1,9 +1,23 @@
 package com.kavun.backend.service.user;
 
-import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.kavun.backend.persistent.domain.user.Role;
+import com.kavun.backend.persistent.repository.RoleRepository;
+import com.kavun.backend.persistent.specification.RoleSpecification;
+import com.kavun.backend.service.AbstractService;
+import com.kavun.shared.dto.RoleDto;
+import com.kavun.shared.dto.mapper.RoleMapper;
+import com.kavun.shared.request.RoleRequest;
+
+
+import org.springframework.data.jpa.domain.Specification;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
+import java.util.Optional;;
 
 /**
  * Role service to provide implementation for the definitions about a role.
@@ -12,61 +26,29 @@ import com.kavun.backend.persistent.domain.user.Role;
  * @version 1.0
  * @since 1.0
  */
-public interface RoleService {
+@Slf4j
+@Service
+@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+public class RoleService
+        extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
 
-  /**
-   * Create the role with the role instance given.
-   *
-   * @param role the role
-   * @return the persisted role with assigned id
-   */
-  Role save(final Role role);
+    public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification) {
+        super(mapper, repository, specification);
+    }
 
-  /**
-   * Retrieves the role with the specified name.
-   *
-   * @param name the name of the role to retrieve
-   * @return the role tuple that matches the id given
-   */
-  Role findByName(final String name);
+    public Specification<Role> specification(Map<String, Object> spec) {
+        return specification.search(spec);
+    }
 
-  /**
-   * Checks if a role exists by its ID.
-   *
-   * @param id the ID of the role to check
-   * @return true if the role exists, false otherwise
-   */
-  boolean existById(final Integer id);
+    public Specification<Role> search(Map<String, Object> paramaterMap) {
+        return specification.search(paramaterMap);
+    }
 
-  /**
-   * Retrieves the role with the specified ID.
-   *
-   * @param id the ID of the role to retrieve
-   * @return the role tuple that matches the ID given
-   */
-  Role findById(final Long id);
+    @Transactional(readOnly = true)
+    public Role findByName(String name) {
+        LOG.debug("Finding role by name: {}", name);
+        Optional<Role> roleOptional = repository.findByName(name);
+        return roleOptional.orElse(null);
+    }
 
-  /**
-   * Retrieves the role with the specified public ID.
-   *
-   * @param publicId the public ID of the role to retrieve
-   * @return the role tuple that matches the public ID given
-   */
-  Role findByPublicId(final String publicId);
-
-  /**
-   * Retrieves all roles.
-   *
-   * @return a list of all roles
-   */
-  List<Role> findAll();
-
-  /**
-   *
-   * Retrieves all roles with pagination support.
-   *
-   * @param pageable the pagination information
-   * @return a paginated list of roles
-   */
-  Page<Role> findAll(Pageable pageable);
 }

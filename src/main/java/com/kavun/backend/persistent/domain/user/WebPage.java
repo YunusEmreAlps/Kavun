@@ -1,0 +1,77 @@
+package com.kavun.backend.persistent.domain.user;
+
+import com.kavun.backend.persistent.domain.base.BaseEntity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Index;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.annotations.SQLDelete;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * The page model for the application.
+ *
+ * @author Yunus Emre Alpu
+ * @version 1.0
+ * @since 1.0
+ *
+ */
+@Entity
+@Table(name = "pages",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = "code")
+    },
+    indexes = {
+        @Index(name = "idx_page_parent", columnList = "parent_id"),
+        @Index(name = "idx_page_code", columnList = "code"),
+        @Index(name = "idx_page_order", columnList = "display_order"),
+        @Index(name = "idx_page_deleted", columnList = "deleted")
+    }
+)
+@Getter @Setter
+@SQLDelete(sql = "UPDATE pages SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
+public class WebPage extends BaseEntity<Long> implements Serializable {
+
+    @Column(nullable = false, length = 100, unique = true)
+    private String code;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(nullable = false, length = 500)
+    private String url;
+
+    @Column(length = 500)
+    private String description;
+
+    @Column(nullable = false, length = 100)
+    private String icon;
+
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private WebPage parent;
+
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<WebPage> children = new ArrayList<>();
+
+    @OneToMany(mappedBy = "page", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<PageAction> pageActions = new ArrayList<>();
+}

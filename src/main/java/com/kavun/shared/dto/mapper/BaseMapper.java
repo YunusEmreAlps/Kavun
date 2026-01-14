@@ -2,6 +2,8 @@ package com.kavun.shared.dto.mapper;
 
 import com.kavun.backend.persistent.domain.base.BaseEntity;
 import com.kavun.shared.dto.BaseDto;
+import com.kavun.shared.request.BaseRequest;
+
 import java.util.List;
 import java.util.Set;
 import org.mapstruct.BeanMapping;
@@ -10,17 +12,21 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
 /**
- * Base mapper interface providing common mapping operations for entities and DTOs.
+ * Base mapper interface providing common mapping operations for entities and
+ * DTOs.
  *
- * <p>This interface should be extended by specific mappers to inherit common mappings for audit
+ * <p>
+ * This interface should be extended by specific mappers to inherit common
+ * mappings for audit
  * fields (createdAt, createdBy, updatedAt, updatedBy, version, publicId).
  *
- * <p>Example usage:
+ * <p>
+ * Example usage:
  *
  * <pre>{@code
  * @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
  * public interface UserMapper extends BaseMapper<User, UserDto> {
- *     // Additional custom mappings
+ *   // Additional custom mappings
  * }
  * }</pre>
  *
@@ -30,7 +36,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
  * @version 1.0
  * @since 1.0
  */
-public interface BaseMapper<E extends BaseEntity<?>, D extends BaseDto> {
+public interface BaseMapper<BR extends BaseRequest, E extends BaseEntity, D extends BaseDto> {
 
   /**
    * Converts an entity to a DTO.
@@ -43,10 +49,12 @@ public interface BaseMapper<E extends BaseEntity<?>, D extends BaseDto> {
   /**
    * Converts a DTO to an entity.
    *
-   * <p>Note: Audit fields (createdAt, createdBy) are ignored as they should be managed by JPA
+   * <p>
+   * Note: Audit fields (createdAt, createdBy) are ignored as they should be
+   * managed by JPA
    * auditing.
    *
-   * @param dto the source DTO
+   * @param request the source DTO
    * @return the mapped entity, or null if dto is null
    */
   @Mapping(target = "id", ignore = true)
@@ -55,7 +63,7 @@ public interface BaseMapper<E extends BaseEntity<?>, D extends BaseDto> {
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
   @Mapping(target = "deleted", ignore = true)
-  E toEntity(D dto);
+  E toEntity(BR request);
 
   /**
    * Converts a list of entities to a list of DTOs.
@@ -84,11 +92,13 @@ public interface BaseMapper<E extends BaseEntity<?>, D extends BaseDto> {
   /**
    * Updates an existing entity with values from a DTO.
    *
-   * <p>Null values in the DTO will not overwrite existing entity values. Audit fields and ID are
+   * <p>
+   * Null values in the DTO will not overwrite existing entity values. Audit
+   * fields and ID are
    * preserved.
    *
-   * @param dto the source DTO with updated values
-   * @param entity the target entity to update
+   * @param request the source DTO with updated values
+   * @param entity  the target entity to update
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
   @Mapping(target = "id", ignore = true)
@@ -99,5 +109,5 @@ public interface BaseMapper<E extends BaseEntity<?>, D extends BaseDto> {
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
   @Mapping(target = "deleted", ignore = true)
-  void updateEntityFromDto(D dto, @MappingTarget E entity);
+  void updateEntityFromDto(BR request, @MappingTarget E entity);
 }

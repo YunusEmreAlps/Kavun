@@ -6,7 +6,7 @@ Configuration can be found [here](/src/main/java/com/kavun/config/OpenApi30Confi
 
 ## Actuator endpoints
 
-![img.png](images/swagger-actuator-endpoint.png)
+![img.png](images/swagger-actuator-endpoint.jpeg)
 
 ## User search, Authentication, and Authorization
 
@@ -18,4 +18,3 @@ Configuration can be found [here](/src/main/java/com/kavun/config/OpenApi30Confi
 
 * Copy and paste the **accessToken** into to *Authorize* button.
 
-![img_1.png](images/swagger-user-search-and-auth.png)

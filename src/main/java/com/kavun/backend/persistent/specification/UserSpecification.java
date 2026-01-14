@@ -1,11 +1,20 @@
 package com.kavun.backend.persistent.specification;
 
 import com.kavun.backend.persistent.domain.user.User;
+
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/**
+ * Specification class for User entity filtering operations.
+ * Extends BaseSpecification to inherit common filtering capabilities.
+ *
+ * @author Yunus Emre Alpu
+ * @version 1.0
+ * @since 1.0
+ */
 @Component
 public class UserSpecification {
 

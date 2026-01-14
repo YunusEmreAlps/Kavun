@@ -15,7 +15,7 @@ import lombok.*;
 /**
  * The Email model for the application.
  *
- * @author Ömer Kara
+ * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
  */

@@ -7,9 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreRemove;
 import jakarta.persistence.Version;
-import jakarta.validation.constraints.NotBlank;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -17,14 +15,13 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.Where;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import com.kavun.constant.base.BaseConstants;
-import com.kavun.shared.util.core.SecurityUtils;
 
 /**
  * BaseEntity class allows an entity to inherit common properties from it.
@@ -37,23 +34,27 @@ import com.kavun.shared.util.core.SecurityUtils;
 @Setter
 @ToString
 @MappedSuperclass
+@Where(clause = "deleted = false")
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity<T extends Serializable> {
   // private static final String SEQUENCE_NAME = "kavun_sequence";
-  // private static final String SEQUENCE_GENERATOR_NAME = "kavun_sequence_generator";
+  // private static final String SEQUENCE_GENERATOR_NAME =
+  // "kavun_sequence_generator";
 
   @Id
-  // @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = SEQUENCE_GENERATOR_NAME)
-  // @SequenceGenerator(name = SEQUENCE_GENERATOR_NAME, sequenceName = SEQUENCE_NAME, allocationSize = 1)
+  // @GeneratedValue(strategy = GenerationType.SEQUENCE, generator =
+  // SEQUENCE_GENERATOR_NAME)
+  // @SequenceGenerator(name = SEQUENCE_GENERATOR_NAME, sequenceName =
+  // SEQUENCE_NAME, allocationSize = 1)
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private T id;
 
   @Column(unique = true, nullable = false, updatable = false)
-  @NotBlank(message = BaseConstants.PUBLIC_ID_NOT_BLANK)
   private String publicId;
 
   @Version
-  private short version;
+  @Column(nullable = false)
+  private Integer version;
 
   @CreatedDate
   @Column(nullable = false, updatable = false)
@@ -61,7 +62,7 @@ public abstract class BaseEntity<T extends Serializable> {
 
   @CreatedBy
   @Column(nullable = false, updatable = false)
-  private String createdBy;
+  private Long createdBy;
 
   @LastModifiedDate
   @Column
@@ -69,24 +70,29 @@ public abstract class BaseEntity<T extends Serializable> {
 
   @LastModifiedBy
   @Column
-  private String updatedBy;
+  private Long updatedBy;
 
   @Column
   private LocalDateTime deletedAt;
 
   @Column
-  private String deletedBy;
+  private long deletedBy;
 
   @Column(nullable = false)
   private boolean deleted = false;
 
+  @PrePersist
+  protected void generatePublicId() {
+    if (this.publicId == null) {
+      this.publicId = UUID.randomUUID().toString();
+    }
+  }
+
   @Override
   public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (!(o instanceof BaseEntity<?> that) || !that.canEqual(this))
-      return false;
-    return version == that.version && Objects.equals(publicId, that.publicId);
+    if (this == o) return true;
+    if (!(o instanceof BaseEntity<?> that) || !that.canEqual(this)) return false;
+    return Objects.equals(publicId, that.publicId);
   }
 
   protected boolean canEqual(Object other) {
@@ -95,26 +101,6 @@ public abstract class BaseEntity<T extends Serializable> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(version, publicId);
-  }
-
-  @PrePersist
-  protected void onCreate() {
-    if (publicId == null) { // Avoid overwriting if set by subclass
-      publicId = UUID.randomUUID().toString();
-    }
-    version = 0;
-  }
-
-  @PreRemove
-  protected void onDelete() {
-    deleted = true;
-    deletedAt = LocalDateTime.now();
-    var authentication = SecurityUtils.getAuthentication();
-    if (SecurityUtils.isAuthenticated(authentication)) {
-      deletedBy = authentication.getName();
-    } else {
-      deletedBy = "system";
-    }
+    return Objects.hash(publicId);
   }
 }

@@ -73,14 +73,28 @@ public class PermissionAspect {
 
             String httpMethod = getHttpMethod(joinPoint, requirePermission, request);
             String requestUri = request.getRequestURI();
+            String pageCodeHeader = request.getHeader("Page-Code");
 
-            LOG.debug("Checking permission for user {} on {} {}", userDto.getId(), httpMethod, requestUri);
+            LOG.debug("Checking permission for user {} on {} {} (Page-Code header: {})", 
+                    userDto.getId(), httpMethod, requestUri, pageCodeHeader);
 
-            // Check permission based on pageActions or endpoint/method
+            // Check permission based on pageActions or auto-detect
             String[] pageActions = requirePermission.pageActions();
 
-            LOG.debug("RequirePermission pageActions: {}", (pageActions != null && pageActions.length > 0)
-                    ? String.join(", ", pageActions) : "[]");
+            LOG.debug("RequirePermission pageActions: {}, autoDetect: {}", 
+                    (pageActions != null && pageActions.length > 0) ? String.join(", ", pageActions) : "[]",
+                    requirePermission.autoDetect());
+
+            // Auto-detect page:action if enabled and pageActions is empty
+            if ((pageActions == null || pageActions.length == 0) && requirePermission.autoDetect()) {
+                String actionOverride = requirePermission.actionOverride();
+                String autoDetectedPageAction = autoDetectPageAction(
+                        pageCodeHeader, requestUri, httpMethod, actionOverride);
+                if (autoDetectedPageAction != null) {
+                    pageActions = new String[] { autoDetectedPageAction };
+                    LOG.info("Auto-detected page:action: {}", autoDetectedPageAction);
+                }
+            }
 
             if (pageActions != null && pageActions.length > 0) {
                 // PAGE:ACTION BASED PERMISSION CHECK
@@ -96,7 +110,7 @@ public class PermissionAspect {
 
                 LOG.debug("User {} granted access via page:action permission", userDto.getId());
             } else {
-                LOG.debug("No page:action permissions specified, skipping page:action check");
+                LOG.debug("No page:action permissions specified and auto-detect disabled");
                 throw new AccessDeniedException("No pageActions specified in RequirePermission annotation");
             }
 
@@ -115,16 +129,20 @@ public class PermissionAspect {
         try {
             // Check from Spring Security context first (most reliable)
             Authentication authentication = SecurityUtils.getAuthentication();
+            LOG.debug("Authentication object: {}", authentication);
+
             if (authentication != null && authentication.getAuthorities() != null) {
+                LOG.debug("Authorities: {}", authentication.getAuthorities());
                 boolean hasAdminRole = authentication.getAuthorities().stream()
                         .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
 
-                LOG.info("Admin check from authorities: {}", hasAdminRole);
+                LOG.info("Admin check from authorities for user {}: {} (authorities={})",
+                        userDto.getUsername(), hasAdminRole, authentication.getAuthorities());
                 return hasAdminRole;
             }
 
             // Fallback: check UserDto's userRoles field
-            if (userDto.getUserRoles() != null) {
+            if (userDto.getUserRoles() != null && !userDto.getUserRoles().isEmpty()) {
                 boolean hasAdminRole = userDto.getUserRoles().stream()
                         .anyMatch(ur -> ur.getRole() != null && "ROLE_ADMIN".equals(ur.getRole().getName()));
 
@@ -132,12 +150,109 @@ public class PermissionAspect {
                 return hasAdminRole;
             }
 
-            LOG.warn("Could not determine admin status - no authorities or userRoles found");
+            LOG.warn("Could not determine admin status - no authorities or userRoles found for user: {}",
+                    userDto.getUsername());
             return false;
         } catch (Exception e) {
-            LOG.error("Error checking admin role", e);
+            LOG.error("Error checking admin role for user: {}", userDto.getUsername(), e);
             return false;
         }
+    }
+
+    /**
+     * Auto-detect page:action from header, path, and HTTP method.
+     * Priority:
+     * 1. Page-Code header from frontend
+     * 2. URL path extraction (/api/v1/action -> ACTION)
+     * 3. actionOverride (if provided) or HTTP method mapping (GET->VIEW, POST->CREATE, etc.)
+     *
+     * @param pageCodeHeader Page-Code header from request
+     * @param requestUri     Request URI path
+     * @param httpMethod     HTTP method (GET, POST, PUT, DELETE)
+     * @param actionOverride Optional action override (e.g., "APPROVE", "REJECT")
+     * @return page:action string or null
+     */
+    private String autoDetectPageAction(String pageCodeHeader, String requestUri, 
+                                        String httpMethod, String actionOverride) {
+        try {
+            // 1. Try to get page code from header (frontend tarafından gönderilen)
+            String pageCode = pageCodeHeader;
+
+            // 2. If no header, extract from URL path
+            if (pageCode == null || pageCode.trim().isEmpty()) {
+                pageCode = extractPageCodeFromPath(requestUri);
+            }
+
+            if (pageCode == null || pageCode.trim().isEmpty()) {
+                LOG.warn("Could not determine page code from header or path: {}", requestUri);
+                return null;
+            }
+
+            // 3. Determine action: use override if provided, otherwise map from HTTP method
+            String action;
+            if (actionOverride != null && !actionOverride.trim().isEmpty()) {
+                action = actionOverride.toUpperCase();
+                LOG.debug("Using action override: {}", action);
+            } else {
+                action = mapHttpMethodToAction(httpMethod);
+                if (action == null) {
+                    LOG.warn("Could not map HTTP method to action: {}", httpMethod);
+                    return null;
+                }
+            }
+
+            String pageAction = pageCode.toUpperCase() + ":" + action;
+            LOG.debug("Auto-detected page:action = {}:{} from uri: {}, method: {} (override: {})", 
+                    pageCode, action, requestUri, httpMethod, actionOverride);
+            return pageAction;
+
+        } catch (Exception e) {
+            LOG.error("Error auto-detecting page:action", e);
+            return null;
+        }
+    }
+
+    /**
+     * Extract page code from URL path.
+     * Example: /api/v1/action/delete/123 -> ACTION
+     *          /api/v1/user/list -> USER
+     */
+    private String extractPageCodeFromPath(String requestUri) {
+        try {
+            // Remove query parameters
+            String path = requestUri.split("\\?")[0];
+            
+            // Split by /
+            String[] parts = path.split("/");
+            
+            // Typically: /api/v1/{resource}/... -> resource is the page
+            if (parts.length >= 4 && "api".equals(parts[1])) {
+                String resource = parts[3]; // parts[0] is empty, parts[1]=api, parts[2]=v1, parts[3]=resource
+                return resource.toUpperCase();
+            }
+            
+            LOG.debug("Could not extract page code from path: {}", requestUri);
+            return null;
+        } catch (Exception e) {
+            LOG.error("Error extracting page code from path: {}", requestUri, e);
+            return null;
+        }
+    }
+
+    /**
+     * Map HTTP method to standard action codes.
+     */
+    private String mapHttpMethodToAction(String httpMethod) {
+        if (httpMethod == null) {
+            return null;
+        }
+        return switch (httpMethod.toUpperCase()) {
+            case "GET" -> "VIEW";
+            case "POST" -> "CREATE";
+            case "PUT", "PATCH" -> "EDIT";
+            case "DELETE" -> "DELETE";
+            default -> null;
+        };
     }
 
     /**

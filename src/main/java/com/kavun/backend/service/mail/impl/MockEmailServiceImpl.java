@@ -74,4 +74,22 @@ public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
     LOG.info(EmailConstants.MAIL_SUCCESS_MESSAGE);
   }
 
+  /**
+   * Mock implementation of log email metrics.
+   * Does nothing as MockEmailServiceImpl doesn't track metrics.
+   */
+  @Override
+  public void logEmailMetrics() {
+    LOG.debug("Mock email service - email metrics logging (no-op)");
+  }
+
+  /**
+   * Mock implementation of cleanup rate limit cache.
+   * Does nothing as MockEmailServiceImpl doesn't use rate limiting.
+   */
+  @Override
+  public void cleanupRateLimitCache() {
+    LOG.debug("Mock email service - rate limit cache cleanup (no-op)");
+  }
+
 }

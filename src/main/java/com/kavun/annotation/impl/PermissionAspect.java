@@ -75,13 +75,13 @@ public class PermissionAspect {
             String requestUri = request.getRequestURI();
             String pageCodeHeader = request.getHeader("Page-Code");
 
-            LOG.debug("Checking permission for user {} on {} {} (Page-Code header: {})", 
+            LOG.debug("Checking permission for user {} on {} {} (Page-Code header: {})",
                     userDto.getId(), httpMethod, requestUri, pageCodeHeader);
 
             // Check permission based on pageActions or auto-detect
             String[] pageActions = requirePermission.pageActions();
 
-            LOG.debug("RequirePermission pageActions: {}, autoDetect: {}", 
+            LOG.debug("RequirePermission pageActions: {}, autoDetect: {}",
                     (pageActions != null && pageActions.length > 0) ? String.join(", ", pageActions) : "[]",
                     requirePermission.autoDetect());
 
@@ -172,7 +172,7 @@ public class PermissionAspect {
      * @param actionOverride Optional action override (e.g., "APPROVE", "REJECT")
      * @return page:action string or null
      */
-    private String autoDetectPageAction(String pageCodeHeader, String requestUri, 
+    private String autoDetectPageAction(String pageCodeHeader, String requestUri,
                                         String httpMethod, String actionOverride) {
         try {
             // 1. Try to get page code from header (frontend tarafından gönderilen)
@@ -202,7 +202,7 @@ public class PermissionAspect {
             }
 
             String pageAction = pageCode.toUpperCase() + ":" + action;
-            LOG.debug("Auto-detected page:action = {}:{} from uri: {}, method: {} (override: {})", 
+            LOG.debug("Auto-detected page:action = {}:{} from uri: {}, method: {} (override: {})",
                     pageCode, action, requestUri, httpMethod, actionOverride);
             return pageAction;
 
@@ -221,16 +221,16 @@ public class PermissionAspect {
         try {
             // Remove query parameters
             String path = requestUri.split("\\?")[0];
-            
+
             // Split by /
             String[] parts = path.split("/");
-            
+
             // Typically: /api/v1/{resource}/... -> resource is the page
             if (parts.length >= 4 && "api".equals(parts[1])) {
                 String resource = parts[3]; // parts[0] is empty, parts[1]=api, parts[2]=v1, parts[3]=resource
                 return resource.toUpperCase();
             }
-            
+
             LOG.debug("Could not extract page code from path: {}", requestUri);
             return null;
         } catch (Exception e) {

@@ -1,8 +1,10 @@
 package com.kavun.web.rest.v1;
+import com.kavun.annotation.Loggable;
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.service.user.RoleService;
 import com.kavun.shared.dto.RoleDto;
 import com.kavun.shared.request.RoleRequest;
+import com.kavun.web.payload.response.UserRoleResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +21,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 import java.util.Map;
@@ -219,6 +222,7 @@ public class RoleRestApi {
      * @param pageable pagination parameters
      * @return page of matching roles
      */
+    @Loggable
     @PostMapping("/search")
     @Operation(summary = "Search roles", description = "Search roles with dynamic criteria")
     public ResponseEntity<Page<RoleDto>> search(
@@ -228,5 +232,43 @@ public class RoleRestApi {
         Specification<Role> spec = roleService.search(searchParams);
         Page<RoleDto> roles = roleService.findAll(spec, pageable);
         return ResponseEntity.ok(roles);
+    }
+
+    /**
+     * Get users by role ID
+     *
+     * @param id role ID
+     * @return list of user IDs assigned to the role
+     */
+    @Loggable
+    // @RequirePermission(pageActions = { "ROLES:VIEW" })
+    @GetMapping(value = "/{id}/users", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<UserRoleResponse> getUsersByRoleId(@PathVariable Long id) {
+        List<UserRoleResponse> users = roleService.getUsersByRoleId(id);
+        return users;
+    }
+
+    /**
+     * Assign role to multiple users
+     */
+    @Loggable
+    // @RequirePermission(pageActions = { "ROLES:EDIT" })
+    @PostMapping(value = "/{roleId}/assign-users", produces = MediaType.APPLICATION_JSON_VALUE)
+    public void assignRoleToMultipleUsers(@PathVariable Long roleId,
+            @RequestBody List<Long> userIds) {
+        roleService.assignRoleToMultipleUsers(roleId, userIds);
+    }
+
+    /**
+     * Assing multiple roles to user
+     */
+    @Loggable
+    // @RequirePermission(pageActions = { "ROLES:EDIT" })
+    @PostMapping(value = "/assign-roles/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public void assignMultipleRolesToUser(@PathVariable Long userId,
+            @RequestBody List<Long> roleIds) {
+        for (Long roleId : roleIds) {
+            roleService.assignRoleToUser(roleId, userId);
+        }
     }
 }

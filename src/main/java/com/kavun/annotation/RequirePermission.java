@@ -47,7 +47,7 @@ public @interface RequirePermission {
     /**
      * Override the action part when using autoDetect.
      * Useful when HTTP method doesn't match the actual action.
-     * 
+     *
      * Example: POST request but needs APPROVE permission:
      * @RequirePermission(autoDetect = true, actionOverride = "APPROVE")
      * Result: PAGE_CODE:APPROVE instead of PAGE_CODE:CREATE

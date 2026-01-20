@@ -2,7 +2,9 @@ package com.kavun.annotation.impl;
 
 import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.PageAction;
+import com.kavun.backend.persistent.domain.user.WebPage;
 import com.kavun.backend.persistent.repository.PageActionRepository;
+import com.kavun.backend.persistent.repository.PageRepository;
 import com.kavun.backend.service.user.PermissionCheckService;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
@@ -38,6 +40,7 @@ import java.util.Optional;
 @Component
 public class PermissionAspect {
 
+    private final PageRepository pageRepository;
     private final PermissionCheckService permissionCheckService;
     private final PageActionRepository pageActionRepository;
 
@@ -46,9 +49,11 @@ public class PermissionAspect {
 
     public PermissionAspect(
         PermissionCheckService permissionCheckService,
-        PageActionRepository pageActionRepository) {
+        PageActionRepository pageActionRepository,
+        PageRepository pageRepository) {
         this.permissionCheckService = permissionCheckService;
         this.pageActionRepository = pageActionRepository;
+        this.pageRepository = pageRepository;
     }
 
     @Before("@annotation(requirePermission)")
@@ -74,9 +79,10 @@ public class PermissionAspect {
             String httpMethod = getHttpMethod(joinPoint, requirePermission, request);
             String requestUri = request.getRequestURI();
             String pageCodeHeader = request.getHeader("Page-Code");
+            String pageUrl = request.getHeader("Page-Url");
 
-            LOG.debug("Checking permission for user {} on {} {} (Page-Code header: {})",
-                    userDto.getId(), httpMethod, requestUri, pageCodeHeader);
+            LOG.debug("Checking permission for user {} on {} {} (Page-Code header: {}, Page-Url header: {})",
+                    userDto.getId(), httpMethod, requestUri, pageCodeHeader, pageUrl);
 
             // Check permission based on pageActions or auto-detect
             String[] pageActions = requirePermission.pageActions();
@@ -89,7 +95,7 @@ public class PermissionAspect {
             if ((pageActions == null || pageActions.length == 0) && requirePermission.autoDetect()) {
                 String actionOverride = requirePermission.actionOverride();
                 String autoDetectedPageAction = autoDetectPageAction(
-                        pageCodeHeader, requestUri, httpMethod, actionOverride);
+                        pageCodeHeader, pageUrl, requestUri, httpMethod, actionOverride);
                 if (autoDetectedPageAction != null) {
                     pageActions = new String[] { autoDetectedPageAction };
                     LOG.info("Auto-detected page:action: {}", autoDetectedPageAction);
@@ -159,36 +165,29 @@ public class PermissionAspect {
         }
     }
 
-    /**
-     * Auto-detect page:action from header, path, and HTTP method.
-     * Priority:
-     * 1. Page-Code header from frontend
-     * 2. URL path extraction (/api/v1/action -> ACTION)
-     * 3. actionOverride (if provided) or HTTP method mapping (GET->VIEW, POST->CREATE, etc.)
-     *
-     * @param pageCodeHeader Page-Code header from request
-     * @param requestUri     Request URI path
-     * @param httpMethod     HTTP method (GET, POST, PUT, DELETE)
-     * @param actionOverride Optional action override (e.g., "APPROVE", "REJECT")
-     * @return page:action string or null
-     */
-    private String autoDetectPageAction(String pageCodeHeader, String requestUri,
+    private String autoDetectPageAction(String pageCodeHeader, String pageUrlHeader, String requestUri,
                                         String httpMethod, String actionOverride) {
         try {
-            // 1. Try to get page code from header (frontend tarafından gönderilen)
-            String pageCode = pageCodeHeader;
+            WebPage page = null;
 
-            // 2. If no header, extract from URL path
-            if (pageCode == null || pageCode.trim().isEmpty()) {
-                pageCode = extractPageCodeFromPath(requestUri);
+            if (pageCodeHeader != null && !pageCodeHeader.trim().isEmpty()) {
+                page = pageRepository.findByCodeAndDeletedFalse(pageCodeHeader);
+                LOG.debug("Looking up page by code header: {} -> {}",
+                    pageCodeHeader, page != null ? "found" : "not found");
             }
 
-            if (pageCode == null || pageCode.trim().isEmpty()) {
-                LOG.warn("Could not determine page code from header or path: {}", requestUri);
+
+            if (page == null && pageUrlHeader != null && !pageUrlHeader.trim().isEmpty()) {
+                page = pageRepository.findByUrlAndDeletedFalse(pageUrlHeader);
+                LOG.debug("Looking up page by URL header: {} -> {}", pageUrlHeader,
+                    page != null ? page.getCode() : "not found");
+            }
+
+            if (page == null) {
+                LOG.warn("Could not find page for code '{}' or URL: {}", pageCodeHeader, pageUrlHeader);
                 return null;
             }
 
-            // 3. Determine action: use override if provided, otherwise map from HTTP method
             String action;
             if (actionOverride != null && !actionOverride.trim().isEmpty()) {
                 action = actionOverride.toUpperCase();
@@ -201,9 +200,9 @@ public class PermissionAspect {
                 }
             }
 
-            String pageAction = pageCode.toUpperCase() + ":" + action;
+            String pageAction = page.getCode().toUpperCase() + ":" + action;
             LOG.debug("Auto-detected page:action = {}:{} from uri: {}, method: {} (override: {})",
-                    pageCode, action, requestUri, httpMethod, actionOverride);
+                    page.getCode(), action, requestUri, httpMethod, actionOverride);
             return pageAction;
 
         } catch (Exception e) {
@@ -213,29 +212,36 @@ public class PermissionAspect {
     }
 
     /**
-     * Extract page code from URL path.
-     * Example: /api/v1/action/delete/123 -> ACTION
-     *          /api/v1/user/list -> USER
+     * Normalize request path for database URL matching.
+     * Removes /api/v1 prefix and query parameters.
+     * Example: /api/v1/users/list?page=1 -> /users/list
+     *          /api/v1/admin -> /admin
      */
-    private String extractPageCodeFromPath(String requestUri) {
+    private String normalizeRequestPath(String requestUri) {
         try {
             // Remove query parameters
             String path = requestUri.split("\\?")[0];
 
-            // Split by /
-            String[] parts = path.split("/");
+            // Remove /api/v1 or /api/vX prefix
+            if (path.startsWith("/api/v")) {
+                // Find the third slash to remove /api/vX
+                int firstSlash = path.indexOf('/');
+                int secondSlash = path.indexOf('/', firstSlash + 1);
+                int thirdSlash = path.indexOf('/', secondSlash + 1);
 
-            // Typically: /api/v1/{resource}/... -> resource is the page
-            if (parts.length >= 4 && "api".equals(parts[1])) {
-                String resource = parts[3]; // parts[0] is empty, parts[1]=api, parts[2]=v1, parts[3]=resource
-                return resource.toUpperCase();
+                if (thirdSlash > 0) {
+                    path = path.substring(thirdSlash);
+                } else {
+                    // If no path after version, return root
+                    path = "/";
+                }
             }
 
-            LOG.debug("Could not extract page code from path: {}", requestUri);
-            return null;
+            LOG.debug("Normalized path: {} -> {}", requestUri, path);
+            return path;
         } catch (Exception e) {
-            LOG.error("Error extracting page code from path: {}", requestUri, e);
-            return null;
+            LOG.error("Error normalizing request path: {}", requestUri, e);
+            return requestUri;
         }
     }
 

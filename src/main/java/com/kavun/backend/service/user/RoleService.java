@@ -45,10 +45,6 @@ public class RoleService
         this.userRepository = userRepository;
     }
 
-    public Specification<Role> specification(Map<String, Object> spec) {
-        return specification.search(spec);
-    }
-
     public Specification<Role> search(Map<String, Object> paramaterMap) {
         return specification.search(paramaterMap);
     }

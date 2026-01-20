@@ -24,6 +24,10 @@ public interface PageRepository extends BaseRepository<WebPage> {
 
     Optional<WebPage> findByCode(String code);
 
+    WebPage findByCodeAndDeletedFalse(String code);
+
+    WebPage findByUrlAndDeletedFalse(String url);
+
     List<WebPage> findByParentIsNullAndDeletedFalseOrderByDisplayOrder();
     List<WebPage> findByParentIdAndDeletedFalseOrderByDisplayOrder(Long parentId);
 

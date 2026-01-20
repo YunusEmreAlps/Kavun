@@ -32,10 +32,6 @@ public class PermissionService
         super(mapper, repository, specification);
     }
 
-    public Specification<Permission> specification(Map<String, Object> spec) {
-        return specification.search(spec);
-    }
-
     public Specification<Permission> search(Map<String, Object> paramaterMap) {
         return specification.search(paramaterMap);
     }

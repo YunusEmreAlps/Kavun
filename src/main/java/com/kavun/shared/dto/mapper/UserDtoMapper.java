@@ -82,6 +82,14 @@ public interface UserDtoMapper {
   UserResponse toUserResponse(User user);
 
   /**
+   * Convert and populate a UserDto to UserResponse object.
+   *
+   * @param userDto the userDto
+   * @return the userResponse
+   */
+  UserResponse toUserResponse(UserDto userDto);
+
+  /**
    * Maps OTP delivery method, providing default value if null.
    *
    * @param otpDeliveryMethod the OTP delivery method from DTO

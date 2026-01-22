@@ -447,7 +447,7 @@ DEBUG - User abc123 granted access via page:action permission
 Enable debug logging:
 
 ```properties
-logging.level.com.boss.annotation.impl.PermissionAspect=DEBUG
+logging.level.com.kavun.annotation.impl.PermissionAspect=DEBUG
 ```
 
 ### 6. Error Handling

@@ -11,6 +11,8 @@ import com.kavun.constant.AdminConstants;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
+import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.dto.mapper.UserDtoMapper;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.request.SignUpRequest;
@@ -81,7 +83,8 @@ public class UserRestApi {
 
     Specification<User> spec = userSpecification.search(paramaterMap);
 
-    Page<UserResponse> users = userService.findAll(spec, page);
+    Page<UserDto> userDtos = userService.findAll(spec, page);
+    Page<UserResponse> users = userDtos.map(UserDtoMapper.MAPPER::toUserResponse);
     return ResponseEntity.ok(users);
   }
 
@@ -97,7 +100,8 @@ public class UserRestApi {
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Page<UserResponse>> getUsers(final Pageable page) {
 
-    Page<UserResponse> users = userService.findAll(page);
+    Page<UserDto> userDtos = userService.findAll(null, page);
+    Page<UserResponse> users = userDtos.map(UserDtoMapper.MAPPER::toUserResponse);
     return ResponseEntity.ok(users);
   }
 

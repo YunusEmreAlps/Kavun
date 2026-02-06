@@ -14,13 +14,14 @@ import jakarta.mail.internet.MimeMessage;
 import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,7 +44,8 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 /**
- * Enhanced SmtpEmailServiceImpl with async processing, rate limiting, and monitoring.
+ * Enhanced SmtpEmailServiceImpl with async processing, rate limiting, and
+ * monitoring.
  * Optimized for high-throughput email delivery with proper resource management.
  *
  * @author Yunus Emre Alpu
@@ -100,15 +102,14 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   @Scheduled(fixedRate = 1800000) // Every 30 minutes
   public void cleanupRateLimitCache() {
     long now = System.currentTimeMillis();
-    hourlyEmailCount.entrySet().removeIf(entry ->
-        now - entry.getValue() > HOUR_IN_MILLIS
-    );
+    hourlyEmailCount.entrySet().removeIf(entry -> now - entry.getValue() > HOUR_IN_MILLIS);
     LOG.debug("Cleaned up rate limit cache. Remaining entries: {}", hourlyEmailCount.size());
   }
 
   private double calculateSuccessRate() {
     long total = totalEmailsSent.get() + totalEmailsFailed.get();
-    if (total == 0) return 100.0;
+    if (total == 0)
+      return 100.0;
     return (totalEmailsSent.get() * 100.0) / total;
   }
 
@@ -594,24 +595,59 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
    * Gets all recipients from HTML email request
    */
   private String getHtmlEmailRecipients(HtmlEmailRequest emailRequest) {
-    List<String> recipients = new ArrayList<>();
-
-    if (StringUtils.isNotBlank(emailRequest.getTo())) {
-      recipients.add(emailRequest.getTo());
+    if (emailRequest == null) {
+      return "unknown";
     }
 
-    if (emailRequest.getReceiver() != null &&
-        StringUtils.isNotBlank(emailRequest.getReceiver().getEmail())) {
-      recipients.add(emailRequest.getReceiver().getEmail());
+    try {
+      Set<String> uniqueRecipients = new LinkedHashSet<>();
+
+      if (StringUtils.isNotBlank(emailRequest.getTo())) {
+        String email = emailRequest.getTo().trim().toLowerCase();
+        if (isValidEmailFormat(email)) {
+          uniqueRecipients.add(email);
+        }
+      }
+
+      if (emailRequest.getReceiver() != null &&
+          StringUtils.isNotBlank(emailRequest.getReceiver().getEmail())) {
+        String email = emailRequest.getReceiver().getEmail().trim().toLowerCase();
+        if (isValidEmailFormat(email)) {
+          uniqueRecipients.add(email);
+        }
+      }
+
+      // Add additional recipients with validation
+      if (CollectionUtils.isNotEmpty(emailRequest.getRecipients())) {
+        emailRequest.getRecipients().stream()
+            .filter(StringUtils::isNotBlank)
+            .map(email -> email.trim().toLowerCase())
+            .filter(this::isValidEmailFormat)
+            .forEach(uniqueRecipients::add);
+      }
+
+      if (uniqueRecipients.isEmpty()) {
+        LOG.warn("No valid recipients found in HTML email request");
+        return "no-valid-recipients";
+      }
+
+      String result = String.join(", ", uniqueRecipients);
+      LOG.debug("Deduplicated HTML email recipients: {}", result);
+      return result;
+
+    } catch (Exception e) {
+      LOG.error("Error processing HTML email recipients: {}", e.getMessage());
+      return "error-processing-recipients";
+    }
+  }
+
+  private boolean isValidEmailFormat(String email) {
+    if (!StringUtils.isNotBlank(email)) {
+      return false;
     }
 
-    if (CollectionUtils.isNotEmpty(emailRequest.getRecipients())) {
-      recipients.addAll(emailRequest.getRecipients().stream()
-          .filter(StringUtils::isNotBlank)
-          .collect(Collectors.toList()));
-    }
-
-    return recipients.isEmpty() ? "unknown" : String.join(", ", recipients);
+    String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+    return email.matches(emailRegex);
   }
 
   /**
@@ -668,27 +704,4 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
     }
     helper.setTo(internetAddress);
   }
-
-  /**
-   * Logs email sending information.
-   * emailRequest CAN be HtmlEmailRequest, SimpleMailMessage, etc.
-   */
-  private void logEmail(Object emailRequest) {
-    if (LOG.isDebugEnabled() && emailRequest != null) {
-      LOG.info("=== EMAIL SEND ATTEMPT ===");
-      if (emailRequest instanceof HtmlEmailRequest) {
-        HtmlEmailRequest htmlEmailRequest = (HtmlEmailRequest) emailRequest;
-        LOG.info("From: {}", htmlEmailRequest.getFrom());
-        LOG.info("To: {}", String.join(", ", htmlEmailRequest.getTo()));
-        LOG.info("Subject: {}", htmlEmailRequest.getSubject());
-      } else if (emailRequest instanceof SimpleMailMessage) {
-        SimpleMailMessage simpleMailMessage = (SimpleMailMessage) emailRequest;
-        LOG.info("From: {}", simpleMailMessage.getFrom());
-        LOG.info("To: {}", String.join(", ", simpleMailMessage.getTo()));
-        LOG.info("Subject: {}", simpleMailMessage.getSubject());
-      }
-      LOG.info("========================");
-    }
-  }
-
 }

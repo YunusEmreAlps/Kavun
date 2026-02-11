@@ -1,5 +1,6 @@
 package com.kavun.web.advice;
 
+import com.kavun.constant.base.BaseConstants;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.ResponseCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -131,7 +132,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         LOG.warn("API resource not found: {}", path);
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.NOT_FOUND,
-                "The requested resource was not found",
+                BaseConstants.RESOURCE_NOT_FOUND,
                 path);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
@@ -149,12 +150,12 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         String path = request.getRequestURI();
         LOG.error("Data integrity violation at {}: {}", path, ex.getMessage());
 
-        String message = "Data integrity violation";
+        String message = BaseConstants.DATA_INTEGRITY_VIOLATION;
         if (ex.getMessage() != null) {
             if (ex.getMessage().toLowerCase().contains("duplicate key")) {
-                message = "A record with this value already exists";
+                message = BaseConstants.VALUE_ALREADY_EXISTS;
             } else if (ex.getMessage().toLowerCase().contains("foreign key")) {
-                message = "Cannot delete record - it is referenced by other records";
+                message = BaseConstants.VALUE_REFERENCED;
             }
         }
 
@@ -178,7 +179,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.INTERNAL_ERROR,
-                "Database error occurred. Please try again later.",
+                BaseConstants.DATABASE_ERROR,
                 path);
         return response.toResponseEntity();
     }
@@ -198,7 +199,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.UNAUTHORIZED,
-                "Authentication failed: " + ex.getMessage(),
+                BaseConstants.AUTHENTICATION_FAILED + ex.getMessage(),
                 path);
         return response.toResponseEntity();
     }
@@ -216,7 +217,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.UNAUTHORIZED,
-                "Invalid username or password",
+                BaseConstants.INVALID_CREDENTIALS,
                 path);
         return response.toResponseEntity();
     }
@@ -229,7 +230,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         LOG.warn("Resource not found: {} at {}", ex.getMessage(), request.getRequestURI());
         ApiResponse<Object> response = ApiResponse.error(
             ResponseCode.NOT_FOUND,
-            ex.getMessage(),
+            BaseConstants.RESOURCE_NOT_FOUND,
             request.getRequestURI()
         );
         return response.toResponseEntity();
@@ -248,7 +249,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.FORBIDDEN,
-                "You don't have permission to access this resource",
+                BaseConstants.INSUFFICIENT_PERMISSIONS,
                 path);
         return response.toResponseEntity();
     }
@@ -268,7 +269,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.INTERNAL_ERROR,
-                "An unexpected error occurred. Please try again later.",
+                BaseConstants.UNEXPECTED_ERROR,
                 path);
         return response.toResponseEntity();
     }

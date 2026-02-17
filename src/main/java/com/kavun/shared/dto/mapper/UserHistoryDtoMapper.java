@@ -10,7 +10,7 @@ import org.mapstruct.ReportingPolicy;
 import org.mapstruct.factory.Mappers;
 
 /**
- * The UserDtoMapper class outlines the supported conversions between User and other objects.
+ * The UserHistoryDtoMapper class outlines the supported conversions between UserHistory and other objects.
  *
  * @author Yunus Emre Alpu
  * @version 1.0

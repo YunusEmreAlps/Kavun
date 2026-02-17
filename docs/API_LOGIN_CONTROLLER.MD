@@ -50,6 +50,8 @@ publicId: This should be used as the userId for all requests to uniquely identif
 
 ![img_3.png](images/sample-secured-url-access.png)
 
+> If you want to use login with **OTP**, you can use the commented login endpoint in the code and implement the OTP generation and verification logic. In this login flow, the user will first request an OTP to be sent to their registered email or phone number. Once they receive the OTP, they can use it along with their username to authenticate and receive the access token and refresh token.
+
 ## Refresh Endpoint
 
 Refreshes the current access token by creating a new access token when given a valid refreshToken.

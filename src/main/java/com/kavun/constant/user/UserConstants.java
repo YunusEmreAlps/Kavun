@@ -29,11 +29,17 @@ public final class UserConstants {
   public static final int ROLE_NAME_MIN_SIZE = 3;
   public static final int ROLE_NAME_MAX_SIZE = 255;
   public static final int ROLE_DESCRIPTION_MAX_SIZE = 2000;
+  public static final int PHONE_MIN_SIZE = 10;
+  public static final int PHONE_MAX_SIZE = 15;
+  public static final int PASSWORD_MIN_SIZE = 4;
+  public static final int PASSWORD_MAX_SIZE = 15;
 
   // Validation messages
   public static final String BLANK_USERNAME = "Username cannot be blank";
+  public static final String EXIST_USERNAME = "Username already exist";
   public static final String USERNAME_SIZE = "Username should be at least 3 and at most 50 characters";
   public static final String BLANK_EMAIL = "Email cannot be blank";
+  public static final String EXIST_EMAIL = "Email already exist";
   public static final String INVALID_EMAIL = "A valid email format is required";
   public static final String BLANK_NAME = "Name cannot be blank";
   public static final String BLANK_PUBLIC_ID = "PublicId cannot be left blank";
@@ -47,6 +53,7 @@ public final class UserConstants {
   public static final String ROLE_DESCRIPTION_SIZE_MESSAGE = "Description should be at most 2000 characters";
   public static final String ROLE_NAME_SIZE_MESSAGE = "Role name should be at least 3 and at most 255 characters";
   public static final String PAGEABLE_MUST_NOT_BE_NULL = "Pageable must not be null";
+  public static final String PHONE_SIZE = "Telefon numarası en az 10 ve en fazla 15 karakter olmalıdır";
 
   // User messages
   public static final String USER_PERSISTED_SUCCESSFULLY = "User successfully persisted {}";
@@ -72,6 +79,8 @@ public final class UserConstants {
   public static final String PROFILE_UPDATED_SUCCESSFULLY = "Profile updated successfully";
   public static final String INVALID_PROFILE_UPDATE = "Invalid profile update. Please check your input and try again.";
   public static final String PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY = "Password reset email sent successfully";
+  public static final String USER_CREATED_SUCCESS_MESSAGE = "User created successfully!";
+  public static final String USER_UPDATE_FAILED = "User update failed. Please try again.";
 
   // Password messages
   public static final String PASSWORD_RESET_FAILED = "Password reset failed. Please try again.";

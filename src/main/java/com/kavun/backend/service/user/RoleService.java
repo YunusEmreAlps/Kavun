@@ -16,14 +16,13 @@ import com.kavun.shared.dto.mapper.RoleMapper;
 import com.kavun.shared.request.RoleRequest;
 import com.kavun.web.payload.response.UserRoleResponse;
 
+
 import org.springframework.data.jpa.domain.Specification;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;;
+import java.util.stream.Collectors;
 
 /**
  * Role service to provide implementation for the definitions about a role.
@@ -32,37 +31,42 @@ import java.util.stream.Collectors;;
  * @version 1.0
  * @since 1.0
  */
-@Slf4j
 @Service
 @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
-public class RoleService
-        extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
+public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
 
-    private final UserRepository userRepository;
+  private final UserRepository userRepository;
 
-    public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification, UserRepository userRepository) {
-        super(mapper, repository, specification);
-        this.userRepository = userRepository;
-    }
+  public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification, UserRepository userRepository) {
+    super(mapper, repository, specification);
+    this.userRepository = userRepository;
+  }
 
-    public Specification<Role> search(Map<String, Object> paramaterMap) {
-        return specification.search(paramaterMap);
-    }
+  public Specification<Role> search(Map<String, Object> paramaterMap) {
+    return specification.search(paramaterMap);
+  }
 
-    @Transactional(readOnly = true)
-    public Role findByName(String name) {
-        LOG.debug("Finding role by name: {}", name);
-        Optional<Role> roleOptional = repository.findByName(name);
-        return roleOptional.orElse(null);
-    }
+  public Integer count() {
+    return (int) repository.count();
+  }
 
+  public Role findByName(final String name) {
+    return repository.findByName(name).orElse(null);
+  }
 
-    public List<UserRoleResponse> getUsersByRoleId(final Long roleId) {
-        return mapper.toUserRoleResponseList(repository.getUsersByRoleId(roleId));
-    }
+  public Role findRoleEntityById(final Long id) {
+    return repository.findById(id).orElse(null);
+  }
 
+  public List<Role> findAll() {
+    return repository.findAll();
+  }
 
-    public void assignRoleToUser(final Long roleId, final Long userId) {
+  public List<UserRoleResponse> getUsersByRoleId(final Long roleId) {
+    return mapper.toUserRoleResponseList(repository.getUsersByRoleId(roleId));
+  }
+
+  public void assignRoleToUser(final Long roleId, final Long userId) {
     Role role = repository.findById(roleId)
         .orElseThrow(() -> new IllegalArgumentException("Role not found"));
 

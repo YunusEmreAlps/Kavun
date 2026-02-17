@@ -86,68 +86,47 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Postman](https://www.postman.com/downloads/)
 - [Git](https://git-scm.com/downloads)
 
-> **Note**: The project uses Java 21, so make sure to have the correct version installed. You can check the Java version using the following command:
+> You can use any IDE of your choice. However, **VSCode** is recommended for this project.
+> Before running the project, make sure the correct Java version is installed. You can check the Java version using the following command:
 
 ```bash
 java -version
 ```
 
-> **Note**: The project uses IDEs like Visual Studio Code, IntelliJ IDEA, etc. for development. You can use any IDE of your choice. However, **VSCode** is recommended for this project.
-
 ### 2. Installation
 
-- Clone the repository
-
 ```bash
+# Move to your workspace
+cd <your-workspace>
+
+# Clone this project into your workspace
 git clone <repository-url>
+
+# Move to the project root directory
+cd backend
+
+# Open the project in your favorite IDE
+code . # For Visual Studio Code
+idea . # For IntelliJ IDEA
 ```
-
-- Open the project in your favorite IDE
-
-- **Note**: The project uses **Auto Save** settings for Visual Studio Code and IntelliJ IDEA. Make sure to enable the **Auto Save** settings for the IDEs.
-
-- **Visual Studio Code**:
-  - Go to File -> Preferences -> Settings
-  - Type **Auto Save** in the search bar and select **afterDelay** from the dropdown
-- **IntelliJ IDEA**:
-  - Go to File -> Settings -> Build, Execution, Deployment -> Compiler
-  - Check the box for **Build project automatically**
-  - Apply and OK
-
-```bash
-# For Visual Studio Code
-code .
-
-# For IntelliJ IDEA
-idea .
-```
-
-- Install Lombok Plugin in IntelliJ IDEA (**If you are using Visual Studio Code, you can skip this step**)
-  - Open IntelliJ IDEA
-  - Go to File -> Settings -> Plugins
-  - Search for Lombok Plugin
-  - Install and Restart IntelliJ IDEA
-  - Enable Annotation Processing
-  - Go to File -> Settings -> Build, Execution, Deployment -> Compiler -> Annotation Processors
-  - Check the box for Enable annotation processing
-  - Apply and OK
-
-- Install Spotless Plugin in IntelliJ IDEA (**If you are using Visual Studio Code, you can skip this step**)
-  - Open IntelliJ IDEA
-  - Go to File -> Settings -> Plugins
-  - Search for Spotless Plugin
-  - Install and Restart IntelliJ IDEA
 
 ### 3. Project Setup
 
-- Open the project in your favorite IDE
-- Run the project using the following command
-
 ```bash
-# Windows users
+# Start required services using Docker Compose
+docker-compose up -d
+
+# Run the application using Gradle (Windows / Linux / MacOS)
 ./gradlew bootRun
 
-# Linux/Unix users
+# Access the application on http://localhost:8080/
+curl http://localhost:8080/
+```
+
+- Alternatively, you can use the following commands for project setup:
+
+```bash
+# Run the application
 ./gradlew bootRun
 
 # Run unit tests
@@ -200,8 +179,8 @@ ACCESS_TOKEN_EXPIRATION_IN_MINUTES=60 # Medium-lived tokens
 
 # Default AWS S3 Properties:
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_ACCESS_KEY_ID=EXAMPLEACCESSKEYID
+AWS_SECRET_ACCESS_KEY=EXAMPLESECRETACCESSKEY
 AWS_S3_BUCKET_NAME=kavun
 
 # Email Properties:
@@ -212,8 +191,8 @@ EMAIL_USERNAME=username
 EMAIL_PASSWORD=password # If using gmail, this must be a 2 step verification enabled app password
 ```
 
-- The profiles defined in the application are **development**, **test**, **integration-test**, **integration-test-ci**, and **production** to test out production functionalities.
-- Datasource must be provided for production profile for the application to run.
+- The profiles defined in the application are **development**, **docker**, **test**, and **production**.
+- By default, the application runs with the **development** profile.
 
 ### 5. Accessing the Application
 
@@ -227,40 +206,59 @@ EMAIL_PASSWORD=password # If using gmail, this must be a 2 step verification ena
 
 #### H2 Database
 
-- If you are not using **DBeaver** or any other database client, you can access the H2 database using the following steps:
-  - The H2 database is used for development and testing purposes.
-  - The H2 database can be accessed on [http://localhost:8080/console](http://localhost:8080/console)
-  - The H2 database can be accessed using the following credentials:
-    - **Saved Settings**: Generic PostgreSQL
-    - **Driver Class**: Generic PostgreSQL
-    - **JDBC URL**: jdbc:postgresql://localhost:5432/kavun
-    - **User Name**: postgres
-    - **Password**: postgres
-  - Click on the **Connect** button to connect to the H2 database.
+If you are not using **DBeaver** or any other database client, you can access the **H2** database using the following steps:
 
-> **Note**: This configuration is used to connect to the H2 database. You can access .properties file to change the database configuration.
-> **Note**: The H2 database is only used for development and testing purposes. For production, the application uses the PostgreSQL database.
+```bash
+# Open your web browser and go to http://localhost:8080/console
+
+# The H2 database can be accessed using the following credentials:
+- Saved Settings: Generic PostgreSQL
+- Driver Class: Generic PostgreSQL
+- JDBC URL: jdbc:postgresql://localhost:5432/kavun
+- User Name: postgres
+- Password: postgres
+
+# Click on the Connect button to access the database.
+```
+
+> This configuration is used to connect to the H2 database. You can access .properties file to change the database configuration.
+> The H2 database is only used for development and testing purposes. For production, the application uses the PostgreSQL database.
 
 #### Docker
 
-- The application can be run on Docker using the following steps:
-  - The application uses the **Dockerfile** and **docker-compose.yml** files to run on Docker.
-  - The **Dockerfile** is used to build the application image.
-  - The **docker-compose.yml** file is used to run the application image.
-  - To *run* the application on Docker, simply run the command - **docker-compose up -d**
-  - The application will be accessible on [http://localhost:8080/](http://localhost:8080/)
-  - To *stop* the running application on Docker, simply run the command - **docker-compose down**
-  - This will stop the running application and remove the container.
-  - If you want to remove the container and the image, simply run the command - **docker-compose down --rmi all**
-  - [DockerHub](https://hub.docker.com/r/23yea1903/kavun)
+The application can be run on Docker using the following steps:
+
+```bash
+# Build the Docker image
+docker build -t kavun-backend .
+
+# Run the Docker container
+docker-compose up -d
+docker run -d -p 8080:8080 --name kavun-backend-container kavun-backend # If not using docker-compose
+
+# Stop the Docker container
+docker-compose down
+docker stop kavun-backend-container && docker rm kavun-backend-container # If not using docker-compose
+
+# Remove the Docker image
+docker-compose down --rmi all
+docker rmi kavun-backend # Be sure to stop and remove the container before removing the image
+
+# Delete the Postgres data volume
+docker volume rm <volume-name>
+```
 
 #### Grafana
 
-- The application uses **Grafana** for monitoring and visualization.
-- The **Grafana** dashboard can be accessed on [http://localhost:3000/](http://localhost:3000/)
-- The **Grafana** dashboard can be accessed using the following credentials:
-  - **User Name**: admin
-  - **Password**: admin
+The application uses **Grafana** for monitoring and visualization.
+
+```bash
+# Access Grafana Dashboard on http://localhost:3000/
+
+# Default Grafana Credentials:
+- Username: admin
+- Password: admin
+```
 
 ## Architecture
 
@@ -269,7 +267,7 @@ The project is structured in a layered architecture with the following layers:
 ```bash
 .
 ├── config                            # Can hold project level configurations like pmd, checkstyle, etc.
-├── docs                         # Holds project documentations. Markdown sections, etc.
+├── docs                              # Holds project documentations. Markdown sections, etc.
 │   └── images
 ├── libs                              # Holds special libraries used by the application.
 │   └── newrelic

@@ -1,6 +1,7 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.mail.EmailService;
@@ -12,12 +13,12 @@ import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.shared.dto.UserDto;
-import com.kavun.shared.dto.mapper.UserDtoMapper;
+import com.kavun.shared.dto.mapper.UserMapper;
+import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
-import com.kavun.web.payload.request.SignUpRequest;
+import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.UserResponse;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -28,11 +29,9 @@ import org.springdoc.core.converters.models.PageableAsQueryParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,7 +41,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * This class handles all rest calls for users.
@@ -63,8 +61,7 @@ public class UserRestApi {
   private final EmailService emailService;
   private final EncryptionService encryptionService;
   private final UserSpecification userSpecification;
-
-  private static final String AUTHORIZE = "isFullyAuthenticated() && hasRole(T(com.kavun.enums.RoleType).ROLE_ADMIN)";
+  private final UserMapper userMapper;
 
   /**
    * Searches for users based on the provided parameters
@@ -75,8 +72,7 @@ public class UserRestApi {
    */
   @Loggable
   @PageableAsQueryParam
-  @PreAuthorize(AUTHORIZE)
-  @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(value = "/paging", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Page<UserResponse>> searchUsers(
       @RequestParam Map<String, Object> paramaterMap,
       Pageable page) {
@@ -84,58 +80,79 @@ public class UserRestApi {
     Specification<User> spec = userSpecification.search(paramaterMap);
 
     Page<UserDto> userDtos = userService.findAll(spec, page);
-    Page<UserResponse> users = userDtos.map(UserDtoMapper.MAPPER::toUserResponse);
+    Page<UserResponse> users = userDtos.map(userDto -> userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
     return ResponseEntity.ok(users);
   }
 
   /**
-   * Performs a search for users based on the provided search criteria.
+   * Retrieves a single user by id.
    *
-   * @param page Allows for pagination of the search results.
-   * @return The ResponseEntity containing the search results as a Page of users
+   * @param id the user Long
+   * @return the user details
    */
   @Loggable
-  @PageableAsQueryParam
-  @PreAuthorize(AUTHORIZE)
-  @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<Page<UserResponse>> getUsers(final Pageable page) {
-
-    Page<UserDto> userDtos = userService.findAll(null, page);
-    Page<UserResponse> users = userDtos.map(UserDtoMapper.MAPPER::toUserResponse);
-    return ResponseEntity.ok(users);
+  @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+    UserDto userDto = userService.findById(id);
+    if (userDto == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
   }
 
   /**
-   * Deletes the user associated with the publicId.
+   * Soft deletes the user associated with the id.
    *
-   * @param publicId the publicId
+   * @param id the user Long
    * @return if the operation is success
    */
   @Loggable
-  @PreAuthorize(AUTHORIZE)
-  @DeleteMapping(value = "/{publicId}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<OperationStatus> deleteUser(@PathVariable String publicId) {
-    userService.deleteUser(publicId);
+  @RequirePermission(autoDetect = true)
+  @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<OperationStatus> softDeleteUser(@PathVariable Long id) {
+    boolean result = userService.softDeleteUser(id);
 
+    if (!result) {
+      LOG.warn("Failed to soft delete user with id: {}", id);
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(OperationStatus.FAILURE);
+    }
+
+    LOG.info("User with id {} soft deleted successfully", id);
     return ResponseEntity.ok(OperationStatus.SUCCESS);
   }
 
   /**
-   * Creates a new user.
+   * Creates a new user with the provided details.
    *
-   * @param signUpRequest the user details
-   * @return ResponseEntity with location header of the created user
+   * @param request the user details for creating a new user
+   * @return if the operation is success
    */
   @Loggable
   @PostMapping
-  @SecurityRequirements
-  public ResponseEntity<Object> createUser(@Valid @RequestBody SignUpRequest signUpRequest) {
-    var userDto = UserUtils.convertToUserDto(signUpRequest);
-
-    if (userService.existsByUsernameOrEmailAndEnabled(userDto.getUsername(), userDto.getEmail())) {
-      LOG.warn(UserConstants.USERNAME_OR_EMAIL_EXISTS);
-      return ResponseEntity.badRequest().body(Map.of("error", UserConstants.USERNAME_OR_EMAIL_EXISTS));
+  @RequirePermission(autoDetect = true)
+  public ApiResponse<?> createUser(@Valid @RequestBody UserRequest request) {
+    // Password is required for creation
+    if (request.getPassword() == null || request.getPassword().isBlank()) {
+      // Generate a secure temporary password if not provided
+      String tempPassword = userService.generateSecureTemporaryPassword();
+      request.setPassword(tempPassword);
     }
+
+    // Check if username or email already exists (regardless of enabled status)
+    UserDto existingByUsername = userService.findByUsername(request.getUsername());
+    UserDto existingByEmail = userService.findByEmail(request.getEmail());
+
+    if (existingByUsername != null) {
+      LOG.warn("Username already exists: {}", request.getUsername());
+      return ApiResponse.error(HttpStatus.CONFLICT, UserConstants.EXIST_USERNAME, "");
+    }
+
+    if (existingByEmail != null) {
+      LOG.warn("Email already exists: {}", request.getEmail());
+      return ApiResponse.error(HttpStatus.CONFLICT, UserConstants.EXIST_EMAIL, "");
+    }
+
+    var userDto = UserUtils.convertToUserDto(request);
 
     var verificationToken = jwtService.generateJwtToken(userDto.getUsername());
     userDto.setVerificationToken(verificationToken);
@@ -146,13 +163,64 @@ public class UserRestApi {
     LOG.debug("Encrypted JWT token: {}", encryptedToken);
     var encodedToken = encryptionService.encode(encryptedToken);
 
-    emailService.sendAccountVerificationEmail(savedUserDto, encodedToken);
-    var location = ServletUriComponentsBuilder.fromCurrentRequest()
-        .path("/{publicId}")
-        .buildAndExpand(savedUserDto.getPublicId())
-        .toUriString();
+    if (savedUserDto.getId() != null) {
+      // Assign roles if provided
+      if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+        try {
+          userService.assignRolesToUser(savedUserDto.getId(), request.getRoles());
+          LOG.info("Assigned {} roles to user {}", request.getRoles().size(), savedUserDto.getId());
+        } catch (Exception e) {
+          LOG.error("Failed to assign roles to user: {}", savedUserDto.getEmail(), e);
+        }
+      }
 
-    return ResponseEntity.status(HttpStatus.CREATED).header(HttpHeaders.LOCATION, location).build();
+      // Generate new password for existing user
+      String newPassword = userService.generateSecureTemporaryPassword();
+      Boolean passwordUpdated = userService.updatePasswordDirectly(savedUserDto.getId(), newPassword);
+
+      if (!passwordUpdated) {
+        LOG.error("Failed to update password for user: {}", savedUserDto.getEmail());
+        return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update password", "");
+      }
+      /*emailService.sendWelcomeEmail(savedUserDto,
+          request.getPassword().length() > 0 ? request.getPassword() : newPassword);*/
+    }
+    return ApiResponse.success("", UserConstants.USER_CREATED_SUCCESS_MESSAGE, null);
+  }
+
+  /**
+   * Updates an existing user with the provided details.
+   * Note: Password updates should use the dedicated /update-password endpoint.
+   *
+   * @param id      the user Long to update
+   * @param request the user details for updating
+   * @return the updated user details
+   */
+  @Loggable
+  @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+  @RequirePermission(autoDetect = true)
+  public ApiResponse<?> updateUser(
+      @PathVariable Long id,
+      @Valid @RequestBody UserRequest request) {
+
+    try {
+      UserDto updatedUser = userService.updateUser(id, request);
+      LOG.info("User with id {} updated successfully", id);
+      return ApiResponse.success("", UserConstants.USER_UPDATED_SUCCESSFULLY, "");
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Update failed for user {}: {}", id, e.getMessage());
+
+      if (e.getMessage().equals(UserConstants.USER_NOT_FOUND)) {
+        return ApiResponse.error(HttpStatus.NOT_FOUND, e.getMessage(), "");
+      } else if (e.getMessage().equals(UserConstants.EXIST_USERNAME) ||
+                 e.getMessage().equals(UserConstants.EXIST_EMAIL)) {
+        return ApiResponse.error(HttpStatus.CONFLICT, e.getMessage(), "");
+      }
+      return ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage(), "");
+    } catch (Exception e) {
+      LOG.error("Failed to update user with id: {}", id, e);
+      return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, UserConstants.USER_UPDATE_FAILED, "");
+    }
   }
 
   /**
@@ -163,7 +231,6 @@ public class UserRestApi {
    * @return "Password updated successfully" if the password is updated
    */
   @Loggable
-  @PreAuthorize(AUTHORIZE)
   @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<String> updatePassword(
       @RequestParam String oldPassword, @RequestParam String newPassword) {
@@ -175,37 +242,35 @@ public class UserRestApi {
     }
 
     // Update the password
-    String result = userService.updatePassword(userDetails.getPublicId(), oldPassword, newPassword);
+    String result = userService.updatePassword(userDetails.getId(), oldPassword, newPassword);
 
     return ResponseEntity.ok(result);
   }
 
   /**
-   * Enables the user associated with the publicId.
+   * Enables the user associated with the id.
    *
-   * @param publicId the publicId
+   * @param id the user Long
    * @return if the operation is success
    */
   @Loggable
-  @PreAuthorize(AUTHORIZE)
-  @PutMapping(value = "/{publicId}/enable")
-  public ResponseEntity<OperationStatus> enableUser(@PathVariable String publicId) {
-    var userDto = userService.enableUser(publicId);
+  @PutMapping(value = UserConstants.ENABLE_USER_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<OperationStatus> enableUser(@PathVariable Long id) {
+    var userDto = userService.enableUser(id);
 
     return ResponseEntity.ok(userDto == null ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
   }
 
   /**
-   * Disables the user associated with the publicId.
+   * Disables the user associated with the id.
    *
-   * @param publicId the publicId
+   * @param id the user Long
    * @return if the operation is success
    */
   @Loggable
-  @PreAuthorize(AUTHORIZE)
-  @PutMapping(value = "/{publicId}/disable", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<OperationStatus> disableUser(@PathVariable String publicId) {
-    var userDto = userService.disableUser(publicId);
+  @PutMapping(value = UserConstants.DISABLE_USER_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<OperationStatus> disableUser(@PathVariable Long id) {
+    var userDto = userService.disableUser(id);
 
     return ResponseEntity.ok(userDto == null ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
   }

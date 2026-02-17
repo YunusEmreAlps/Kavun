@@ -2,19 +2,17 @@ package com.kavun.shared.util;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
-import com.kavun.backend.persistent.domain.user.UserHistory;
 import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
+import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
-import com.kavun.shared.dto.UserHistoryDto;
-import com.kavun.shared.dto.mapper.UserDtoMapper;
-import com.kavun.shared.dto.mapper.UserHistoryDtoMapper;
+import com.kavun.shared.dto.mapper.UserMapper;
+import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.core.ValidationUtils;
-import com.kavun.web.payload.request.SignUpRequest;
 import com.kavun.web.payload.response.UserResponse;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,18 +32,32 @@ import org.apache.commons.validator.routines.EmailValidator;
  * @since 1.0
  */
 public final class UserUtils {
-
-  /** Maximum password length for the password generation. */
+  private static final int PASSWORD_MIN_LENGTH = 4;
   public static final int PASSWORD_MAX_LENGTH = 15;
 
   /** The Constant FAKER. */
   private static final Faker FAKER = new Faker();
 
-  /** Minimum password length for the password generation. */
-  private static final int PASSWORD_MIN_LENGTH = 4;
-
   private UserUtils() {
     throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);
+  }
+
+  /**
+   * Gets the UserMapper bean from Spring context.
+   *
+   * @return the UserMapper instance
+   */
+  private static UserMapper getUserMapper() {
+    return SpringContextHolder.getBean(UserMapper.class);
+  }
+
+  /**
+   * Gets the UserService bean from Spring context.
+   *
+   * @return the UserService instance
+   */
+  private static UserService getUserService() {
+    return SpringContextHolder.getBean(UserService.class);
   }
 
   /**
@@ -55,6 +67,20 @@ public final class UserUtils {
    */
   public static User createUser() {
     return createUser(FAKER.internet().username());
+  }
+
+  // Retrieves the full name of a user based on their ID.
+  public static String getUserFullName(Long userId) {
+    if (Objects.isNull(userId)) {
+      return null;
+    }
+
+    UserDto user = getUserService().findById(userId);
+    if (Objects.isNull(user)) {
+      return null;
+    }
+
+    return user.getFirstName() + " " + user.getLastName();
   }
 
   /**
@@ -102,7 +128,7 @@ public final class UserUtils {
    *
    * @param username username used to create user
    * @param password password used to create user.
-   * @param email email used to create user.
+   * @param email    email used to create user.
    * @return a user
    */
   public static User createUser(String username, String password, String email) {
@@ -114,8 +140,8 @@ public final class UserUtils {
    *
    * @param username username used to create user.
    * @param password password used to create user.
-   * @param email email used to create user.
-   * @param enabled boolean value used to evaluate if user enabled.
+   * @param email    email used to create user.
+   * @param enabled  boolean value used to evaluate if user enabled.
    * @return a user
    */
   public static User createUser(String username, String password, String email, boolean enabled) {
@@ -164,7 +190,7 @@ public final class UserUtils {
    * Create a test user with flexibility.
    *
    * @param username the username
-   * @param enabled if the user should be enabled to authenticate
+   * @param enabled  if the user should be enabled to authenticate
    * @return the userDto
    */
   public static UserDto createUserDto(final String username, boolean enabled) {
@@ -180,8 +206,8 @@ public final class UserUtils {
    *
    * @param username username used to create user.
    * @param password password used to create user.
-   * @param email email used to create user.
-   * @param enabled boolean value used to evaluate if user enabled.
+   * @param email    email used to create user.
+   * @param enabled  boolean value used to evaluate if user enabled.
    * @return a userDto
    */
   public static UserDto createUserDto(
@@ -198,19 +224,14 @@ public final class UserUtils {
    * @return user dto
    */
   public static UserDto convertToUserDto(final User user) {
-    var userDto = UserDtoMapper.MAPPER.toUserDto(user);
+    var userDto = getUserMapper().toDto(user);
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
     return userDto;
   }
 
-  /**
-   * Transfers data from signUpRequest object to transfer object.
-   *
-   * @param signUpRequest the signup request
-   * @return user dto
-   */
-  public static UserDto convertToUserDto(final SignUpRequest signUpRequest) {
-    var userDto = UserDtoMapper.MAPPER.toUserDto(signUpRequest);
+  // Transfers data from request object to transfer object.
+  public static UserDto convertToUserDto(final UserRequest request) {
+    var userDto = getUserMapper().toUserDto(request);
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
     return userDto;
   }
@@ -222,7 +243,7 @@ public final class UserUtils {
    * @return user dto
    */
   public static List<UserDto> convertToUserDto(final List<User> users) {
-    var userDtoList = UserDtoMapper.MAPPER.toUserDto(users);
+    var userDtoList = getUserMapper().toDtoList(users);
     Validate.notNull(userDtoList, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
     return userDtoList;
   }
@@ -234,7 +255,7 @@ public final class UserUtils {
    * @return user dto
    */
   public static UserDto convertToUserDto(UserDetailsBuilder userDetailsBuilder) {
-    var userDto = UserDtoMapper.MAPPER.toUserDto(userDetailsBuilder);
+    var userDto = getUserMapper().toUserDto(userDetailsBuilder);
     Validate.notNull(userDetailsBuilder, "userDetailsBuilder cannot be null");
     return userDto;
   }
@@ -246,21 +267,9 @@ public final class UserUtils {
    * @return user
    */
   public static User convertToUser(final UserDto userDto) {
-    var user = UserDtoMapper.MAPPER.toUser(userDto);
+    var user = getUserMapper().toUser(userDto);
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
     return user;
-  }
-
-  /**
-   * Transfers data from entity to a returnable object.
-   *
-   * @param userHistories stored userHistories details
-   * @return userHistories dto
-   */
-  public static List<UserHistoryDto> convertToUserHistoryDto(final Set<UserHistory> userHistories) {
-    ValidationUtils.validateInputs(userHistories);
-
-    return UserHistoryDtoMapper.MAPPER.toUserHistoryDto(userHistories);
   }
 
   /**
@@ -346,6 +355,6 @@ public final class UserUtils {
    * @return user dto
    */
   public static Function<User, UserResponse> getUserResponse() {
-    return UserDtoMapper.MAPPER::toUserResponse;
+    return getUserMapper()::toUserResponse;
   }
 }

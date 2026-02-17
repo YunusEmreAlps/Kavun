@@ -660,10 +660,6 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       emailFormat.setUrls(urls);
     }
 
-    // Add default URLs if they don't exist
-    urls.putIfAbsent("imageUrl", "https://asset.turktelekom.com.tr/SiteAssets/images/logo-mobile.svg");
-    urls.putIfAbsent("portalUrl", "https://verimerkezikavun.turktelekom.com.tr");
-
     // Set URLs in context
     context.setVariable(EmailConstants.URLS, urls);
 

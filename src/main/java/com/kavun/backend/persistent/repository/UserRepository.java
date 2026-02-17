@@ -33,24 +33,6 @@ public interface UserRepository extends BaseRepository<User> {
     Optional<User> findById(@NonNull Long id);
 
     /**
-     * Find user by publicId (excludes deleted users).
-     *
-     * @param publicId publicId used to search for user.
-     * @return User found.
-     */
-    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
-    Optional<User> findByPublicIdAndDeletedFalse(String publicId);
-
-    /**
-     * Find user by publicId (includes deleted users - for admin purposes only).
-     *
-     * @param publicId publicId used to search for user.
-     * @return User found.
-     */
-    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
-    Optional<User> findByPublicId(String publicId);
-
-    /**
      * Find user by email (excludes deleted users).
      *
      * @param email email used to search for user.
@@ -67,6 +49,10 @@ public interface UserRepository extends BaseRepository<User> {
      */
     @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
     User findByEmail(String email);
+
+    // Find user by phone (excludes deleted users).
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
+    User findByPhoneAndDeletedFalse(String phone);
 
     /**
      * Find user by username (excludes deleted users).
@@ -105,6 +91,12 @@ public interface UserRepository extends BaseRepository<User> {
     Boolean existsByUsernameAndEnabledTrueOrEmailAndEnabledTrueOrderById(
             String username, String email);
 
+    // Check if username exists for a different user (for update validations).
+    Boolean existsByUsernameAndIdNotAndDeletedFalse(String username, Long id);
+
+    // Check if email exists for a different user (for update validations).
+    Boolean existsByEmailAndIdNotAndDeletedFalse(String email, Long id);
+
     /**
      * Check if user exists by username and verificationToken.
      *
@@ -133,7 +125,7 @@ public interface UserRepository extends BaseRepository<User> {
     User findByVerificationToken(String verificationToken);
 
     /**
-     * Get user information by Long for display purposes
+     * Get user information by UUID for display purposes
      */
     @Query("""
         SELECT new com.kavun.shared.dto.UserInfoDto(
@@ -147,7 +139,7 @@ public interface UserRepository extends BaseRepository<User> {
     Optional<UserInfoDto> findUserInfoById(@Param("userId") Long userId);
 
     /**
-     * Get multiple user information by Longs for display purposes
+     * Get multiple user information by UUIDs for display purposes
      */
     @Query("""
         SELECT new com.kavun.shared.dto.UserInfoDto(

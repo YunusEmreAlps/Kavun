@@ -54,6 +54,6 @@ public class UserPruningScheduler {
             ? usersToDelete.parallelStream()
             : usersToDelete.stream();
 
-    userStream.map(UserDto::getPublicId).forEach(userService::deleteUser);
+    userStream.map(UserDto::getId).forEach(userService::deleteUser);
   }
 }

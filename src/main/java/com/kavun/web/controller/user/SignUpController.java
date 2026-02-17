@@ -9,8 +9,8 @@ import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.SignUpConstants;
 import com.kavun.constant.user.UserConstants;
-import com.kavun.enums.UserHistoryType;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.web.payload.request.SignUpRequest;
 import jakarta.validation.Valid;
@@ -146,7 +146,15 @@ public class SignUpController {
 
     if (userDto.getUsername().equals(username)) {
       UserUtils.enableUser(userDto);
-      return userService.updateUser(userDto, UserHistoryType.VERIFIED);
+      UserRequest userRequest = UserRequest.builder()
+          .username(userDto.getUsername())
+          .email(userDto.getEmail())
+          .firstName(userDto.getFirstName())
+          .lastName(userDto.getLastName())
+          .phone(userDto.getPhone())
+          .password(userDto.getPassword())
+          .build();
+      return userService.updateUser(userDto.getId(), userRequest);
     }
 
     return null;

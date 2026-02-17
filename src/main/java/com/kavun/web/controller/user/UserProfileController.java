@@ -6,14 +6,12 @@ import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.HomeConstants;
 import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.UserConstants;
-import com.kavun.enums.UserHistoryType;
 import com.kavun.shared.dto.UserDto;
-import com.kavun.shared.dto.UserHistoryDto;
+import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import java.util.Comparator;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,10 +61,10 @@ public class UserProfileController {
       return HomeConstants.REDIRECT_TO_LOGIN;
     }
 
-    var userHistoryDtos = UserUtils.convertToUserHistoryDto(userDto.getUserHistories());
-    userHistoryDtos.sort(Comparator.comparing(UserHistoryDto::getCreatedAt).reversed());
+    // var userHistoryDtos = UserUtils.convertToUserHistoryDto(userDto.getUserHistories());
+    // userHistoryDtos.sort(Comparator.comparing(UserHistoryDto::getCreatedAt).reversed());
 
-    model.addAttribute(ProfileConstants.USER_HISTORIES, userHistoryDtos);
+    // model.addAttribute(ProfileConstants.USER_HISTORIES, userHistoryDtos);
 
     // set default to true if no new account or update is requested.
     model.addAttribute(ProfileConstants.DEFAULT, isDefaultOrUpdateMode(model));
@@ -99,7 +97,15 @@ public class UserProfileController {
 
     UserUtils.enableUser(user);
     user.setPublicId(userDetails.getPublicId());
-    userService.updateUser(user, UserHistoryType.PROFILE_UPDATE);
+    UserRequest userRequest = UserRequest.builder()
+        .username(user.getUsername())
+        .email(user.getEmail())
+        .firstName(user.getFirstName())
+        .lastName(user.getLastName())
+        .phone(user.getPhone())
+        .password(user.getPassword())
+        .build();
+    userService.updateUser(user.getId(), userRequest);
 
     // Authenticate user with the updated profile.
     SecurityUtils.authenticateUser(userDetails);

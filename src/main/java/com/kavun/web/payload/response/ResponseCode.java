@@ -2,6 +2,7 @@ package com.kavun.web.payload.response;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
+import com.kavun.constant.base.BaseConstants;
 
 /**
  * Standardized response codes for API responses.
@@ -14,27 +15,27 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum ResponseCode {
     // Success codes (2xx)
-    SUCCESS("SUCCESS", "Operation completed successfully", HttpStatus.OK),
-    CREATED("CREATED", "Resource created successfully", HttpStatus.CREATED),
-    UPDATED("UPDATED", "Resource updated successfully", HttpStatus.OK),
-    DELETED("DELETED", "Resource deleted successfully", HttpStatus.OK),
-    RETRIEVED("RETRIEVED", "Resource retrieved successfully", HttpStatus.OK),
-    NO_CONTENT("NO_CONTENT", "Operation completed with no content", HttpStatus.NO_CONTENT),
+    SUCCESS("SUCCESS", BaseConstants.OPERATION_SUCCESSFUL, HttpStatus.OK),
+    CREATED("CREATED", BaseConstants.RESOURCE_CREATED, HttpStatus.CREATED),
+    UPDATED("UPDATED", BaseConstants.RESOURCE_UPDATED, HttpStatus.OK),
+    DELETED("DELETED", BaseConstants.RESOURCE_DELETED, HttpStatus.OK),
+    RETRIEVED("RETRIEVED", BaseConstants.RESOURCE_RETRIEVED, HttpStatus.OK),
+    NO_CONTENT("NO_CONTENT", BaseConstants.NO_CONTENT, HttpStatus.NO_CONTENT),
 
     // Client error codes (4xx)
-    BAD_REQUEST("BAD_REQUEST", "Invalid request parameters", HttpStatus.BAD_REQUEST),
-    UNAUTHORIZED("UNAUTHORIZED", "Authentication required", HttpStatus.UNAUTHORIZED),
-    FORBIDDEN("FORBIDDEN", "Access denied", HttpStatus.FORBIDDEN),
-    NOT_FOUND("NOT_FOUND", "Resource not found", HttpStatus.NOT_FOUND),
-    CONFLICT("CONFLICT", "Resource conflict detected", HttpStatus.CONFLICT),
-    VALIDATION_ERROR("VALIDATION_ERROR", "Validation failed", HttpStatus.BAD_REQUEST),
-    ALREADY_EXISTS("ALREADY_EXISTS", "Resource already exists", HttpStatus.CONFLICT),
+    BAD_REQUEST("BAD_REQUEST", BaseConstants.INVALID_REQUEST_PARAMETERS, HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED("UNAUTHORIZED", BaseConstants.AUTHENTICATION_REQUIRED, HttpStatus.UNAUTHORIZED),
+    FORBIDDEN("FORBIDDEN", BaseConstants.ACCESS_DENIED, HttpStatus.FORBIDDEN),
+    NOT_FOUND("NOT_FOUND", BaseConstants.RESOURCE_NOT_FOUND, HttpStatus.NOT_FOUND),
+    CONFLICT("CONFLICT", BaseConstants.RESOURCE_CONFLICT, HttpStatus.CONFLICT),
+    VALIDATION_ERROR("VALIDATION_ERROR", BaseConstants.VALIDATION_FAILED, HttpStatus.BAD_REQUEST),
+    ALREADY_EXISTS("ALREADY_EXISTS", BaseConstants.RESOURCE_ALREADY_EXISTS, HttpStatus.CONFLICT),
 
     // Server error codes (5xx)
-    INTERNAL_ERROR("INTERNAL_ERROR", "Internal server error occurred", HttpStatus.INTERNAL_SERVER_ERROR),
-    DATABASE_ERROR("DATABASE_ERROR", "Database operation failed", HttpStatus.INTERNAL_SERVER_ERROR),
-    SERVICE_UNAVAILABLE("SERVICE_UNAVAILABLE", "Service temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE);
-
+    INTERNAL_ERROR("INTERNAL_ERROR", BaseConstants.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR),
+    DATABASE_ERROR("DATABASE_ERROR", BaseConstants.DATABASE_ERROR, HttpStatus.INTERNAL_SERVER_ERROR),
+    SERVICE_UNAVAILABLE("SERVICE_UNAVAILABLE", BaseConstants.SERVICE_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE);
+    
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

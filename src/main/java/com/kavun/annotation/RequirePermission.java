@@ -32,12 +32,30 @@ public @interface RequirePermission {
      * }
      *
      * User needs ANY ONE of these combinations to access the endpoint (OR logic).
-     * If empty, will auto-determine action from HTTP method and check against request endpoint.
+     * If empty and autoDetect=true, will auto-determine action from HTTP method and page from header/path.
      */
     String[] pageActions() default {};
 
     /**
+     * If true and pageActions is empty, automatically determines page:action from:
+     * 1. Page-Code header (frontend gönderir)
+     * 2. URL path (/api/v1/action -> ACTION page)
+     * 3. HTTP method (GET->VIEW, POST->CREATE, PUT->EDIT, DELETE->DELETE)
+     */
+    boolean autoDetect() default false;
+
+    /**
+     * Override the action part when using autoDetect.
+     * Useful when HTTP method doesn't match the actual action.
+     *
+     * Example: POST request but needs APPROVE permission:
+     * @RequirePermission(autoDetect = true, actionOverride = "APPROVE")
+     * Result: PAGE_CODE:APPROVE instead of PAGE_CODE:CREATE
+     */
+    String actionOverride() default "";
+
+    /**
      * Custom error message if permission is denied
      */
-    String message() default "You do not have permission to perform this action.";
+    String message() default "Bu işlemi gerçekleştirmek için izniniz bulunmamaktadır.";
 }

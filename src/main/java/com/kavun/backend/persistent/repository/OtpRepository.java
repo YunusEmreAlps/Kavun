@@ -11,20 +11,12 @@ import org.springframework.stereotype.Repository;
  * Repository for the Otp.
  *
  * @author Yunus Emre Alpu
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @Repository
 @RepositoryRestResource(exported = false)
 public interface OtpRepository extends DataTablesRepository<Otp, Long> {
-
-  /**
-   * Find by public id.
-   *
-   * @param publicId the public id of the otp
-   * @return Otp found.
-   */
-  Otp findByPublicId(String publicId);
 
   /**
    * Find otp by target.

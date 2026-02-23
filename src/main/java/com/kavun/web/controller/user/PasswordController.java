@@ -8,8 +8,8 @@ import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.HomeConstants;
 import com.kavun.constant.user.PasswordConstants;
 import com.kavun.constant.user.UserConstants;
-import com.kavun.enums.UserHistoryType;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import java.util.Objects;
@@ -150,7 +150,15 @@ public class PasswordController {
 
     UserUtils.enableUser(storedUserDto);
     storedUserDto.setPassword(passwordEncoder.encode(userDto.getPassword()));
-    var updatedUserDto = userService.updateUser(storedUserDto, UserHistoryType.PASSWORD_UPDATE);
+    UserRequest userRequest = UserRequest.builder()
+        .username(storedUserDto.getUsername())
+        .email(storedUserDto.getEmail())
+        .firstName(storedUserDto.getFirstName())
+        .lastName(storedUserDto.getLastName())
+        .phone(storedUserDto.getPhone())
+        .password(storedUserDto.getPassword())
+        .build();
+    var updatedUserDto = userService.updateUser(storedUserDto.getId(), userRequest);
     if (Objects.isNull(updatedUserDto)) {
       LOG.debug(PasswordConstants.PASSWORD_UPDATE_ERROR);
       redirectAttributes.addAttribute(

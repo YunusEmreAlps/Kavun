@@ -31,10 +31,6 @@ public class PageService
         super(mapper, repository, specification);
     }
 
-    public Specification<WebPage> specification(Map<String, Object> spec) {
-        return specification.search(spec);
-    }
-
     public Specification<WebPage> search(Map<String, Object> paramaterMap) {
         return specification.search(paramaterMap);
     }

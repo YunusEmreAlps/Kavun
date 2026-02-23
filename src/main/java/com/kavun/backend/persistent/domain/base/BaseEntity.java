@@ -15,7 +15,8 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -34,7 +35,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Setter
 @ToString
 @MappedSuperclass
-@Where(clause = "deleted = false")
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity<T extends Serializable> {
   // private static final String SEQUENCE_NAME = "kavun_sequence";
@@ -47,6 +47,7 @@ public abstract class BaseEntity<T extends Serializable> {
   // @SequenceGenerator(name = SEQUENCE_GENERATOR_NAME, sequenceName =
   // SEQUENCE_NAME, allocationSize = 1)
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @JdbcTypeCode(SqlTypes.BIGINT)
   private T id;
 
   @Column(unique = true, nullable = false, updatable = false)

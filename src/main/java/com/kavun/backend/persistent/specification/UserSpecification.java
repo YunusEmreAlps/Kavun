@@ -16,7 +16,7 @@ import java.util.Map;
  * @since 1.0
  */
 @Component
-public class UserSpecification {
+public class UserSpecification extends BaseSpecification<User> {
 
     public Specification<User> search(Map<String, Object> search) {
         Specification<User> spec = Specification.where(null);

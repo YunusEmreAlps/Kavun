@@ -32,10 +32,6 @@ public class PageActionService
         super(mapper, repository, specification);
     }
 
-    public Specification<PageAction> specification(Map<String, Object> spec) {
-        return specification.search(spec);
-    }
-
     public Specification<PageAction> search(Map<String, Object> paramaterMap) {
         return specification.search(paramaterMap);
     }

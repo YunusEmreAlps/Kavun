@@ -32,10 +32,6 @@ public class ActionService
         super(mapper, repository, specification);
     }
 
-    public Specification<Action> specification(Map<String, Object> spec) {
-        return specification.search(spec);
-    }
-
     public Specification<Action> search(Map<String, Object> paramaterMap) {
         return specification.search(paramaterMap);
     }

@@ -8,9 +8,11 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 import java.io.Serial;
 import java.io.Serializable;
+import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Random;
-import java.util.stream.Collectors;
+
+import org.hibernate.annotations.SQLDelete;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,9 +26,12 @@ import lombok.Setter;
 @Getter
 @Setter
 @Table(name = "otp")
-public class Otp extends BaseEntity<Long> implements Serializable {
+@SQLDelete(sql = "UPDATE otp SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+public class Otp extends BaseEntity implements Serializable {
   @Serial
   private static final long serialVersionUID = 7538542321562810251L;
+
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   @Column(nullable = false)
   @Size(min = SecurityConstants.OTP_LENGTH, max = SecurityConstants.OTP_LENGTH)
@@ -60,15 +65,25 @@ public class Otp extends BaseEntity<Long> implements Serializable {
   }
 
   /**
-   * Generate X-digit random OTP code.
+   * Checks if the OTP is currently valid for use.
    *
-   * @return the generated OTP code
+   * @return true if active and not expired, false otherwise
+   */
+  public boolean isValid() {
+    return Boolean.TRUE.equals(active) && !isExpired();
+  }
+
+  /**
+   * Generates a cryptographically secure random OTP code.
+   * Uses SecureRandom for enhanced security suitable for authentication purposes.
+   *
+   * @return OTP code as a string of digits
    */
   public static String generateOtp() {
-    Random random = new Random();
-    return random
-        .ints(SecurityConstants.OTP_LENGTH, 0, 10) // 0-9
-        .mapToObj(Integer::toString)
-        .collect(Collectors.joining());
+    StringBuilder otp = new StringBuilder(SecurityConstants.OTP_LENGTH);
+    for (int i = 0; i < SecurityConstants.OTP_LENGTH; i++) {
+      otp.append(SECURE_RANDOM.nextInt(10));
+    }
+    return otp.toString();
   }
 }

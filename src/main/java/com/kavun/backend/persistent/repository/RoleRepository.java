@@ -1,7 +1,12 @@
 package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Role;
+import com.kavun.backend.persistent.domain.user.User;
 import java.util.Optional;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
@@ -22,5 +27,8 @@ public interface RoleRepository extends BaseRepository<Role> {
   boolean existsById(final Long id);
 
   long count();
+
+  @Query("SELECT DISTINCT u FROM User u JOIN u.userRoles ur WHERE ur.role.id = :roleId")
+  List<User> getUsersByRoleId(final Long roleId);
 
 }

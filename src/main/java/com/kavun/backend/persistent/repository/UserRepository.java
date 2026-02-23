@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import lombok.NonNull;
-import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.EntityGraph.EntityGraphType;
 import org.springframework.data.jpa.repository.Query;
@@ -20,34 +19,57 @@ import org.springframework.stereotype.Repository;
  * Repository for the User.
  *
  * @author Yunus Emre Alpu
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @Repository
 @RepositoryRestResource(exported = false)
-public interface UserRepository
-        extends DataTablesRepository<User, Long> {
+public interface UserRepository extends BaseRepository<User> {
 
     @NonNull
     @Override
     @RestResource(exported = false)
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
     Optional<User> findById(@NonNull Long id);
 
     /**
-     * Find user by email.
+     * Find user by email (excludes deleted users).
      *
      * @param email email used to search for user.
      * @return User found.
      */
-    User findByEmail(String email);
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
+    User findByEmailAndDeletedFalse(String email);
 
     /**
-     * Find user by username.
+     * Find user by email (includes deleted users - for admin purposes only).
+     *
+     * @param email email used to search for user.
+     * @return User found.
+     */
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
+    User findByEmail(String email);
+
+    // Find user by phone (excludes deleted users).
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
+    User findByPhoneAndDeletedFalse(String phone);
+
+    /**
+     * Find user by username (excludes deleted users).
      *
      * @param username username used to search for user.
      * @return User found.
      */
-    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles" })
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
+    User findByUsernameAndDeletedFalse(String username);
+
+    /**
+     * Find user by username (includes deleted users - for admin purposes only).
+     *
+     * @param username username used to search for user.
+     * @return User found.
+     */
+    @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
     User findByUsername(String username);
 
     /**
@@ -69,6 +91,12 @@ public interface UserRepository
     Boolean existsByUsernameAndEnabledTrueOrEmailAndEnabledTrueOrderById(
             String username, String email);
 
+    // Check if username exists for a different user (for update validations).
+    Boolean existsByUsernameAndIdNotAndDeletedFalse(String username, Long id);
+
+    // Check if email exists for a different user (for update validations).
+    Boolean existsByEmailAndIdNotAndDeletedFalse(String email, Long id);
+
     /**
      * Check if user exists by username and verificationToken.
      *
@@ -80,31 +108,13 @@ public interface UserRepository
 
     Boolean existsByUsernameAndFailedLoginAttemptsGreaterThanOrderById(String username, int attempts);
 
-    /**
-     * Find user by public id.
-     *
-     * @param publicId publicId used to search for user.
-     * @return User found.
-     */
-    User findByPublicId(String publicId);
-
-    /**
-     * Find all users that failed to verify their email after a certain time.
+    /**\n     * Find all users that failed to verify their email after a certain time.
      *
      * @param allowedDaysToVerify email verification allowed days.
      * @return List of users that failed to verify their email.
      */
     @RestResource(exported = false)
     List<User> findByEnabledFalseAndCreatedAtBefore(LocalDateTime allowedDaysToVerify);
-
-    /**
-     * Delete the user associated with the given public id.
-     *
-     * @param publicId public id of the user to delete.
-     * @return Number of rows deleted.
-     */
-    @RestResource(exported = false)
-    int deleteByPublicId(String publicId);
 
     /**
      * Find user by verification token.

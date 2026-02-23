@@ -7,19 +7,24 @@ import com.kavun.constant.EnvConstants;
 import com.kavun.constant.email.EmailConstants;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.io.FileNotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -33,15 +38,18 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 /**
- * SmtpEmailServiceImpl Class has the operation of email sending in a real time.
+ * Enhanced SmtpEmailServiceImpl with async processing, rate limiting, and
+ * monitoring.
+ * Optimized for high-throughput email delivery with proper resource management.
  *
  * @author Yunus Emre Alpu
- * @version 1.0
+ * @version 2.0
  * @see com.kavun.backend.service.mail.EmailService
  * @since 1.0
  */
@@ -51,27 +59,104 @@ import org.thymeleaf.context.Context;
 @Profile({ EnvConstants.DEVELOPMENT, EnvConstants.TEST, EnvConstants.PRODUCTION })
 public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
-  // private final MailService mailService;
   private final SystemProperties systemProps;
   private final JavaMailSender mailSender;
   private final TemplateEngine templateEngine;
   private final EmailRepository emailRepository;
 
+  // =========================================================================
+  // MONITORING & METRICS
+  // =========================================================================
+
+  private final AtomicLong totalEmailsSent = new AtomicLong(0);
+  private final AtomicLong totalEmailsFailed = new AtomicLong(0);
+  private final AtomicInteger currentlyProcessing = new AtomicInteger(0);
+  private final ConcurrentHashMap<String, Long> hourlyEmailCount = new ConcurrentHashMap<>();
+
+  // Rate limiting: max emails per hour per recipient
+  private static final int MAX_EMAILS_PER_HOUR = 100;
+  private static final long HOUR_IN_MILLIS = 3600000L;
+
+  @PostConstruct
+  public void init() {
+    LOG.info("Initializing SMTP Email Service with monitoring...");
+    LOG.info("Rate limit: {} emails per hour per recipient", MAX_EMAILS_PER_HOUR);
+  }
+
+  /**
+   * Scheduled task to log email metrics every hour
+   */
+  @Scheduled(fixedRate = 3600000) // Every hour
+  public void logEmailMetrics() {
+    LOG.info("=== EMAIL SERVICE METRICS ===");
+    LOG.info("Total emails sent: {}", totalEmailsSent.get());
+    LOG.info("Total emails failed: {}", totalEmailsFailed.get());
+    LOG.info("Currently processing: {}", currentlyProcessing.get());
+    LOG.info("Success rate: {}%", calculateSuccessRate());
+    LOG.info("============================");
+  }
+
+  /**
+   * Scheduled task to clean up old rate limit entries
+   */
+  @Scheduled(fixedRate = 1800000) // Every 30 minutes
+  public void cleanupRateLimitCache() {
+    long now = System.currentTimeMillis();
+    hourlyEmailCount.entrySet().removeIf(entry -> now - entry.getValue() > HOUR_IN_MILLIS);
+    LOG.debug("Cleaned up rate limit cache. Remaining entries: {}", hourlyEmailCount.size());
+  }
+
+  private double calculateSuccessRate() {
+    long total = totalEmailsSent.get() + totalEmailsFailed.get();
+    if (total == 0)
+      return 100.0;
+    return (totalEmailsSent.get() * 100.0) / total;
+  }
+
+  /**
+   * Check if recipient has exceeded rate limit
+   */
+  private boolean isRateLimited(String recipient) {
+    String key = "rate_" + recipient + "_" + (System.currentTimeMillis() / HOUR_IN_MILLIS);
+    Long count = hourlyEmailCount.get(key);
+    return count != null && count >= MAX_EMAILS_PER_HOUR;
+  }
+
+  /**
+   * Increment rate limit counter for recipient
+   */
+  private void incrementRateLimit(String recipient) {
+    String key = "rate_" + recipient + "_" + (System.currentTimeMillis() / HOUR_IN_MILLIS);
+    hourlyEmailCount.merge(key, 1L, Long::sum);
+  }
+
   /**
    * Sends an email with the provided simple mail message object.
-   * Enhanced with better error handling and guaranteed app stability.
+   * Enhanced with rate limiting, metrics tracking, and better error handling.
    */
   @Override
   @Async("emailTaskExecutor")
   public void sendMail(final SimpleMailMessage simpleMailMessage) {
     String requestId = generateRequestId();
+    currentlyProcessing.incrementAndGet();
+    long startTime = System.currentTimeMillis();
 
     try {
       // Validate input
       if (!isValidMailMessage(simpleMailMessage)) {
         LOG.warn("Invalid mail message provided. RequestId: {}", requestId);
         saveFailedMailToDatabase(simpleMailMessage, requestId, "Invalid mail message");
-        return; // Don't throw - just return to keep app working
+        totalEmailsFailed.incrementAndGet();
+        return;
+      }
+
+      // Rate limiting check
+      String recipient = simpleMailMessage.getTo()[0];
+      if (isRateLimited(recipient)) {
+        LOG.warn("Rate limit exceeded for recipient: {}. RequestId: {}", recipient, requestId);
+        saveFailedMailToDatabase(simpleMailMessage, requestId, "Rate limit exceeded");
+        totalEmailsFailed.incrementAndGet();
+        return;
       }
 
       // Configure SSL trust for IP-based SMTP servers
@@ -80,17 +165,23 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       // Send email
       mailSender.send(simpleMailMessage);
 
+      // Increment counters
+      incrementRateLimit(recipient);
+      totalEmailsSent.incrementAndGet();
+
       // Save success to database
       saveMailStatusToDatabase(simpleMailMessage, requestId, "Email sent successfully", true);
-      LOG.info("Email sent successfully. RequestId: {}", requestId);
+
+      long duration = System.currentTimeMillis() - startTime;
+      LOG.info("Email sent successfully. RequestId: {}, Duration: {}ms", requestId, duration);
 
     } catch (Exception e) {
-      // Log error but don't throw - keep app working
+      totalEmailsFailed.incrementAndGet();
       String errorMessage = getDetailedErrorMessage(e);
       LOG.error("Failed to send email. RequestId: {}, Error: {}", requestId, errorMessage, e);
-
-      // Save failure to database
       saveFailedMailToDatabase(simpleMailMessage, requestId, errorMessage);
+    } finally {
+      currentlyProcessing.decrementAndGet();
     }
   }
 
@@ -504,24 +595,59 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
    * Gets all recipients from HTML email request
    */
   private String getHtmlEmailRecipients(HtmlEmailRequest emailRequest) {
-    List<String> recipients = new ArrayList<>();
-
-    if (StringUtils.isNotBlank(emailRequest.getTo())) {
-      recipients.add(emailRequest.getTo());
+    if (emailRequest == null) {
+      return "unknown";
     }
 
-    if (emailRequest.getReceiver() != null &&
-        StringUtils.isNotBlank(emailRequest.getReceiver().getEmail())) {
-      recipients.add(emailRequest.getReceiver().getEmail());
+    try {
+      Set<String> uniqueRecipients = new LinkedHashSet<>();
+
+      if (StringUtils.isNotBlank(emailRequest.getTo())) {
+        String email = emailRequest.getTo().trim().toLowerCase();
+        if (isValidEmailFormat(email)) {
+          uniqueRecipients.add(email);
+        }
+      }
+
+      if (emailRequest.getReceiver() != null &&
+          StringUtils.isNotBlank(emailRequest.getReceiver().getEmail())) {
+        String email = emailRequest.getReceiver().getEmail().trim().toLowerCase();
+        if (isValidEmailFormat(email)) {
+          uniqueRecipients.add(email);
+        }
+      }
+
+      // Add additional recipients with validation
+      if (CollectionUtils.isNotEmpty(emailRequest.getRecipients())) {
+        emailRequest.getRecipients().stream()
+            .filter(StringUtils::isNotBlank)
+            .map(email -> email.trim().toLowerCase())
+            .filter(this::isValidEmailFormat)
+            .forEach(uniqueRecipients::add);
+      }
+
+      if (uniqueRecipients.isEmpty()) {
+        LOG.warn("No valid recipients found in HTML email request");
+        return "no-valid-recipients";
+      }
+
+      String result = String.join(", ", uniqueRecipients);
+      LOG.debug("Deduplicated HTML email recipients: {}", result);
+      return result;
+
+    } catch (Exception e) {
+      LOG.error("Error processing HTML email recipients: {}", e.getMessage());
+      return "error-processing-recipients";
+    }
+  }
+
+  private boolean isValidEmailFormat(String email) {
+    if (!StringUtils.isNotBlank(email)) {
+      return false;
     }
 
-    if (CollectionUtils.isNotEmpty(emailRequest.getRecipients())) {
-      recipients.addAll(emailRequest.getRecipients().stream()
-          .filter(StringUtils::isNotBlank)
-          .collect(Collectors.toList()));
-    }
-
-    return recipients.isEmpty() ? "unknown" : String.join(", ", recipients);
+    String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+    return email.matches(emailRegex);
   }
 
   /**
@@ -533,10 +659,6 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       urls = new HashMap<>();
       emailFormat.setUrls(urls);
     }
-
-    // Add default URLs if they don't exist
-    urls.putIfAbsent("imageUrl", "https://asset.turktelekom.com.tr/SiteAssets/images/logo-mobile.svg");
-    urls.putIfAbsent("portalUrl", "https://verimerkezikavun.turktelekom.com.tr");
 
     // Set URLs in context
     context.setVariable(EmailConstants.URLS, urls);
@@ -578,27 +700,4 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
     }
     helper.setTo(internetAddress);
   }
-
-  /**
-   * Logs email sending information.
-   * emailRequest CAN be HtmlEmailRequest, SimpleMailMessage, etc.
-   */
-  private void logEmail(Object emailRequest) {
-    if (LOG.isDebugEnabled() && emailRequest != null) {
-      LOG.info("=== EMAIL SEND ATTEMPT ===");
-      if (emailRequest instanceof HtmlEmailRequest) {
-        HtmlEmailRequest htmlEmailRequest = (HtmlEmailRequest) emailRequest;
-        LOG.info("From: {}", htmlEmailRequest.getFrom());
-        LOG.info("To: {}", String.join(", ", htmlEmailRequest.getTo()));
-        LOG.info("Subject: {}", htmlEmailRequest.getSubject());
-      } else if (emailRequest instanceof SimpleMailMessage) {
-        SimpleMailMessage simpleMailMessage = (SimpleMailMessage) emailRequest;
-        LOG.info("From: {}", simpleMailMessage.getFrom());
-        LOG.info("To: {}", String.join(", ", simpleMailMessage.getTo()));
-        LOG.info("Subject: {}", simpleMailMessage.getSubject());
-      }
-      LOG.info("========================");
-    }
-  }
-
 }

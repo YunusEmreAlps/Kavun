@@ -5,11 +5,15 @@ import com.kavun.backend.persistent.repository.OtpRepository;
 import com.kavun.backend.service.user.OtpService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.SecurityConstants;
+import com.kavun.shared.dto.UserDto;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class OtpServiceImpl implements OtpService {
 
+    private static final String TEST_OTP_CODE = "190303";
+
+    private final transient Environment environment;
     private final transient OtpRepository otpRepository;
 
     /**
@@ -51,48 +58,132 @@ public class OtpServiceImpl implements OtpService {
         return params;
     }
 
-    /**
-     * Validates the otp code for the user with the given email or sms.
-     *
-     * @param publicId the public id of the otp
-     * @param target   the target to email or sms
-     * @param code     the otp code to validate
-     * @return true if the otp code is valid, false otherwise
-     */
     @Override
     @Transactional
-    public Boolean validateOtp(String publicId, String target, String code) {
-        Otp otpEntity = otpRepository.findByPublicId(publicId);
-        if (otpEntity != null) {
-            if (otpEntity.getCode().equals(code)
-                    && otpEntity.getTarget().equals(target)
-                    && !otpEntity.isExpired()
-                    && otpEntity.getActive() == true) {
-                otpEntity.setUsedAt(Instant.now());
-                otpEntity.setActive(false);
-                otpRepository.save(otpEntity);
-                return true;
-            } else {
-                otpEntity.setFailedAttempts(otpEntity.getFailedAttempts() + 1);
-                if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
-                    otpEntity.setActive(false);
-                }
-                if (otpEntity.isExpired()) {
-                    otpEntity.setActive(false);
-                }
-                otpRepository.save(otpEntity);
+    public Boolean validateOtp(Long id, String target, String code) {
+        Otp otpEntity = otpRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(AuthConstants.OTP_NOT_FOUND));
 
-                if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
-                    throw new IllegalArgumentException(AuthConstants.OTP_MAX_ATTEMPTS);
-                } else if (otpEntity.isExpired()) {
-                    throw new IllegalArgumentException(AuthConstants.OTP_EXPIRED);
-                } else {
-                    throw new IllegalArgumentException(AuthConstants.OTP_NOT_VERIFIED);
-                }
-            }
-            // otpRepository.delete(otpEntity);
-        } else {
-            throw new IllegalArgumentException(AuthConstants.OTP_NOT_FOUND);
+        // Check if OTP is valid and matches
+        if (otpEntity.getCode().equals(code) && otpEntity.getTarget().equals(target) && otpEntity.isValid()) {
+            otpEntity.setUsedAt(Instant.now());
+            otpEntity.setActive(false);
+            otpRepository.save(otpEntity);
+            return true;
         }
+
+        // Handle validation failure
+        otpEntity.setFailedAttempts(otpEntity.getFailedAttempts() + 1);
+
+        // Determine failure reason before saving
+        String errorMessage;
+        if (otpEntity.isExpired()) {
+            otpEntity.setActive(false);
+            errorMessage = AuthConstants.OTP_EXPIRED;
+        } else if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
+            otpEntity.setActive(false);
+            errorMessage = AuthConstants.OTP_MAX_ATTEMPTS;
+        } else {
+            errorMessage = AuthConstants.OTP_NOT_VERIFIED;
+        }
+
+        otpRepository.save(otpEntity);
+        throw new IllegalArgumentException(errorMessage);
+    }
+
+    // Generates OTP and sends it via SMS
+    @Override
+    @Transactional
+    public Map<String, Object> generateAndSendOtpSms(String phoneNumber) {
+        LOG.info("Generating and sending OTP via SMS for phone: {}", phoneNumber);
+
+        // Generate OTP entity
+        Otp otp = new Otp();
+        otp.setTarget(phoneNumber);
+
+        // Use test OTP code for dev and test environments
+        boolean isDevOrTest = isDevOrTestEnvironment();
+        if (isDevOrTest) {
+            otp.setCode(TEST_OTP_CODE);
+            LOG.info("Using test OTP code for development/test environment: {}", TEST_OTP_CODE);
+        } else {
+            otp.setCode(Otp.generateOtp());
+        }
+
+        otp.setActive(true);
+        otpRepository.save(otp);
+
+        // Skip SMS sending in dev/test environments
+        if (!isDevOrTest) {
+            try {
+                // Send OTP
+                // TODO: Add SMS Service in here
+                // LOG.info("OTP SMS sent successfully");
+
+            } catch (Exception e) {
+                LOG.error("Failed to send OTP SMS: {}", e.getMessage(), e);
+                otp.setActive(false);
+                otpRepository.save(otp);
+                throw new RuntimeException("Failed to send OTP SMS: " + e.getMessage(), e);
+            }
+        } else {
+            LOG.info("Skipping SMS sending in development/test environment");
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", otp.getId());
+        params.put("target", otp.getTarget());
+
+        return params;
+    }
+
+    // Generates OTP and sends it via Email.
+    @Override
+    @Transactional
+    public Map<String, Object> generateAndSendOtpEmail(String email) {
+        LOG.info("Generating and sending OTP via Email for: {}", email);
+
+        // Generate OTP entity
+        Otp otp = new Otp();
+        otp.setTarget(email);
+        otp.setCode(Otp.generateOtp());
+        otp.setActive(true);
+        otpRepository.save(otp);
+
+        try {
+            // Create a temporary UserDto for email service
+            UserDto tempUser = new UserDto();
+            tempUser.setEmail(email);
+
+            // TODO: Implement emailService.sendOtpEmail(tempUser, otp.getCode());
+            LOG.info("OTP Email would be sent to: {} with code: {}", email, otp.getCode());
+
+        } catch (Exception e) {
+            LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);
+            otp.setActive(false);
+            otpRepository.save(otp);
+            throw new RuntimeException("Failed to send OTP Email: " + e.getMessage(), e);
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", otp.getId());
+        params.put("target", otp.getTarget());
+
+        return params;
+    }
+
+    /**
+     * Checks if the current environment is development or test.
+     *
+     * @return true if running in dev or test profile
+     */
+    private boolean isDevOrTestEnvironment() {
+        String[] activeProfiles = environment.getActiveProfiles();
+        for (String profile : activeProfiles) {
+            if ("development".equalsIgnoreCase(profile) || "test".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

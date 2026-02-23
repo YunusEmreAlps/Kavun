@@ -9,24 +9,33 @@ import com.kavun.constant.ErrorConstants;
  * @since 1.0
  */
 public final class BaseConstants {
+    // General
+    public static final String OPERATION_SUCCESSFUL = "Operation completed successfully";
+    public static final String RESOURCE_CREATED = "Resource created successfully";
+    public static final String RESOURCE_UPDATED = "Resource updated successfully";
+    public static final String RESOURCE_DELETED = "Resource deleted successfully";
+    public static final String RESOURCE_RETRIEVED = "Resource retrieved successfully";
+    public static final String RESOURCES_RETRIEVED = "Resources retrieved successfully";
+    public static final String NO_CONTENT = "Operation completed with no content";
+    public static final String INVALID_REQUEST_PARAMETERS = "Invalid request parameters";
+    public static final String AUTHENTICATION_REQUIRED = "Authentication required";
+    public static final String ACCESS_DENIED = "Access denied";
+    public static final String RESOURCE_CONFLICT = "Resource conflict detected";
+    public static final String VALIDATION_FAILED = "Validation failed";
+    public static final String RESOURCE_ALREADY_EXISTS = "Resource already exists";
+    public static final String INTERNAL_SERVER_ERROR = "Internal server error";
+    public static final String SERVICE_UNAVAILABLE = "Service temporarily unavailable";
 
-    // Field sizes
-
-    // Validation messages
-    public static final String PUBLIC_ID_NOT_BLANK = "Public ID must not be blank";
-    public static final String DATA_EXIST = "Data exists with publicId: {0}";
-    public static final String DATA_NOT_FOUND = "Data not found";
-    public static final String DATA_FOUND = "Data found with publicId: {0}";
-    public static final String DATA_SAVED_SUCCESSFULLY = "Data saved successfully";
-    public static final String DATA_UPDATED_SUCCESSFULLY = "Data updated successfully";
-    public static final String DATA_DELETED_SUCCESSFULLY = "Data deleted successfully";
-    public static final String DATA_SOFT_DELETED_SUCCESSFULLY = "Data soft deleted successfully";
-    public static final String DATA_RECOVERED_SUCCESSFULLY = "Data recovered successfully";
-    public static final String DATA_ALREADY_EXISTS = "Data already exists";
-    public static final String DATA_CREATE_CONFLICT = "Data creation conflict with existing data";
-    public static final String DATA_UPDATE_CONFLICT = "Data update conflict with existing data";
-    public static final String DATA_ENABLED_SUCCESSFULLY = "Data enabled successfully";
-    public static final String DATA_DISABLED_SUCCESSFULLY = "Data disabled successfully";
+    public static final String DATA_INTEGRITY_VIOLATION = "Data integrity violation. Please check your request data.";
+    public static final String INVALID_JSON_REQUEST = "Invalid JSON request. Please check your request body.";
+    public static final String RESOURCE_NOT_FOUND = "The requested resource was not found.";
+    public static final String AUTHENTICATION_FAILED = "Authentication failed: ";
+    public static final String INVALID_CREDENTIALS = "Invalid username or password";
+    public static final String VALUE_ALREADY_EXISTS = "A record with this value already exists";
+    public static final String VALUE_REFERENCED = "Cannot delete record - it is referenced by other records";
+    public static final String INSUFFICIENT_PERMISSIONS = "You do not have the necessary permissions for this operation.";
+    public static final String DATABASE_ERROR = "A database error occurred. Please try again later.";
+    public static final String UNEXPECTED_ERROR = "An unexpected error occurred. Please try again later.";
 
     private BaseConstants() {
         throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);

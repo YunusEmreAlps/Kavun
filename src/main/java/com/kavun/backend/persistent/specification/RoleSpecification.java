@@ -32,6 +32,11 @@ public class RoleSpecification extends BaseSpecification<Role> {
           (((root, query, criteriaBuilder) -> criteriaBuilder.like(criteriaBuilder.lower(root.get("description")),
               "%" + search.get("description").toString().toLowerCase() + "%"))));
     }
+    if (search.containsKey("deleted") && !search.get("deleted").toString().isEmpty()) {
+      specification = specification.and(
+          (((root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("deleted"),
+              Boolean.parseBoolean(search.get("deleted").toString())))));
+    }
     if (search.containsKey("createdAt") && !search.get("createdAt").toString().isEmpty()) {
       specification = specification.and(
           (((root, query, criteriaBuilder) -> criteriaBuilder.and(

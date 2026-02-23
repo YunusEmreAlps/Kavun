@@ -10,21 +10,15 @@ import java.util.Map;
  * @since 1.0
  */
 public interface OtpService {
-  /**
-   * Generates the otp code for the user with the given email or sms.
-   *
-   * @param target the target to email or sms
-   * @return Map containing publicId and target
-   */
+  // Generates the otp code for the user with the given email or sms.
   public Map<String, Object> generateOtp(String target);
 
-  /**
-   * Validates the otp code for the user with the given email or sms.
-   *
-   * @param publicId the public id of the otp
-   * @param target the target to email or sms
-   * @param otp the otp code to validate
-   * @return true if the otp code is valid, false otherwise
-   */
-  public Boolean validateOtp(String publicId, String target, String otp);
+  // Validates the otp code for the user with the given email or sms.
+  public Boolean validateOtp(Long id, String target, String otp);
+
+  // Generates OTP and sends it via SMS using CMP.
+  public Map<String, Object> generateAndSendOtpSms(String phoneNumber);
+
+  // Generates OTP and sends it via Email.
+  public Map<String, Object> generateAndSendOtpEmail(String email);
 }

@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
  *
  * <p>
  * This class contains common audit fields that map to {@link
- * com.boss.backend.persistent.domain.base.BaseEntity}.
+ * com.kavun.backend.persistent.domain.base.BaseEntity}.
  *
  * @author Yunus Emre Alpu
  * @version 2.0

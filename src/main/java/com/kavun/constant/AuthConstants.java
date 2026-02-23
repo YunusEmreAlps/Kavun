@@ -24,6 +24,8 @@ public class AuthConstants {
       "OTP validation failed. Please check the code.";
   public static final String OTP_DELETED = "OTP deleted successfully.";
   public static final String OTP_NOT_FOUND = "OTP not found.";
+  public static final String USER_HAS_NO_OTP_DELIVERY_METHOD = "User has no OTP delivery method configured.";
+  public static final String OTP_SENT_SUCCESSFULLY = "OTP sent successfully.";
 
   private AuthConstants() {
     throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);

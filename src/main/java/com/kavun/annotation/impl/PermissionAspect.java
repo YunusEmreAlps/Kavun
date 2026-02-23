@@ -2,7 +2,9 @@ package com.kavun.annotation.impl;
 
 import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.PageAction;
+import com.kavun.backend.persistent.domain.user.WebPage;
 import com.kavun.backend.persistent.repository.PageActionRepository;
+import com.kavun.backend.persistent.repository.PageRepository;
 import com.kavun.backend.service.user.PermissionCheckService;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
@@ -38,6 +40,7 @@ import java.util.Optional;
 @Component
 public class PermissionAspect {
 
+    private final PageRepository pageRepository;
     private final PermissionCheckService permissionCheckService;
     private final PageActionRepository pageActionRepository;
 
@@ -46,9 +49,11 @@ public class PermissionAspect {
 
     public PermissionAspect(
         PermissionCheckService permissionCheckService,
-        PageActionRepository pageActionRepository) {
+        PageActionRepository pageActionRepository,
+        PageRepository pageRepository) {
         this.permissionCheckService = permissionCheckService;
         this.pageActionRepository = pageActionRepository;
+        this.pageRepository = pageRepository;
     }
 
     @Before("@annotation(requirePermission)")
@@ -73,14 +78,29 @@ public class PermissionAspect {
 
             String httpMethod = getHttpMethod(joinPoint, requirePermission, request);
             String requestUri = request.getRequestURI();
+            String pageCodeHeader = request.getHeader("Page-Code");
+            String pageUrl = request.getHeader("Page-Url");
 
-            LOG.debug("Checking permission for user {} on {} {}", userDto.getId(), httpMethod, requestUri);
+            LOG.debug("Checking permission for user {} on {} {} (Page-Code header: {}, Page-Url header: {})",
+                    userDto.getId(), httpMethod, requestUri, pageCodeHeader, pageUrl);
 
-            // Check permission based on pageActions or endpoint/method
+            // Check permission based on pageActions or auto-detect
             String[] pageActions = requirePermission.pageActions();
 
-            LOG.debug("RequirePermission pageActions: {}", (pageActions != null && pageActions.length > 0)
-                    ? String.join(", ", pageActions) : "[]");
+            LOG.debug("RequirePermission pageActions: {}, autoDetect: {}",
+                    (pageActions != null && pageActions.length > 0) ? String.join(", ", pageActions) : "[]",
+                    requirePermission.autoDetect());
+
+            // Auto-detect page:action if enabled and pageActions is empty
+            if ((pageActions == null || pageActions.length == 0) && requirePermission.autoDetect()) {
+                String actionOverride = requirePermission.actionOverride();
+                String autoDetectedPageAction = autoDetectPageAction(
+                        pageCodeHeader, pageUrl, requestUri, httpMethod, actionOverride);
+                if (autoDetectedPageAction != null) {
+                    pageActions = new String[] { autoDetectedPageAction };
+                    LOG.info("Auto-detected page:action: {}", autoDetectedPageAction);
+                }
+            }
 
             if (pageActions != null && pageActions.length > 0) {
                 // PAGE:ACTION BASED PERMISSION CHECK
@@ -96,7 +116,7 @@ public class PermissionAspect {
 
                 LOG.debug("User {} granted access via page:action permission", userDto.getId());
             } else {
-                LOG.debug("No page:action permissions specified, skipping page:action check");
+                LOG.debug("No page:action permissions specified and auto-detect disabled");
                 throw new AccessDeniedException("No pageActions specified in RequirePermission annotation");
             }
 
@@ -115,16 +135,20 @@ public class PermissionAspect {
         try {
             // Check from Spring Security context first (most reliable)
             Authentication authentication = SecurityUtils.getAuthentication();
+            LOG.debug("Authentication object: {}", authentication);
+
             if (authentication != null && authentication.getAuthorities() != null) {
+                LOG.debug("Authorities: {}", authentication.getAuthorities());
                 boolean hasAdminRole = authentication.getAuthorities().stream()
                         .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
 
-                LOG.info("Admin check from authorities: {}", hasAdminRole);
+                LOG.info("Admin check from authorities for user {}: {} (authorities={})",
+                        userDto.getUsername(), hasAdminRole, authentication.getAuthorities());
                 return hasAdminRole;
             }
 
             // Fallback: check UserDto's userRoles field
-            if (userDto.getUserRoles() != null) {
+            if (userDto.getUserRoles() != null && !userDto.getUserRoles().isEmpty()) {
                 boolean hasAdminRole = userDto.getUserRoles().stream()
                         .anyMatch(ur -> ur.getRole() != null && "ROLE_ADMIN".equals(ur.getRole().getName()));
 
@@ -132,12 +156,109 @@ public class PermissionAspect {
                 return hasAdminRole;
             }
 
-            LOG.warn("Could not determine admin status - no authorities or userRoles found");
+            LOG.warn("Could not determine admin status - no authorities or userRoles found for user: {}",
+                    userDto.getUsername());
             return false;
         } catch (Exception e) {
-            LOG.error("Error checking admin role", e);
+            LOG.error("Error checking admin role for user: {}", userDto.getUsername(), e);
             return false;
         }
+    }
+
+    private String autoDetectPageAction(String pageCodeHeader, String pageUrlHeader, String requestUri,
+                                        String httpMethod, String actionOverride) {
+        try {
+            WebPage page = null;
+
+            if (pageCodeHeader != null && !pageCodeHeader.trim().isEmpty()) {
+                page = pageRepository.findByCodeAndDeletedFalse(pageCodeHeader);
+                LOG.debug("Looking up page by code header: {} -> {}",
+                    pageCodeHeader, page != null ? "found" : "not found");
+            }
+
+
+            if (page == null && pageUrlHeader != null && !pageUrlHeader.trim().isEmpty()) {
+                page = pageRepository.findByUrlAndDeletedFalse(pageUrlHeader);
+                LOG.debug("Looking up page by URL header: {} -> {}", pageUrlHeader,
+                    page != null ? page.getCode() : "not found");
+            }
+
+            if (page == null) {
+                LOG.warn("Could not find page for code '{}' or URL: {}", pageCodeHeader, pageUrlHeader);
+                return null;
+            }
+
+            String action;
+            if (actionOverride != null && !actionOverride.trim().isEmpty()) {
+                action = actionOverride.toUpperCase();
+                LOG.debug("Using action override: {}", action);
+            } else {
+                action = mapHttpMethodToAction(httpMethod);
+                if (action == null) {
+                    LOG.warn("Could not map HTTP method to action: {}", httpMethod);
+                    return null;
+                }
+            }
+
+            String pageAction = page.getCode().toUpperCase() + ":" + action;
+            LOG.debug("Auto-detected page:action = {}:{} from uri: {}, method: {} (override: {})",
+                    page.getCode(), action, requestUri, httpMethod, actionOverride);
+            return pageAction;
+
+        } catch (Exception e) {
+            LOG.error("Error auto-detecting page:action", e);
+            return null;
+        }
+    }
+
+    /**
+     * Normalize request path for database URL matching.
+     * Removes /api/v1 prefix and query parameters.
+     * Example: /api/v1/users/list?page=1 -> /users/list
+     *          /api/v1/admin -> /admin
+     */
+    private String normalizeRequestPath(String requestUri) {
+        try {
+            // Remove query parameters
+            String path = requestUri.split("\\?")[0];
+
+            // Remove /api/v1 or /api/vX prefix
+            if (path.startsWith("/api/v")) {
+                // Find the third slash to remove /api/vX
+                int firstSlash = path.indexOf('/');
+                int secondSlash = path.indexOf('/', firstSlash + 1);
+                int thirdSlash = path.indexOf('/', secondSlash + 1);
+
+                if (thirdSlash > 0) {
+                    path = path.substring(thirdSlash);
+                } else {
+                    // If no path after version, return root
+                    path = "/";
+                }
+            }
+
+            LOG.debug("Normalized path: {} -> {}", requestUri, path);
+            return path;
+        } catch (Exception e) {
+            LOG.error("Error normalizing request path: {}", requestUri, e);
+            return requestUri;
+        }
+    }
+
+    /**
+     * Map HTTP method to standard action codes.
+     */
+    private String mapHttpMethodToAction(String httpMethod) {
+        if (httpMethod == null) {
+            return null;
+        }
+        return switch (httpMethod.toUpperCase()) {
+            case "GET" -> "VIEW";
+            case "POST" -> "CREATE";
+            case "PUT", "PATCH" -> "EDIT";
+            case "DELETE" -> "DELETE";
+            default -> null;
+        };
     }
 
     /**

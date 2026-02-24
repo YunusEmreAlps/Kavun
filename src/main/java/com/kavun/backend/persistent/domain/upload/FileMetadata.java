@@ -10,7 +10,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -19,6 +18,8 @@ import jakarta.persistence.Index;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import org.hibernate.annotations.SQLDelete;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -37,14 +38,12 @@ import lombok.Setter;
         @Index(name = "idx_file_created_by", columnList = "created_by"),
         @Index(name = "idx_file_object_key", columnList = "object_key"),
         @Index(name = "idx_file_checksum", columnList = "checksum"),
-        @Index(name = "idx_file_entity", columnList = "entity_type, entity_id"),
+        @Index(name = "idx_file_entity", columnList = "entity_type, entity_id, deleted"),
         @Index(name = "idx_file_type", columnList = "file_type"),
         @Index(name = "idx_file_status", columnList = "upload_status")
-    },
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_object_key", columnNames = {"object_key"})
     }
 )
+@SQLDelete(sql = "UPDATE file_metadata SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 @Getter @Setter
 public class FileMetadata extends BaseEntity<Long> implements Serializable {
     // File type classification
@@ -70,7 +69,7 @@ public class FileMetadata extends BaseEntity<Long> implements Serializable {
 
     @NotBlank(message = "Object key is required")
     @Size(max = 512, message = "Object key cannot exceed 512 characters")
-    @Column(name = "object_key", nullable = false, unique = true)
+    @Column(name = "object_key", nullable = false)
     private String objectKey;
 
     @NotBlank(message = "File name is required")
@@ -121,16 +120,12 @@ public class FileMetadata extends BaseEntity<Long> implements Serializable {
     @Column(name = "error_message", length = 1000)
     private String errorMessage; // If upload failed
 
-    /**
-     * Helper method to check if access URL is expired
-     */
+    // Check if access URL is expired
     public boolean isAccessUrlExpired() {
         return accessUrlExpiresAt != null && LocalDateTime.now().isAfter(accessUrlExpiresAt);
     }
 
-    /**
-     * Increment access count
-     */
+    // Increment access count
     public void incrementAccessCount() {
         this.accessCount++;
         this.lastAccessedAt = LocalDateTime.now();

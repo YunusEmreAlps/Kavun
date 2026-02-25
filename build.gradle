@@ -49,6 +49,7 @@ ext {
   set('javadocScribeVersion', '0.15.0')
   set('mapstructVersion', '1.6.3')
   set('awsSdkS3Version', '2.30.15')
+  set('clamavClientVersion', '2.1.2')
 }
 
 dependencies {
@@ -86,6 +87,7 @@ dependencies {
   implementation 'com.google.code.gson:gson:2.12.1'
   implementation 'commons-validator:commons-validator:1.9.0'
   implementation 'com.github.darrachequesne:spring-data-jpa-datatables:6.0.4'
+  implementation "xyz.capybara:clamav-client:${clamavClientVersion}"
 
   // Documentation and API Tools
   implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springDocVersion}"

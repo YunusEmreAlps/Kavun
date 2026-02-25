@@ -128,6 +128,28 @@ services:
     networks:
       - kavun-network
 
+  clamav:
+    image: clamav/clamav:latest
+    container_name: kavun-clamav
+    restart: unless-stopped
+    ports:
+      - '3310:3310'
+    environment:
+      # Automatically update virus definitions
+      CLAMAV_NO_FRESHCLAM: "false"
+      # Scan options
+      CLAMD_STARTUP_TIMEOUT: 90
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 300s  # ClamAV needs time to download virus definitions on first start
+    networks:
+      - kavun-network
+
 networks:
   kavun-network:
     driver: bridge
@@ -142,4 +164,6 @@ volumes:
   alertmanager-data:
     driver: local
   syslog-data:
+    driver: local
+  clamav-data:
     driver: local

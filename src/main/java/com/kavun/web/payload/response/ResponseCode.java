@@ -35,7 +35,7 @@ public enum ResponseCode {
     INTERNAL_ERROR("INTERNAL_ERROR", BaseConstants.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR),
     DATABASE_ERROR("DATABASE_ERROR", BaseConstants.DATABASE_ERROR, HttpStatus.INTERNAL_SERVER_ERROR),
     SERVICE_UNAVAILABLE("SERVICE_UNAVAILABLE", BaseConstants.SERVICE_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE);
-    
+
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

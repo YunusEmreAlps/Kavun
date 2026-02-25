@@ -54,6 +54,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Spring Boot DevTools](https://docs.spring.io/spring-boot/docs/2.6.7/reference/htmlsingle/#using-boot-devtools)
 - [Spring Data Jpa DataTables](https://github.com/darrachequesne/spring-data-jpa-datatables)
 - [Test Containers](https://java.testcontainers.org/)
+- [clamAV](https://www.clamav.net/) - Open Source Antivirus Engine
 
 ## Key Features
 
@@ -71,7 +72,9 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Production Ready Folder Structure](README.md#architecture)
 - [Authentication and Authorization with JWT](docs/AUTHENTICATION.MD)
 - [Security Configuration Without WebSecurityConfigurerAdapter](https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter#ldap-authentication)
-- Dynamic Role and Permission Management
+- **clamAV** Integration for File Scanning
+- **Dynamic Role and Permission Management**
+
 
 ## Development Guide
 

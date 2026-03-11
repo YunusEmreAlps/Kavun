@@ -15,7 +15,11 @@ import com.kavun.enums.OperationStatus;
 import com.kavun.enums.OtpDeliveryMethod;
 import com.kavun.enums.TokenType;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.util.CaptchaGenerator;
+import com.kavun.shared.util.CaptchaStore;
 import com.kavun.shared.util.core.SecurityUtils;
+import com.kavun.backend.persistent.domain.user.Captcha;
+import com.kavun.backend.persistent.repository.CaptchaRepository;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
 import com.kavun.web.payload.request.LoginRequest;
@@ -30,9 +34,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +57,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
+import org.springframework.http.CacheControl;
+import com.kavun.web.payload.response.CaptchaResponse;
 
 /**
  * This class attempt to authenticate with AuthenticationManager bean, add an
@@ -75,6 +88,9 @@ public class AuthRestApi {
   @Value("${login.otp.enabled:false}")
   private boolean isOtpEnabled;
 
+  @Value("${login.captcha.enabled:false}")
+  private boolean isCaptchaEnabled;
+
   private final OtpService otpService;
   private final JwtService jwtService;
   private final UserService userService;
@@ -83,6 +99,89 @@ public class AuthRestApi {
   private final EncryptionService encryptionService;
   private final UserDetailsService userDetailsService;
   private final DaoAuthenticationProvider authenticationManager;
+  private final CaptchaRepository captchaRepository;
+
+  // Rate limiting caches
+  private final ConcurrentHashMap<String, Bucket> captchaRateLimitCache = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Bucket> loginRateLimitCache = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Bucket> forgotPasswordIpCache = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Bucket> forgotPasswordUserCache = new ConcurrentHashMap<>();
+
+  /**
+   * Generates a new CAPTCHA image and unique ID.
+   * Implements rate limiting (5 requests per minute per IP) to prevent abuse.
+   */
+  @Loggable
+  @SecurityRequirements
+  @GetMapping("/captcha")
+  public ApiResponse<CaptchaResponse> getCaptcha(HttpServletRequest request) {
+
+    // Rate limiting - 5 captchas per minute per IP
+    Bucket bucket = resolveCaptchaBucket(request);
+    if (!bucket.tryConsume(1)) {
+      // Calculate seconds until next token is available
+      long nanosUntilRefill = bucket.tryConsumeAndReturnRemaining(1).getNanosToWaitForRefill();
+      long secondsToWait = Duration.ofNanos(nanosUntilRefill).getSeconds();
+
+      LOG.warn("CAPTCHA rate limit exceeded for IP: {}. Retry after {} seconds",
+          request.getRemoteAddr(), secondsToWait);
+      return ApiResponse.error(
+          HttpStatus.TOO_MANY_REQUESTS,
+          String.format(AuthConstants.TOO_MANY_CAPTCHA_REQUESTS,
+              secondsToWait),
+          SecurityConstants.LOGIN);
+    }
+
+    try {
+      // Generate captcha code and image
+      String code = CaptchaGenerator.generateCode(5);
+      String imageBase64 = CaptchaGenerator.generateImageBase64(code);
+      String captchaId = CaptchaStore.saveCaptcha(code);
+
+      CaptchaResponse response = new CaptchaResponse(imageBase64, captchaId);
+
+      // Add cache control headers to prevent browser caching (security)
+      CacheControl cacheControl = CacheControl.noCache()
+          .noStore()
+          .mustRevalidate();
+
+      // Save captcha to database for persistence
+      Captcha captchaEntity = new Captcha();
+      captchaEntity.setCaptchaId(captchaId);
+      captchaEntity.setCode(code);
+      captchaEntity.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+      captchaEntity.setUsed(false);
+      captchaEntity.setUsedAt(null);
+      captchaEntity.setIpAddress(request.getRemoteAddr());
+      captchaRepository.save(captchaEntity);
+
+      return ApiResponse.success(
+          response,
+          null,
+          SecurityConstants.LOGIN);
+
+    } catch (Exception e) {
+      LOG.error("Error generating CAPTCHA for IP: {}", request.getRemoteAddr(), e);
+      return ApiResponse.error(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          AuthConstants.CAPTCHA_CREATION_FAILED,
+          SecurityConstants.LOGIN);
+    }
+  }
+
+  /**
+   * Creates or retrieves rate limiting bucket for CAPTCHA generation.
+   * Allows 5 requests per minute per IP address.
+   */
+  private Bucket resolveCaptchaBucket(HttpServletRequest request) {
+    String ip = request.getRemoteAddr();
+    return captchaRateLimitCache.computeIfAbsent(ip, k -> {
+      // 5 captcha requests per minute per IP
+      Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5,
+          Duration.ofMinutes(1)));
+      return Bucket.builder().addLimit(limit).build();
+    });
+  }
 
   /**
    * Attempts to authenticate with the provided credentials. If successful, a JWT
@@ -100,12 +199,48 @@ public class AuthRestApi {
   @SecurityRequirements
   @PostMapping(value = SecurityConstants.LOGIN)
   public ApiResponse<?> authenticateUser(@CookieValue(required = false) String refreshToken,
-      @Valid @RequestBody LoginRequest loginRequest) {
+      @Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
 
     var username = loginRequest.getUsername();
-    // Authentication will fail if the credentials are invalid
-    SecurityUtils.authenticateUser(authenticationManager, username,
-        loginRequest.getPassword());
+
+    if (isCaptchaEnabled) {
+      // Step 1: Rate limiting for login attempts (5 per minute per IP)
+      Bucket loginBucket = resolveLoginBucket(request);
+      if (!loginBucket.tryConsume(1)) {
+        LOG.warn("Login rate limit exceeded for IP: {}, Username: {}",
+            request.getRemoteAddr(), username);
+        return ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS,
+            AuthConstants.TOO_MANY_LOGIN_ATTEMPTS, SecurityConstants.LOGIN);
+      }
+
+      // Step 2: Validate CAPTCHA
+      Captcha captcha = captchaRepository.findValidCaptcha(
+          loginRequest.getCaptchaId(),
+          loginRequest.getCaptchaText(),
+          LocalDateTime.now());
+
+      // is CAPTCHA valid and not reused from database
+      if (captcha == null) {
+        LOG.warn("Invalid or reused CAPTCHA for user: {} from IP: {}", username,
+            request.getRemoteAddr());
+        return ApiResponse.error(HttpStatus.BAD_REQUEST,
+            AuthConstants.INVALID_CAPTCHA, SecurityConstants.LOGIN);
+      }
+
+      // Step 3: Mark CAPTCHA as used to prevent reuse
+      captcha.setUsed(true);
+      captcha.setUsedAt(LocalDateTime.now());
+      captchaRepository.save(captcha);
+    }
+
+    try {
+      // Authentication will fail if the credentials are invalid
+      SecurityUtils.authenticateUser(authenticationManager, username,
+          loginRequest.getPassword());
+    } catch (Exception e) {
+      LOG.warn("Authentication failed for user: {}", username);
+      return ApiResponse.error(HttpStatus.UNAUTHORIZED, AuthConstants.INVALID_CREDENTIALS, SecurityConstants.LOGIN);
+    }
 
     var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
     var isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
@@ -155,6 +290,40 @@ public class AuthRestApi {
       return ApiResponse.success(AuthResponse.of(encryptedAccessToken, expiresInSeconds, null, null), null,
           SecurityConstants.LOGIN);
     }
+  }
+
+  // Validates captcha from login request.
+  private boolean validateCaptcha(LoginRequest loginRequest) {
+    if (loginRequest.getCaptchaId() == null || loginRequest.getCaptchaText() == null) {
+      LOG.warn("Missing captcha ID or text in login request");
+      return false;
+    }
+
+    return CaptchaStore.validateCaptcha(
+        loginRequest.getCaptchaId(),
+        loginRequest.getCaptchaText());
+  }
+
+  // Handles failed login attempts by recording failure.
+  private void handleFailedLogin(String username) {
+    CaptchaStore.saveFailure(username);
+    // userSessionService.saveFailure(username);
+    LOG.warn("Failed login attempt recorded for user: {}", username);
+  }
+
+  /**
+   * Rate limiting bucket for login attempts (5 per minute per IP).
+   * Stricter than captcha generation to prevent credential stuffing.
+   *
+   */
+  private Bucket resolveLoginBucket(HttpServletRequest request) {
+    String ip = request.getRemoteAddr();
+    return loginRateLimitCache.computeIfAbsent(ip, k -> {
+      // 5 login attempts per minute per IP
+      Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5,
+          Duration.ofMinutes(1)));
+      return Bucket.builder().addLimit(limit).build();
+    });
   }
 
   /**
@@ -210,7 +379,8 @@ public class AuthRestApi {
     }
 
     if (user.getOtpDeliveryMethod() == null || user.getOtpDeliveryMethod().isBlank()) {
-      return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.USER_HAS_NO_OTP_DELIVERY_METHOD, SecurityConstants.GENERATE_OTP);
+      return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.USER_HAS_NO_OTP_DELIVERY_METHOD,
+          SecurityConstants.GENERATE_OTP);
     }
 
     try {
@@ -220,12 +390,14 @@ public class AuthRestApi {
       } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
         response = otpService.generateAndSendOtpEmail(user.getEmail());
       } else {
-        return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP_DELIVERY_METHOD, SecurityConstants.GENERATE_OTP);
+        return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP_DELIVERY_METHOD,
+            SecurityConstants.GENERATE_OTP);
       }
       return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY, SecurityConstants.GENERATE_OTP);
     } catch (Exception e) {
       LOG.error("Failed to generate OTP for user: {}", username, e);
-      return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate OTP: " + e.getMessage(), SecurityConstants.GENERATE_OTP);
+      return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate OTP: " + e.getMessage(),
+          SecurityConstants.GENERATE_OTP);
     }
   }
 
@@ -233,7 +405,7 @@ public class AuthRestApi {
    * Endpoint to verify OTP for the user and issue access token.
    *
    * @param refreshToken the refresh token (optional)
-   * @param request the OTP verification request
+   * @param request      the OTP verification request
    * @return JWT response with tokens and user details
    */
   @SecurityRequirements
@@ -254,7 +426,8 @@ public class AuthRestApi {
       }
 
       if (user == null) {
-        return ResponseEntity.badRequest().body(ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.VERIFY_OTP));
+        return ResponseEntity.badRequest().body(
+            ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.VERIFY_OTP));
       }
 
       // Authenticate user without password
@@ -276,14 +449,18 @@ public class AuthRestApi {
       UserDetailsBuilder userDetails = (UserDetailsBuilder) userDetailsService.loadUserByUsername(user.getUsername());
       AuthResponse authResponse = AuthResponse.of(encryptedAccessToken, expiresInSeconds, null, userDetails);
 
-      return ResponseEntity.ok().headers(responseHeaders).body(ApiResponse.success(authResponse, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP));
+      return ResponseEntity.ok().headers(responseHeaders)
+          .body(ApiResponse.success(authResponse, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP));
 
     } catch (IllegalArgumentException e) {
       // OTP validation failed with specific error message
-      return ResponseEntity.badRequest().body(ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage(), SecurityConstants.VERIFY_OTP));
+      return ResponseEntity.badRequest()
+          .body(ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage(), SecurityConstants.VERIFY_OTP));
     } catch (Exception e) {
       LOG.error("OTP verification failed", e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "OTP verification failed: " + e.getMessage(), SecurityConstants.VERIFY_OTP));
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "OTP verification failed: " + e.getMessage(),
+              SecurityConstants.VERIFY_OTP));
     }
   }
 
@@ -297,19 +474,40 @@ public class AuthRestApi {
   @Loggable
   @SecurityRequirements
   @PostMapping(SecurityConstants.FORGOT_PASSWORD)
-  public ResponseEntity<String> forgotPassword(
-      @Valid @RequestBody ForgotPasswordRequest request) {
+  public ApiResponse<Object> forgotPassword(
+      @Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+
+    // IP-based rate limiting
+    Bucket ipBucket = resolveForgotPasswordIpBucket(httpRequest);
+    if (!ipBucket.tryConsume(1)) {
+      long nanosUntilRefill = ipBucket.tryConsumeAndReturnRemaining(1).getNanosToWaitForRefill();
+      long minutesToWait = Duration.ofNanos(nanosUntilRefill).toMinutes() + 1;
+
+      return ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS,
+      String.format("Çok fazla şifre sıfırlama isteği. Lütfen %d dakika bekleyin.", minutesToWait),
+      SecurityConstants.FORGOT_PASSWORD);
+    }
+
+    // User-based rate limiting
+    Bucket userBucket = resolveForgotPasswordUserBucket(
+    request.getEmail() != null ? request.getEmail() : request.getUsername());
+    if (!userBucket.tryConsume(1)) {
+      long nanosUntilRefill =
+      userBucket.tryConsumeAndReturnRemaining(1).getNanosToWaitForRefill();
+      long minutesToWait = Duration.ofNanos(nanosUntilRefill).toMinutes() + 1;
+
+      return ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS,
+      String.format(AuthConstants.TOO_MANY_PASSWORD_RESET_REQUESTS, minutesToWait),
+      SecurityConstants.FORGOT_PASSWORD);
+    }
 
     // Process async for security (prevent timing attacks)
     CompletableFuture.runAsync(() -> processForgotPassword(request));
 
-    // Always return success to prevent user enumeration
-    return buildSuccessResponse();
+    return ApiResponse.success(UserConstants.PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY, SecurityConstants.FORGOT_PASSWORD);
   }
 
-  /**
-   * Process forgot password request asynchronously.
-   */
+  // Process forgot password request asynchronously.
   private void processForgotPassword(ForgotPasswordRequest request) {
     try {
       UserDto user = findUserByEmailOrUsername(request);
@@ -327,13 +525,35 @@ public class AuthRestApi {
         return;
       }
 
-      // TODO: Send new password via email
-      // emailService.sendPasswordResetEmail(user, newPassword);
+      // Send new password via email
+      emailService.sendPasswordResetEmail(user, newPassword);
 
       LOG.info("Password reset completed for user: {}", user.getEmail());
     } catch (Exception e) {
       LOG.error("Error processing forgot password request", e);
     }
+  }
+
+  // LAYER 1: IP-based (prevents DDoS/mass attacks)
+  private Bucket resolveForgotPasswordIpBucket(HttpServletRequest request) {
+    String ip = request.getRemoteAddr();
+    return forgotPasswordIpCache.computeIfAbsent(ip, k -> {
+      // 3 requests per HOUR per IP
+      Bandwidth limit = Bandwidth.classic(3, Refill.intervally(3,
+          Duration.ofHours(1)));
+      return Bucket.builder().addLimit(limit).build();
+    });
+  }
+
+  // LAYER 2: User-based (prevents account enumeration)
+
+  private Bucket resolveForgotPasswordUserBucket(String identifier) {
+    return forgotPasswordUserCache.computeIfAbsent(identifier.toLowerCase(), k -> {
+      // 3 requests per 15 MINUTES per email/username
+      Bandwidth limit = Bandwidth.classic(3, Refill.intervally(3,
+          Duration.ofMinutes(15)));
+      return Bucket.builder().addLimit(limit).build();
+    });
   }
 
   /**
@@ -397,13 +617,6 @@ public class AuthRestApi {
   // =========================================================================
   // UTILITY OPERATIONS
   // =========================================================================
-
-  /**
-   * Helper method to build consistent success response.
-   */
-  private ResponseEntity<String> buildSuccessResponse() {
-    return ResponseEntity.ok(UserConstants.PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY);
-  }
 
   /**
    * Creates a refresh token if expired and adds it to the cookies.

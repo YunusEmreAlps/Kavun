@@ -50,6 +50,7 @@ ext {
   set('mapstructVersion', '1.6.3')
   set('awsSdkS3Version', '2.30.15')
   set('clamavClientVersion', '2.1.2')
+  set('bucket4jVersion', '8.1.0')
 }
 
 dependencies {
@@ -107,6 +108,9 @@ dependencies {
   // MapStruct for Object Mapping
   implementation "org.mapstruct:mapstruct:${mapstructVersion}"
   annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+  // Rate Limiting
+  implementation "com.bucket4j:bucket4j-core:${bucket4jVersion}"
 
   // Webjars
   implementation 'org.webjars:jquery:3.7.1'

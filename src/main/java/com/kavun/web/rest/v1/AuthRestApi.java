@@ -264,8 +264,16 @@ public class AuthRestApi {
       Map<String, Object> response;
       try {
         if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
+          if (user.getPhone() == null || user.getPhone().isBlank()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST,
+                AuthConstants.USER_HAS_NO_PHONE_FOR_OTP, SecurityConstants.LOGIN);
+          }
           response = otpService.generateAndSendOtpSms(user.getPhone());
         } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
+          if(user.getEmail() == null || user.getEmail).isBlank()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST,
+                AuthConstants.USER_HAS_NO_EMAIL_FOR_OTP, SecurityConstants.LOGIN);
+          }
           response = otpService.generateAndSendOtpEmail(user.getEmail());
         } else {
           return ApiResponse.error(HttpStatus.BAD_REQUEST,

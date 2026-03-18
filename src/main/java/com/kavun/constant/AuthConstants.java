@@ -31,6 +31,8 @@ public class AuthConstants {
   public static final String INVALID_CREDENTIALS = "Invalid username or password.";
   public static final String TOO_MANY_PASSWORD_RESET_REQUESTS = "Too many password reset requests. Please wait %d minutes.";
   public static final String CAPTCHA_GENERATION_FAILED = "Unable to generate CAPTCHA. Please try again.";
+  public static final String USER_HAS_NO_PHONE_FOR_OTP = "User has no phone number configured for OTP.";
+  public static final String USER_HAS_NO_EMAIL_FOR_OTP = "User has no email configured for OTP.";
 
   private AuthConstants() {
     throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);

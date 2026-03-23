@@ -28,9 +28,9 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "application_logs", indexes = {
-    @Index(name = "idx_app_log_correlation_id", columnList = "correlation_id"),
-    @Index(name = "idx_app_log_username", columnList = "username"),
-    @Index(name = "idx_app_log_created_at", columnList = "created_at")
+        @Index(name = "idx_app_log_correlation_id", columnList = "correlation_id"),
+        @Index(name = "idx_app_log_username", columnList = "username"),
+        @Index(name = "idx_app_log_created_at", columnList = "created_at")
 })
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
@@ -91,4 +91,20 @@ public class ApplicationLog extends BaseEntity<Long> implements Serializable {
 
     @Column(name = "request_body", columnDefinition = "text")
     private String requestBody;
+
+    // Device information (detected from User-Agent or client-provided)
+    @Column(name = "device_id", length = 255)
+    private String deviceId;
+
+    @Column(name = "device_type", length = 50)
+    private String deviceType;
+
+    @Column(name = "operating_system", length = 100)
+    private String operatingSystem;
+
+    @Column(name = "browser", length = 100)
+    private String browser;
+
+    @Column(name = "user_agent", columnDefinition = "text")
+    private String userAgent;
 }

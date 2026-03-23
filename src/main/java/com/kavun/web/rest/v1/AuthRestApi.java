@@ -270,7 +270,7 @@ public class AuthRestApi {
           }
           response = otpService.generateAndSendOtpSms(user.getPhone());
         } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
-          if(user.getEmail() == null || user.getEmail).isBlank()) {
+          if(user.getEmail() == null || user.getEmail().isBlank()) {
             return ApiResponse.error(HttpStatus.BAD_REQUEST,
                 AuthConstants.USER_HAS_NO_EMAIL_FOR_OTP, SecurityConstants.LOGIN);
           }

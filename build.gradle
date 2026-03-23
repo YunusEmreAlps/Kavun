@@ -84,6 +84,7 @@ dependencies {
   runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
   runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
   implementation 'commons-io:commons-io:2.18.0'
+  implementation 'com.github.ua-parser:uap-java:1.6.1'
   implementation 'net.datafaker:datafaker:2.4.2'
   implementation 'com.google.code.gson:gson:2.12.1'
   implementation 'commons-validator:commons-validator:1.9.0'

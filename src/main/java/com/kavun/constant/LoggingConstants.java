@@ -20,6 +20,8 @@ public final class LoggingConstants {
     public static final String REQUEST_ID_HEADER = "X-Request-ID";
     public static final String X_FORWARDED_FOR_HEADER = "X-Forwarded-For";
     public static final String X_REAL_IP_HEADER = "X-Real-IP";
+    public static final String USER_AGENT_HEADER = "User-Agent";
+    public static final String DEVICE_ID_HEADER = "X-Device-ID";
 
     public static final String MDC_CORRELATION_ID = "correlationId";
     public static final String MDC_HOSTNAME = "hostname";

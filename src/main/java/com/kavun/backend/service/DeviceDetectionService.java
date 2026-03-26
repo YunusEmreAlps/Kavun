@@ -1,8 +1,8 @@
 package com.kavun.backend.service;
 
 import lombok.Getter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import ua_parser.Client;
 import ua_parser.Parser;
@@ -15,10 +15,9 @@ import ua_parser.Parser;
  * @version 1.0
  * @since 2.0
  */
+@Slf4j
 @Service
 public class DeviceDetectionService {
-
-    private static final Logger LOG = LoggerFactory.getLogger(DeviceDetectionService.class);
 
     private final Parser uaParser;
 
@@ -58,6 +57,11 @@ public class DeviceDetectionService {
         String deviceFamily = client.device.family;
 
         if (deviceFamily == null || "Other".equalsIgnoreCase(deviceFamily)) {
+            // Check for mobile HTTP clients (OkHttp, Retrofit, etc.)
+            if (isMobileHttpClient(client)) {
+                return "MOBILE";
+            }
+
             // Check OS for mobile indicators
             String osFamily = client.os.family;
             if (osFamily != null) {
@@ -86,6 +90,34 @@ public class DeviceDetectionService {
         }
 
         return "WEB";
+    }
+
+    /**
+     * Checks if the user agent represents a mobile HTTP client library.
+     */
+    private boolean isMobileHttpClient(Client client) {
+        if (client.userAgent == null || client.userAgent.family == null) {
+            return false;
+        }
+
+        String userAgentFamily = client.userAgent.family.toLowerCase();
+
+        // Android HTTP clients
+        if (userAgentFamily.contains("okhttp") ||
+            userAgentFamily.contains("retrofit") ||
+            userAgentFamily.contains("volley") ||
+            userAgentFamily.contains("androidasynchttp")) {
+            return true;
+        }
+
+        // iOS HTTP clients
+        if (userAgentFamily.contains("alamofire") ||
+            userAgentFamily.contains("afnetworking") ||
+            userAgentFamily.contains("nsurlsession")) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

@@ -64,6 +64,9 @@ public class User extends BaseEntity<Long> implements Serializable {
   private String profileImage;
   private String verificationToken;
 
+  @Column(columnDefinition = "TEXT")
+  private String address;
+
   private int failedLoginAttempts;
   private LocalDateTime lastSuccessfulLogin;
 

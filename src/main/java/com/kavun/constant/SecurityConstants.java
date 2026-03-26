@@ -49,6 +49,9 @@ public final class SecurityConstants {
   public static final int OTP_DURATION = 5 * 60; // 5 minutes
   public static final int DEFAULT_TOKEN_DURATION = 7;
 
+  // Session cleanup cron expression (every 5 minutes)
+  public static final String SESSION_CLEANUP_CRON = "0 */5 * * * *";
+
   public static final int SECURITY_STRENGTH = 12;
   public static final List<String> ALLOWED_HTTP_METHODS =
       List.of(

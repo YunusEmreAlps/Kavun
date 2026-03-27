@@ -1,4 +1,4 @@
-package com.kavun.backend.service.user;
+package com.kavun.task;
 
 import com.kavun.backend.persistent.domain.user.UserSession;
 import com.kavun.backend.persistent.repository.UserSessionRepository;

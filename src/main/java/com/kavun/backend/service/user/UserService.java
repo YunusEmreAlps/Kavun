@@ -2,7 +2,6 @@ package com.kavun.backend.service.user;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Role;
@@ -57,7 +56,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+@Transactional
 public class UserService
     extends AbstractService<UserRequest, User, UserDto, UserRepository, UserMapper, UserSpecification> {
 
@@ -89,7 +88,6 @@ public class UserService
    * @return the updated user.
    * @throws NullPointerException in case the given entity is {@literal null}
    */
-  @Transactional
   public UserDto saveOrUpdate(final User user, final boolean isUpdate) {
     Validate.notNull(user, UserConstants.USER_MUST_NOT_BE_NULL);
     User persistedUser = isUpdate ? repository.saveAndFlush(user) : repository.save(user);
@@ -105,7 +103,6 @@ public class UserService
    * @return the updated userDto.
    * @throws NullPointerException in case the given entity is {@literal null}
    */
-  @Transactional
   public @NonNull UserDto createUser(final UserDto userDto) {
     return createUser(userDto, Collections.emptySet());
   }
@@ -118,7 +115,6 @@ public class UserService
    * @return the updated userDto.
    * @throws NullPointerException in case the given entity is {@literal null}
    */
-  @Transactional
   public @NonNull UserDto createUser(final UserDto userDto, final Set<RoleType> roleTypes) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
 
@@ -167,6 +163,7 @@ public class UserService
    * @return a user for the given id or null if a user could not be found.
    * @throws NullPointerException in case the given entity is {@literal null}
    */
+  @Transactional(readOnly = true)
   @Cacheable(CacheConstants.USERS)
   public UserDto findById(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
@@ -186,6 +183,7 @@ public class UserService
    * @return a user for the given username or null if a user could not be found
    * @throws NullPointerException in case the given entity is {@literal null}
    */
+  @Transactional(readOnly = true)
   @Cacheable(CacheConstants.USERS)
   public UserDto findByUsername(final String username) {
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
@@ -199,6 +197,7 @@ public class UserService
 
   // Returns a user for the given email or null if a user could not be found. Only
   // returns non-deleted users.
+  @Transactional(readOnly = true)
   @Cacheable(CacheConstants.USERS)
   public UserDto findByEmail(final String email) {
     Validate.notNull(email, UserConstants.BLANK_EMAIL);
@@ -212,6 +211,7 @@ public class UserService
 
   // Returns a user for the given phone or null if a user could not be found. Only
   // returns non-deleted users.
+  @Transactional(readOnly = true)
   @Cacheable(CacheConstants.USERS)
   public UserDto findByPhone(final String phone) {
     Validate.notNull(phone, UserConstants.BLANK_PHONE);
@@ -275,7 +275,6 @@ public class UserService
       @CacheEvict(value = CacheConstants.USERS, key = "#id"),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  @Transactional
   public UserDto updateUser(Long id, UserRequest request) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
     Validate.notNull(request, "User request must not be null");
@@ -325,7 +324,6 @@ public class UserService
       @CacheEvict(value = CacheConstants.USERS, key = "#id"),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  @Transactional
   public UserDto enableUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
@@ -349,7 +347,6 @@ public class UserService
       @CacheEvict(value = CacheConstants.USERS, key = "#id"),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  @Transactional
   public UserDto disableUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
@@ -373,7 +370,6 @@ public class UserService
       @CacheEvict(value = CacheConstants.USERS, key = "#id"),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  @Transactional
   public boolean softDeleteUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
@@ -400,7 +396,6 @@ public class UserService
       @CacheEvict(value = CacheConstants.USERS, key = "#id"),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  @Transactional
   public void deleteUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
@@ -409,7 +404,6 @@ public class UserService
   }
 
   // Reset the user password with the new password.
-  @Transactional
   public String resetPassword(final String token, final String newPassword) {
     Validate.notNull(token, UserConstants.USER_ID_MUST_NOT_BE_NULL);
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
@@ -425,7 +419,6 @@ public class UserService
   }
 
   // Update the password for the user with the id and new password given.
-  @Transactional
   public String updatePassword(final Long id, final String oldPassword, final String newPassword) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
     Validate.notNull(oldPassword, UserConstants.BLANK_PASSWORD);
@@ -447,7 +440,6 @@ public class UserService
   }
 
   // Updates user password directly without token validation.
-  @Transactional
   public @NonNull Boolean updatePasswordDirectly(@NonNull Long id, @NonNull String newPassword) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
@@ -510,7 +502,6 @@ public class UserService
    * @param userId the user id
    * @param roleRequests the list of role requests containing role IDs
    */
-  @Transactional
   public void assignRolesToUser(Long userId, List<UserRoleRequest> roleRequests) {
     User user = repository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException(UserConstants.USER_NOT_FOUND));

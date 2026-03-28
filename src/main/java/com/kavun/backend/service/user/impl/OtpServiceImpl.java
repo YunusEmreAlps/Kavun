@@ -116,9 +116,10 @@ public class OtpServiceImpl implements OtpService {
         // Skip SMS sending in dev/test environments
         if (!isDevOrTest) {
             try {
-                // Send OTP
-                // TODO: Add SMS Service in here
-                // LOG.info("OTP SMS sent successfully");
+                // NOTE: SMS Service integration required
+                // Integrate with SMS provider (e.g., Twilio, AWS SNS) to send OTP
+                // Example: smsService.sendOtp(phoneNumber, otp.getCode());
+                LOG.warn("SMS Service not implemented yet. OTP code: {}", otp.getCode());
 
             } catch (Exception e) {
                 LOG.error("Failed to send OTP SMS: {}", e.getMessage(), e);
@@ -155,8 +156,11 @@ public class OtpServiceImpl implements OtpService {
             UserDto tempUser = new UserDto();
             tempUser.setEmail(email);
 
-            // TODO: Implement emailService.sendOtpEmail(tempUser, otp.getCode());
-            LOG.info("OTP Email would be sent to: {} with code: {}", email, otp.getCode());
+            // NOTE: Email OTP integration point
+            // The emailService is available but sendOtpEmail method needs to be implemented
+            // or you can use a generic email template method
+            // Example: emailService.sendOtpEmail(tempUser, otp.getCode());
+            LOG.warn("OTP Email sending not fully implemented. Email: {}, OTP: {}", email, otp.getCode());
 
         } catch (Exception e) {
             LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);

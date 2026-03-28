@@ -1,7 +1,6 @@
 package com.kavun.backend.service.user;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Permission;
@@ -24,7 +23,7 @@ import java.util.Map;
 * @since 1.0
 */
 @Service
-@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+@Transactional
 public class PermissionService
         extends AbstractService<PermissionRequest, Permission, PermissionDto, PermissionRepository, PermissionMapper, PermissionSpecification> {
 

@@ -77,7 +77,7 @@ public abstract class BaseEntity<T extends Serializable> {
   private LocalDateTime deletedAt;
 
   @Column
-  private long deletedBy;
+  private Long deletedBy;
 
   @Column(nullable = false)
   private boolean deleted = false;

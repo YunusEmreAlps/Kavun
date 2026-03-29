@@ -5,7 +5,6 @@ import com.kavun.backend.persistent.repository.OtpRepository;
 import com.kavun.backend.service.user.OtpService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.SecurityConstants;
-import com.kavun.shared.dto.UserDto;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -43,19 +42,22 @@ public class OtpServiceImpl implements OtpService {
      */
     @Override
     @Transactional
-    public Map<String, Object> generateOtp(String target) {
+    public Otp generateOtp(String target) {
         Otp otpEntity = new Otp();
 
         otpEntity.setTarget(target);
-        otpEntity.setCode(Otp.generateOtp());
+        boolean isDevOrTest = isDevOrTestEnvironment();
+        if (isDevOrTest) {
+            otpEntity.setCode(TEST_OTP_CODE);
+            LOG.info("Using test OTP code for development/test environment: {}", TEST_OTP_CODE);
+        } else {
+            otpEntity.setCode(Otp.generateOtp());
+        }
+
         otpEntity.setActive(true);
         otpRepository.save(otpEntity);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("publicId", otpEntity.getPublicId());
-        params.put("target", otpEntity.getTarget());
-
-        return params;
+        return otpEntity;
     }
 
     @Override
@@ -65,7 +67,12 @@ public class OtpServiceImpl implements OtpService {
                 .orElseThrow(() -> new IllegalArgumentException(AuthConstants.OTP_NOT_FOUND));
 
         // Check if OTP is valid and matches
-        if (otpEntity.getCode().equals(code) && otpEntity.getTarget().equals(target) && otpEntity.isValid()) {
+        boolean codeMatch = otpEntity.getCode().equals(code);
+        boolean targetMatch = otpEntity.getTarget().equals(target);
+        boolean isValid = otpEntity.isValid();
+
+        if (codeMatch && targetMatch && isValid) {
+            LOG.info("OTP validation successful! Marking as used.");
             otpEntity.setUsedAt(Instant.now());
             otpEntity.setActive(false);
             otpRepository.save(otpEntity);
@@ -73,6 +80,7 @@ public class OtpServiceImpl implements OtpService {
         }
 
         // Handle validation failure
+        LOG.warn("OTP validation failed!");
         otpEntity.setFailedAttempts(otpEntity.getFailedAttempts() + 1);
 
         // Determine failure reason before saving
@@ -98,23 +106,10 @@ public class OtpServiceImpl implements OtpService {
         LOG.info("Generating and sending OTP via SMS for phone: {}", phoneNumber);
 
         // Generate OTP entity
-        Otp otp = new Otp();
-        otp.setTarget(phoneNumber);
-
-        // Use test OTP code for dev and test environments
-        boolean isDevOrTest = isDevOrTestEnvironment();
-        if (isDevOrTest) {
-            otp.setCode(TEST_OTP_CODE);
-            LOG.info("Using test OTP code for development/test environment: {}", TEST_OTP_CODE);
-        } else {
-            otp.setCode(Otp.generateOtp());
-        }
-
-        otp.setActive(true);
-        otpRepository.save(otp);
+        Otp otp = generateOtp(phoneNumber);
 
         // Skip SMS sending in dev/test environments
-        if (!isDevOrTest) {
+        if (!isDevOrTestEnvironment()) {
             try {
                 // NOTE: SMS Service integration required
                 // Integrate with SMS provider (e.g., Twilio, AWS SNS) to send OTP
@@ -145,28 +140,23 @@ public class OtpServiceImpl implements OtpService {
         LOG.info("Generating and sending OTP via Email for: {}", email);
 
         // Generate OTP entity
-        Otp otp = new Otp();
-        otp.setTarget(email);
-        otp.setCode(Otp.generateOtp());
-        otp.setActive(true);
-        otpRepository.save(otp);
+        Otp otp = generateOtp(email.trim());
 
-        try {
-            // Create a temporary UserDto for email service
-            UserDto tempUser = new UserDto();
-            tempUser.setEmail(email);
+        if(!isDevOrTestEnvironment()) {
+            try {
+                // NOTE: Email Service integration required
+                // Integrate with email service (e.g., JavaMailSender, SendGrid) to send OTP email
+                // Example: emailService.sendOtpEmail(email, otp.getCode());
+                LOG.warn("Email Service not implemented yet. OTP code: {}", otp.getCode());
 
-            // NOTE: Email OTP integration point
-            // The emailService is available but sendOtpEmail method needs to be implemented
-            // or you can use a generic email template method
-            // Example: emailService.sendOtpEmail(tempUser, otp.getCode());
-            LOG.warn("OTP Email sending not fully implemented. Email: {}, OTP: {}", email, otp.getCode());
-
-        } catch (Exception e) {
-            LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);
-            otp.setActive(false);
-            otpRepository.save(otp);
-            throw new RuntimeException("Failed to send OTP Email: " + e.getMessage(), e);
+            } catch (Exception e) {
+                LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);
+                otp.setActive(false);
+                otpRepository.save(otp);
+                throw new RuntimeException("Failed to send OTP Email: " + e.getMessage(), e);
+            }
+        } else {
+            LOG.info("Skipping Email sending in development/test environment");
         }
 
         Map<String, Object> params = new HashMap<>();
@@ -179,7 +169,7 @@ public class OtpServiceImpl implements OtpService {
     /**
      * Checks if the current environment is development or test.
      *
-     * @return true if running in dev or test profile
+     * @return true if running in development or test profile
      */
     private boolean isDevOrTestEnvironment() {
         String[] activeProfiles = environment.getActiveProfiles();

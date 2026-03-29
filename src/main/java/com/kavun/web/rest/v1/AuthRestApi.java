@@ -443,22 +443,46 @@ public class AuthRestApi {
       HttpServletRequest httpRequest) {
 
     try {
-      // Validate OTP - throws exception if invalid
-      otpService.validateOtp(request.getId(), request.getTarget(), request.getCode());
-
-      // Find user by target (email or phone)
-      UserDto user = userService.findByPhone(request.getTarget());
-      if (user == null) {
-        user = userService.findByEmail(request.getTarget());
+      // Validate and normalize target (email or phone)
+      if (request.getTarget() == null || request.getTarget().trim().isEmpty()) {
+        return ResponseEntity.badRequest().body(
+            ApiResponse.error(HttpStatus.BAD_REQUEST, "Target (email or phone) is required", SecurityConstants.VERIFY_OTP));
       }
 
+      String target = request.getTarget().trim();
+
+      // Validate OTP with normalized target
+      Boolean isOtpValid = otpService.validateOtp(request.getId(), target, request.getCode());
+
+      if (!isOtpValid) {
+        return ResponseEntity.badRequest().body(
+            ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP, SecurityConstants.VERIFY_OTP));
+      }
+
+      // Find user by target (phone, email, or username)
+      UserDto user = userService.findByPhone(target);
       if (user == null) {
+        LOG.debug("User not found by phone: {}. Attempting to find by email.", target);
+        user = userService.findByEmail(target);
+      }
+      if (user == null) {
+        LOG.debug("User not found by email: {}. Attempting to find by username.", target);
+        user = userService.findByUsername(target);
+      }
+
+      LOG.debug("Final user lookup result: {}", user != null ? user.getUsername() : "null");
+
+      if (user == null) {
+        LOG.warn("User not found for target: {} after successful OTP validation", target);
         return ResponseEntity.badRequest().body(
             ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.VERIFY_OTP));
       }
 
       // Authenticate user without password
       SecurityUtils.authenticateUser(userDetailsService.loadUserByUsername(user.getUsername()));
+
+      // Register device ID if provided
+      registerDeviceId(user.getId(), httpRequest);
 
       // Create session and get the session ID
       var userSession = userSessionService.createSession(user.getId(), httpRequest);

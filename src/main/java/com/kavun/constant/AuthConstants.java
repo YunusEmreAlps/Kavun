@@ -28,6 +28,7 @@ public class AuthConstants {
   public static final String CAPTCHA_CREATION_FAILED = "Unable to create CAPTCHA. Please try again.";
   public static final String TOO_MANY_LOGIN_ATTEMPTS = "Too many login attempts. Please wait 1 minute.";
   public static final String INVALID_CAPTCHA = "Invalid or used CAPTCHA. Please try again.";
+  public static final String INVALID_OTP = "Invalid OTP. Please try again.";
   public static final String INVALID_CREDENTIALS = "Invalid username or password.";
   public static final String TOO_MANY_PASSWORD_RESET_REQUESTS = "Too many password reset requests. Please wait %d minutes.";
   public static final String CAPTCHA_GENERATION_FAILED = "Unable to generate CAPTCHA. Please try again.";

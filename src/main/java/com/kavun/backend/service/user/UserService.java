@@ -198,7 +198,6 @@ public class UserService
   // Returns a user for the given email or null if a user could not be found. Only
   // returns non-deleted users.
   @Transactional(readOnly = true)
-  @Cacheable(CacheConstants.USERS)
   public UserDto findByEmail(final String email) {
     Validate.notNull(email, UserConstants.BLANK_EMAIL);
 
@@ -212,7 +211,6 @@ public class UserService
   // Returns a user for the given phone or null if a user could not be found. Only
   // returns non-deleted users.
   @Transactional(readOnly = true)
-  @Cacheable(CacheConstants.USERS)
   public UserDto findByPhone(final String phone) {
     Validate.notNull(phone, UserConstants.BLANK_PHONE);
 

@@ -1,18 +1,25 @@
 package com.kavun.backend.service.user;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.kavun.backend.persistent.domain.user.UserDevice;
 import com.kavun.backend.persistent.repository.UserDeviceRepository;
+import com.kavun.backend.persistent.specification.UserDeviceSpecification;
+import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.constant.LoggingConstants;
+import com.kavun.shared.dto.UserDeviceDto;
+import com.kavun.shared.dto.mapper.UserDeviceMapper;
+import com.kavun.shared.request.UserDeviceRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -25,19 +32,24 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class UserDeviceService {
+@Transactional
+public class UserDeviceService extends
+        AbstractService<UserDeviceRequest, UserDevice, UserDeviceDto, UserDeviceRepository, UserDeviceMapper, UserDeviceSpecification> {
 
-    private final UserDeviceRepository userDeviceRepository;
     private final DeviceDetectionService deviceDetectionService;
 
-    @Transactional
+    public UserDeviceService(DeviceDetectionService deviceDetectionService, UserDeviceMapper mapper,
+            UserDeviceRepository repository, UserDeviceSpecification specification) {
+        super(mapper, repository, specification);
+        this.deviceDetectionService = deviceDetectionService;
+    }
+
     public void createDevice(Long userId, String deviceId, HttpServletRequest request) {
         String userAgent = request.getHeader(LoggingConstants.USER_AGENT_HEADER);
         DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
 
         // Check if device already exists
-        Optional<UserDevice> existingDevice = userDeviceRepository.findByDeviceId(deviceId);
+        Optional<UserDevice> existingDevice = repository.findByDeviceId(deviceId);
 
         if (existingDevice.isPresent()) {
             UserDevice device = existingDevice.get();
@@ -48,7 +60,7 @@ public class UserDeviceService {
             device.setBrowser(deviceInfo.getBrowser());
             device.setUserAgent(userAgent);
 
-            userDeviceRepository.save(device);
+            repository.save(device);
             LOG.info("Updated device ID {} for user: {}", deviceId, userId);
         } else {
             // Create new device record
@@ -60,8 +72,20 @@ public class UserDeviceService {
             userDevice.setBrowser(deviceInfo.getBrowser());
             userDevice.setUserAgent(userAgent);
 
-            userDeviceRepository.save(userDevice);
+            repository.save(userDevice);
             LOG.info("Registered new device ID {} for user: {}", deviceId, userId);
         }
+    }
+
+    public Specification<UserDevice> search(Map<String, Object> paramaterMap) {
+        return specification.search(paramaterMap);
+    }
+
+    public Map<String, Long> getDeviceUsageAnalytics() {
+        return repository.countDeviceTypes().stream()
+                .collect(Collectors.toMap(
+                        row -> (String) row[0], // device_type
+                        row -> ((Number) row[1]).longValue() // count
+                ));
     }
 }

@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * The OtpServiceImpl class is an implementation for the OtpService Interface.
@@ -29,7 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class OtpServiceImpl implements OtpService {
 
-    private static final String TEST_OTP_CODE = "190303";
+    @Value("${app.test-otp-code:190303}")
+    private String testOtpCode;
 
     private final transient Environment environment;
     private final transient OtpRepository otpRepository;
@@ -48,8 +50,8 @@ public class OtpServiceImpl implements OtpService {
         otpEntity.setTarget(target);
         boolean isDevOrTest = isDevOrTestEnvironment();
         if (isDevOrTest) {
-            otpEntity.setCode(TEST_OTP_CODE);
-            LOG.info("Using test OTP code for development/test environment: {}", TEST_OTP_CODE);
+            otpEntity.setCode(testOtpCode);
+            LOG.info("Using test OTP code for development/test environment: {}", testOtpCode);
         } else {
             otpEntity.setCode(Otp.generateOtp());
         }

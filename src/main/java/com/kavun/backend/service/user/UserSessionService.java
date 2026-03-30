@@ -2,12 +2,19 @@ package com.kavun.backend.service.user;
 
 import com.kavun.backend.persistent.domain.user.UserSession;
 import com.kavun.backend.persistent.repository.UserSessionRepository;
+import com.kavun.backend.persistent.specification.UserSessionSpecification;
+import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.backend.service.DeviceDetectionService.DeviceInfo;
 import com.kavun.constant.LoggingConstants;
+import com.kavun.shared.dto.UserSessionDto;
+import com.kavun.shared.dto.mapper.UserSessionMapper;
+import com.kavun.shared.request.UserSessionRequest;
+
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.jpa.domain.Specification;
+
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -15,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,14 +35,22 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class UserSessionService {
+@Transactional
+public class UserSessionService extends
+        AbstractService<UserSessionRequest, UserSession, UserSessionDto, UserSessionRepository, UserSessionMapper, UserSessionSpecification> {
 
     @Value("${access-token-expiration-in-minutes:60}")
     private long sessionTimeoutMinutes;
 
-    private final UserSessionRepository userSessionRepository;
     private final DeviceDetectionService deviceDetectionService;
+
+    public UserSessionService(UserSessionRepository repository,
+                              DeviceDetectionService deviceDetectionService,
+                              UserSessionMapper mapper,
+                              UserSessionSpecification specification) {
+        super(mapper, repository, specification);
+        this.deviceDetectionService = deviceDetectionService;
+    }
 
     /**
      * Creates a new user session from HTTP request.
@@ -65,7 +81,7 @@ public class UserSessionService {
         DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
 
         // Check if session already exists for this device
-        Optional<UserSession> existingSession = userSessionRepository
+        Optional<UserSession> existingSession = repository
                 .findByUserIdAndDeviceIdAndIsActiveTrue(userId, deviceId);
 
         if (existingSession.isPresent()) {
@@ -80,7 +96,7 @@ public class UserSessionService {
             session.setLogoutType(null);
 
             LOG.debug("Reactivated existing session for user {} on device {}", userId, deviceId);
-            return userSessionRepository.save(session);
+            return repository.save(session);
         }
 
         // Create new session
@@ -94,7 +110,7 @@ public class UserSessionService {
         session.setIpAddress(ipAddress);
         session.setRefreshTokenHash(refreshTokenHash);
 
-        UserSession savedSession = userSessionRepository.save(session);
+        UserSession savedSession = repository.save(session);
         LOG.info("Created new session {} for user {} from device {} ({})",
                 savedSession.getId(), userId, deviceId, deviceInfo.getDeviceType());
 
@@ -108,7 +124,7 @@ public class UserSessionService {
      */
     @Transactional
     public void updateActivity(Long sessionId) {
-        userSessionRepository.updateLastActivity(sessionId, LocalDateTime.now());
+        repository.updateLastActivity(sessionId, LocalDateTime.now());
     }
 
     /**
@@ -118,9 +134,9 @@ public class UserSessionService {
      */
     @Transactional
     public void logout(Long sessionId) {
-        userSessionRepository.findById(sessionId).ifPresent(session -> {
+        repository.findById(sessionId).ifPresent(session -> {
             session.logout();
-            userSessionRepository.save(session);
+            repository.save(session);
             LOG.info("User {} manually logged out from session {}", session.getUserId(), sessionId);
         });
     }
@@ -133,10 +149,10 @@ public class UserSessionService {
      */
     @Transactional
     public void logoutFromDevice(Long userId, String deviceId) {
-        userSessionRepository.findByUserIdAndDeviceIdAndIsActiveTrue(userId, deviceId)
+        repository.findByUserIdAndDeviceIdAndIsActiveTrue(userId, deviceId)
                 .ifPresent(session -> {
                     session.logout();
-                    userSessionRepository.save(session);
+                    repository.save(session);
                     LOG.info("User {} logged out from device {}", userId, deviceId);
                 });
     }
@@ -149,7 +165,7 @@ public class UserSessionService {
      */
     @Transactional
     public int logoutFromAllDevices(Long userId) {
-        int count = userSessionRepository.deactivateAllUserSessions(userId, LocalDateTime.now());
+        int count = repository.deactivateAllUserSessions(userId, LocalDateTime.now());
         LOG.info("Force logged out user {} from {} devices", userId, count);
         return count;
     }
@@ -162,7 +178,7 @@ public class UserSessionService {
      */
     @Transactional(readOnly = true)
     public List<UserSession> getActiveSessions(Long userId) {
-        return userSessionRepository.findByUserIdAndIsActiveTrueOrderByLoginAtDesc(userId);
+        return repository.findByUserIdAndIsActiveTrueOrderByLoginAtDesc(userId);
     }
 
     /**
@@ -173,7 +189,7 @@ public class UserSessionService {
      */
     @Transactional(readOnly = true)
     public List<UserSession> getAllSessions(Long userId) {
-        return userSessionRepository.findByUserIdOrderByLoginAtDesc(userId);
+        return repository.findByUserIdOrderByLoginAtDesc(userId);
     }
 
     /**
@@ -184,7 +200,7 @@ public class UserSessionService {
      */
     @Transactional(readOnly = true)
     public Optional<UserSession> findByRefreshToken(String refreshTokenHash) {
-        return userSessionRepository.findByRefreshTokenHashAndIsActiveTrue(refreshTokenHash);
+        return repository.findByRefreshTokenHashAndIsActiveTrue(refreshTokenHash);
     }
 
     /**
@@ -228,5 +244,9 @@ public class UserSessionService {
         }
 
         return request.getRemoteAddr();
+    }
+
+    public Specification<UserSession> search(Map<String, Object> paramaterMap) {
+        return specification.search(paramaterMap);
     }
 }

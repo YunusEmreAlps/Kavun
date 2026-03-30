@@ -1,9 +1,12 @@
 package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.UserDevice;
+
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -23,4 +26,13 @@ public interface UserDeviceRepository extends BaseRepository<UserDevice> {
      * @return an Optional containing the UserDevice if found, or empty if not found
      */
     Optional<UserDevice> findByDeviceId(String deviceId);
+
+    // Device usage rate analytics for all user devices.
+    @Query(value = """
+            SELECT device_type, COUNT(*) AS count
+            FROM user_devices
+            WHERE deleted IS NULL OR deleted = false
+            GROUP BY device_type
+            """, nativeQuery = true)
+    List<Object[]> countDeviceTypes();
 }

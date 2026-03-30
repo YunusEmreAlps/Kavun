@@ -37,6 +37,11 @@ public final class BaseConstants {
     public static final String DATABASE_ERROR = "A database error occurred. Please try again later.";
     public static final String UNEXPECTED_ERROR = "An unexpected error occurred. Please try again later.";
 
+    // URL Mappings
+    public static final String API_V1_ROOT_URL = "/api/v1";
+    public static final String API_V1_USERS_ROOT_URL = API_V1_ROOT_URL + "/users";
+    public static final String API_V1_ROLE_ROOT_URL = API_V1_ROOT_URL + "/roles";
+
     private BaseConstants() {
         throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);
     }

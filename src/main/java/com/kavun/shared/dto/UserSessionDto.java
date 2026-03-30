@@ -19,16 +19,24 @@ public class UserSessionDto extends BaseDto {
     private LocalDateTime lastActivityAt;
     private LocalDateTime logoutAt;
     private Boolean isActive;
-    private Long sessionDurationSeconds;
+    private String sessionDurationSeconds;
 
-    // Calculates session duration in seconds based on login and logout times.
+    // Getter with lazy calculation for session duration
+    public String getSessionDurationSeconds() {
+        if (sessionDurationSeconds == null) {
+            calculateSessionDuration();
+        }
+        return sessionDurationSeconds;
+    }
+
+    // Calculates session duration in seconds based on login and logout times
     public void calculateSessionDuration() {
         if (loginAt != null && logoutAt != null) {
-            this.sessionDurationSeconds = java.time.Duration.between(loginAt, logoutAt).getSeconds();
+            this.sessionDurationSeconds = String.valueOf(java.time.Duration.between(loginAt, logoutAt).getSeconds());
         } else if (loginAt != null && lastActivityAt != null) {
-            this.sessionDurationSeconds = java.time.Duration.between(loginAt, lastActivityAt).getSeconds();
+            this.sessionDurationSeconds = String.valueOf(java.time.Duration.between(loginAt, lastActivityAt).getSeconds());
         } else {
-            this.sessionDurationSeconds = 0L;
+            this.sessionDurationSeconds = "0";
         }
     }
 }

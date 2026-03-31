@@ -1,9 +1,11 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.backend.service.user.UserDeviceService;
 import com.kavun.backend.service.user.UserSessionService;
 import com.kavun.constant.base.BaseConstants;
+import com.kavun.shared.dto.ApplicationLogDto;
 import com.kavun.shared.dto.UserDeviceDto;
 import com.kavun.shared.dto.UserSessionDto;
 
@@ -36,6 +38,7 @@ public class UserReportRestApi {
 
     private final UserDeviceService userDeviceService;
     private final UserSessionService userSessionService;
+    private final ApplicationLogService applicationLogService;
 
     // Retrieves user sessions with dynamic filtering and pagination.
     @Loggable
@@ -66,5 +69,17 @@ public class UserReportRestApi {
     @GetMapping(value = "/device-analytics", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Long> getDeviceUsageAnalytics() {
         return userDeviceService.getDeviceUsageAnalytics();
+    }
+
+    // Get user activity logs with dynamic filtering and pagination.
+    @Loggable
+    @GetMapping(value = "/activity-logs", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Page<ApplicationLogDto> getUserActivityLogs(
+            @RequestParam Map<String, Object> parameterMap,
+            @PageableDefault(size = 20) Pageable pageable) {
+
+        return applicationLogService.findAll(
+                applicationLogService.search(parameterMap),
+                pageable);
     }
 }

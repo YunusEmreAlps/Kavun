@@ -1,6 +1,5 @@
 package com.kavun.task;
 
-import com.kavun.backend.persistent.domain.user.UserSession;
 import com.kavun.backend.persistent.repository.UserSessionRepository;
 import com.kavun.constant.SecurityConstants;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * Scheduled service for cleaning up expired user sessions.
@@ -35,6 +33,9 @@ public class SessionCleanupScheduler {
     /**
      * Finds and expires sessions that have exceeded the timeout duration.
      * Runs every 5 minutes based on SESSION_CLEANUP_CRON.
+     *
+     * Uses bulk update to avoid optimistic locking failures when multiple
+     * transactions modify the same session concurrently.
      */
     @Scheduled(cron = SecurityConstants.SESSION_CLEANUP_CRON)
     @Transactional
@@ -42,15 +43,13 @@ public class SessionCleanupScheduler {
         try {
             LocalDateTime cutoffTime = LocalDateTime.now()
                     .minusMinutes(sessionTimeoutMinutes);
+            LocalDateTime logoutTime = LocalDateTime.now();
 
-            List<UserSession> expiredSessions = userSessionRepository.findExpiredSessions(cutoffTime);
+            int expiredCount = userSessionRepository.expireInactiveSessions(cutoffTime, logoutTime);
 
-            if (!expiredSessions.isEmpty()) {
-                expiredSessions.forEach(UserSession::expire);
-                userSessionRepository.saveAll(expiredSessions);
-
+            if (expiredCount > 0) {
                 LOG.info("Expired {} inactive sessions (timeout: {} minutes)",
-                        expiredSessions.size(),
+                        expiredCount,
                         sessionTimeoutMinutes);
             }
         } catch (Exception e) {

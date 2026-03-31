@@ -23,73 +23,47 @@ import java.util.Optional;
 @RepositoryRestResource(exported = false)
 public interface UserSessionRepository extends BaseRepository<UserSession> {
 
-    /**
-     * Find all active sessions for a specific user.
-     *
-     * @param userId User ID
-     * @return List of active sessions
-     */
+    // Find all active sessions for a specific user.
     List<UserSession> findByUserIdAndIsActiveTrueOrderByLoginAtDesc(Long userId);
 
-    /**
-     * Find active session by user ID and device ID.
-     *
-     * @param userId User ID
-     * @param deviceId Device ID
-     * @return Optional UserSession
-     */
+    // Find active session by user ID and device ID.
     Optional<UserSession> findByUserIdAndDeviceIdAndIsActiveTrue(Long userId, String deviceId);
 
-    /**
-     * Find all expired sessions based on timeout duration.
-     *
-     * @param cutoffTime Sessions with lastActivityAt before this time are considered expired
-     * @return List of expired sessions
-     */
+    // Find all expired sessions based on timeout duration.
     @Query("SELECT s FROM UserSession s WHERE s.isActive = true AND s.lastActivityAt < :cutoffTime")
     List<UserSession> findExpiredSessions(@Param("cutoffTime") LocalDateTime cutoffTime);
 
-    /**
-     * Count active sessions for a user.
-     *
-     * @param userId User ID
-     * @return Number of active sessions
-     */
+    // Bulk expire sessions that have exceeded the timeout duration.
+    @Modifying
+    @Query("UPDATE UserSession s SET s.isActive = false, s.logoutAt = :logoutAt, s.logoutType = 'TIMEOUT' WHERE s.isActive = true AND s.lastActivityAt < :cutoffTime")
+    int expireInactiveSessions(@Param("cutoffTime") LocalDateTime cutoffTime, @Param("logoutAt") LocalDateTime logoutAt);
+
+    // Count active sessions for a user.
     long countByUserIdAndIsActiveTrue(Long userId);
 
-    /**
-     * Find session by refresh token hash.
-     *
-     * @param refreshTokenHash Hashed refresh token
-     * @return Optional UserSession
-     */
+    // Find session by refresh token hash.
     Optional<UserSession> findByRefreshTokenHashAndIsActiveTrue(String refreshTokenHash);
 
-    /**
-     * Deactivate all sessions for a user (force logout from all devices).
-     *
-     * @param userId User ID
-     * @return Number of sessions updated
-     */
+    // Deactivate all sessions for a user (force logout from all devices).
     @Modifying
     @Query("UPDATE UserSession s SET s.isActive = false, s.logoutAt = :logoutAt, s.logoutType = 'FORCED' WHERE s.userId = :userId AND s.isActive = true")
     int deactivateAllUserSessions(@Param("userId") Long userId, @Param("logoutAt") LocalDateTime logoutAt);
 
-    /**
-     * Update last activity time for a session.
-     *
-     * @param sessionId Session ID
-     * @param lastActivityAt New activity timestamp
-     */
+    // Update last activity time for a session.
     @Modifying
     @Query("UPDATE UserSession s SET s.lastActivityAt = :lastActivityAt WHERE s.id = :sessionId")
     void updateLastActivity(@Param("sessionId") Long sessionId, @Param("lastActivityAt") LocalDateTime lastActivityAt);
 
-    /**
-     * Find all sessions for a user (active and inactive).
-     *
-     * @param userId User ID
-     * @return List of all sessions
-     */
+    // Find all sessions for a user (active and inactive).
     List<UserSession> findByUserIdOrderByLoginAtDesc(Long userId);
+
+    // Monthly total session duration analytics for all users.
+    @Query(value = """
+            SELECT DATE_TRUNC('month', login_at) AS month, SUM(EXTRACT(EPOCH FROM (COALESCE(logout_at, CURRENT_TIMESTAMP) - login_at))) AS total_duration
+            FROM user_sessions
+            WHERE deleted IS NULL OR deleted = false
+            GROUP BY month
+            ORDER BY month
+            """, nativeQuery = true)
+    List<Object[]> countMonthlySessionDurations();
 }

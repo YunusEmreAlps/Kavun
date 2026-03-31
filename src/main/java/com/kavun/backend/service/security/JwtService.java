@@ -29,6 +29,26 @@ public interface JwtService {
    */
   String generateJwtToken(String username, Date expiration);
 
+
+  /**
+   * Generate a JwtToken for the specified username with session ID.
+   *
+   * @param username the username
+   * @param expiration the expiration date
+   * @param sessionId the session ID to embed in the token
+   * @return the token
+   */
+  String generateJwtToken(String username, Date expiration, String sessionId);
+
+  /**
+   * Extract session ID from the token.
+   *
+   * @param token the token
+   * @return the session ID, or null if not present
+   */
+  String getSessionIdFromToken(String token);
+
+
   /**
    * Retrieve username from the token.
    *

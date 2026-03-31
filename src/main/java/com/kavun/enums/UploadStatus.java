@@ -5,5 +5,8 @@ public enum UploadStatus {
     COMPLETED,
     FAILED,
     PROCESSING,
-    ARCHIVED
+    ARCHIVED,
+    QUARANTINED,
+    SCANNING,
+    REJECTED
 }

@@ -19,6 +19,9 @@ import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.UserResponse;
+import org.springframework.data.domain.Sort;
+
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -30,6 +33,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -70,22 +74,20 @@ public class UserRestApi {
   private final UserMapper userMapper;
 
   /**
-   * Searches for users based on the provided parameters
+   * Search users with dynamic criteria
    *
-   * @param paramaterMap a map of search parameters where the key is the
-   * @param page         pagination information
-   * @return a paginated list of users that match the search criteria
+   * @param searchParams search parameters
+   * @param pageable     pagination parameters
+   * @return page of matching users
    */
-  @Loggable
-  @PageableAsQueryParam
-  @GetMapping(value = "/paging", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<Page<UserResponse>> searchUsers(
-      @RequestParam Map<String, Object> paramaterMap,
-      Pageable page) {
+  @PostMapping("/search")
+  @Operation(summary = "Search users", description = "Search users with dynamic criteria")
+  public ResponseEntity<Page<UserResponse>> search(
+      @RequestBody Map<String, Object> searchParams,
+      @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    Specification<User> spec = userSpecification.search(paramaterMap);
-
-    Page<UserDto> userDtos = userService.findAll(spec, page);
+    Specification<User> spec = userSpecification.search(searchParams);
+    Page<UserDto> userDtos = userService.findAll(spec, pageable);
     Page<UserResponse> users = userDtos.map(userDto -> userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
     return ResponseEntity.ok(users);
   }
@@ -188,8 +190,10 @@ public class UserRestApi {
         LOG.error("Failed to update password for user: {}", savedUserDto.getEmail());
         return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update password", "");
       }
-      /*emailService.sendWelcomeEmail(savedUserDto,
-          request.getPassword().length() > 0 ? request.getPassword() : newPassword);*/
+      /*
+       * emailService.sendWelcomeEmail(savedUserDto,
+       * request.getPassword().length() > 0 ? request.getPassword() : newPassword);
+       */
     }
     return ApiResponse.success("", UserConstants.USER_CREATED_SUCCESS_MESSAGE, null);
   }
@@ -219,7 +223,7 @@ public class UserRestApi {
       if (e.getMessage().equals(UserConstants.USER_NOT_FOUND)) {
         return ApiResponse.error(HttpStatus.NOT_FOUND, e.getMessage(), "");
       } else if (e.getMessage().equals(UserConstants.EXIST_USERNAME) ||
-                 e.getMessage().equals(UserConstants.EXIST_EMAIL)) {
+          e.getMessage().equals(UserConstants.EXIST_EMAIL)) {
         return ApiResponse.error(HttpStatus.CONFLICT, e.getMessage(), "");
       }
       return ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage(), "");

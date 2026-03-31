@@ -54,6 +54,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Spring Boot DevTools](https://docs.spring.io/spring-boot/docs/2.6.7/reference/htmlsingle/#using-boot-devtools)
 - [Spring Data Jpa DataTables](https://github.com/darrachequesne/spring-data-jpa-datatables)
 - [Test Containers](https://java.testcontainers.org/)
+- [ClamAV](https://www.clamav.net/) - Open Source Antivirus Engine
 
 ## Key Features
 
@@ -71,7 +72,9 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Production Ready Folder Structure](README.md#architecture)
 - [Authentication and Authorization with JWT](docs/AUTHENTICATION.MD)
 - [Security Configuration Without WebSecurityConfigurerAdapter](https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter#ldap-authentication)
-- Dynamic Role and Permission Management
+- **ClamAV** Integration for File Scanning
+- **Dynamic Role and Permission Management**
+
 
 ## Development Guide
 
@@ -167,28 +170,30 @@ curl http://localhost:8080/
 
 The following environment variables can be customized as necessary:
 
-```bash
-# Default Application Properties:
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=password
-ENCRYPTION_SECRET_SALT=salt
-ENCRYPTION_SECRET_PASSWORD=password
-JWT_SECRET=salt
-SPRING_PROFILES_ACTIVE=dev
-ACCESS_TOKEN_EXPIRATION_IN_MINUTES=60 # Medium-lived tokens
+```properties
+# Application Configuration
+admin.username=${ADMIN_USERNAME:admin}
+admin.password=${ADMIN_PASSWORD:password}
+admin.email=${ADMIN_EMAIL:admin@kavun.com}
+access-token-expiration-in-minutes=${ACCESS_TOKEN_EXPIRATION_IN_MINUTES:60}
+login.otp.enabled=${LOGIN_OTP_ENABLED:false}
+login.captcha.enabled=${LOGIN_CAPTCHA_ENABLED:false}
+app.test-otp-code=${APP_TEST_OTP_CODE:190303}
 
-# Default AWS S3 Properties:
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=EXAMPLEACCESSKEYID
-AWS_SECRET_ACCESS_KEY=EXAMPLESECRETACCESSKEY
-AWS_S3_BUCKET_NAME=kavun
+# AWS S3 Configuration
+aws.region=${AWS_REGION:us-east-1}
+aws.accessKeyId=${AWS_ACCESS_KEY_ID}
+aws.secretAccessKey=${AWS_SECRET_ACCESS_KEY}
+aws.s3BucketName=${AWS_S3_BUCKET_NAME:spring-boot-starter}
+aws.servicePort=${AWS_SERVICE_PORT:8001}
+aws.serviceEndpoint=${AWS_SERVICE_ENDPOINT:http://localhost:${aws.servicePort}}
 
-# Email Properties:
-EMAIL_PROTOCOL=smtp
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USERNAME=username
-EMAIL_PASSWORD=password # If using gmail, this must be a 2 step verification enabled app password
+# Mail Configuration
+spring.mail.host=${MAIL_HOST:localhost}
+spring.mail.port=${MAIL_PORT:465}
+spring.mail.username=${MAIL_USERNAME:noreply@kavun.com}
+spring.mail.password=${MAIL_PASSWORD:yourpassword}
+spring.mail.protocol=smtp
 ```
 
 - The profiles defined in the application are **development**, **docker**, **test**, and **production**.

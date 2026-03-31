@@ -2,6 +2,8 @@ package com.kavun.backend.service.user;
 
 import java.util.Map;
 
+import com.kavun.backend.persistent.domain.user.Otp;
+
 /**
  * This OtpService interface is the contract for the otp service operations.
  *
@@ -11,7 +13,7 @@ import java.util.Map;
  */
 public interface OtpService {
   // Generates the otp code for the user with the given email or sms.
-  public Map<String, Object> generateOtp(String target);
+  public Otp generateOtp(String target);
 
   // Validates the otp code for the user with the given email or sms.
   public Boolean validateOtp(Long id, String target, String otp);

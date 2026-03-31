@@ -55,7 +55,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
      */
     @ExceptionHandler(value = {IllegalArgumentException.class, IllegalStateException.class})
     protected ResponseEntity<ApiResponse<Object>> handleConflict(RuntimeException ex, HttpServletRequest request) {
-        LOG.warn("Conflict exception: {} at {}", ex.getMessage(), request.getRequestURI());
+        LOG.warn("Conflict exception at {}", request.getRequestURI(), ex);
         ApiResponse<Object> response = ApiResponse.error(
             ResponseCode.CONFLICT,
             ex.getMessage(),
@@ -99,7 +99,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
             WebRequest request) {
 
         String path = getRequestPath(request);
-        LOG.error("Malformed JSON request at {}: {}", path, ex.getMessage());
+        LOG.error("Malformed JSON request at {}", path, ex);
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.BAD_REQUEST,
                 "Malformed JSON request. Please check your request body.",
@@ -148,7 +148,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
             HttpServletRequest request) {
 
         String path = request.getRequestURI();
-        LOG.error("Data integrity violation at {}: {}", path, ex.getMessage());
+        LOG.error("Data integrity violation at {}", path, ex);
 
         String message = BaseConstants.DATA_INTEGRITY_VIOLATION;
         if (ex.getMessage() != null) {
@@ -195,7 +195,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
             HttpServletRequest request) {
 
         String path = request.getRequestURI();
-        LOG.warn("Authentication failed at {}: {}", path, ex.getMessage());
+        LOG.warn("Authentication failed at {}", path, ex);
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.UNAUTHORIZED,

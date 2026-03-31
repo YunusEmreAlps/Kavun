@@ -65,20 +65,59 @@ public class JwtServiceImpl implements JwtService {
    */
   @Override
   public String generateJwtToken(final String username, final Date expiration) {
+    return generateJwtToken(username, expiration, null);
+  }
+
+  /**
+   * Generate a JwtToken for the specified username with session ID.
+   *
+   * @param username the username
+   * @param expiration the expiration date
+   * @param sessionId the session ID to embed in the token
+   * @return the token
+   */
+  @Override
+  public String generateJwtToken(final String username, final Date expiration, final String sessionId) {
     Validate.notBlank(username, UserConstants.BLANK_USERNAME);
 
     var key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
-    var jwtToken =
-        Jwts.builder()
+    var builder = Jwts.builder()
             .subject(username)
             .issuedAt(new Date())
-            .expiration(expiration)
-            .signWith(key)
-            .compact();
+            .expiration(expiration);
+
+    // Add session ID as a claim if provided
+    if (sessionId != null && !sessionId.isBlank()) {
+      builder.claim("session_id", sessionId);
+    }
+
+    var jwtToken = builder.signWith(key).compact();
 
     LOG.debug(TOKEN_CREATED_SUCCESS, jwtToken);
     return jwtToken;
+  }
+
+  /**
+   * Extract session ID from the token.
+   *
+   * @param token the token
+   * @return the session ID, or null if not present
+   */
+  @Override
+  public String getSessionIdFromToken(final String token) {
+    if (token == null || token.isBlank()) {
+      return null;
+    }
+
+    try {
+      var key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+      var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+      return claims.get("session_id", String.class);
+    } catch (Exception e) {
+      LOG.error("Failed to extract session ID from token: {}", e.getMessage());
+      return null;
+    }
   }
 
   /**

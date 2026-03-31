@@ -1,7 +1,6 @@
 package com.kavun.backend.service.user;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Role;
@@ -32,7 +31,7 @@ import java.util.stream.Collectors;
  * @since 1.0
  */
 @Service
-@Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
+@Transactional
 public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
 
   private final UserRepository userRepository;

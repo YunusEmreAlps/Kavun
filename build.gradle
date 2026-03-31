@@ -50,6 +50,8 @@ ext {
   set('mapstructVersion', '1.6.3')
   set('awsSdkS3Version', '2.30.15')
   set('keycloakVersion', '26.0.7')
+  set('clamavClientVersion', '2.1.2')
+  set('bucket4jVersion', '8.1.0')
 }
 
 dependencies {
@@ -87,10 +89,12 @@ dependencies {
   runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
   runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
   implementation 'commons-io:commons-io:2.18.0'
+  implementation 'com.github.ua-parser:uap-java:1.6.1'
   implementation 'net.datafaker:datafaker:2.4.2'
   implementation 'com.google.code.gson:gson:2.12.1'
   implementation 'commons-validator:commons-validator:1.9.0'
   implementation 'com.github.darrachequesne:spring-data-jpa-datatables:6.0.4'
+  implementation "xyz.capybara:clamav-client:${clamavClientVersion}"
 
   // Documentation and API Tools
   implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springDocVersion}"
@@ -110,6 +114,9 @@ dependencies {
   // MapStruct for Object Mapping
   implementation "org.mapstruct:mapstruct:${mapstructVersion}"
   annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+  // Rate Limiting
+  implementation "com.bucket4j:bucket4j-core:${bucket4jVersion}"
 
   // Webjars
   implementation 'org.webjars:jquery:3.7.1'

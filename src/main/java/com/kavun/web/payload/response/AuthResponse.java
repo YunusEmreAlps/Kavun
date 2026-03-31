@@ -75,6 +75,12 @@ public class AuthResponse implements Serializable {
   private Long issuedAt;
 
   /**
+   * Session ID for tracking and logout operations.
+   */
+  @JsonProperty("session_id")
+  private String sessionId;
+
+  /**
    * User information (optional, for convenience).
    * Can be fetched separately via /userinfo endpoint.
    */
@@ -160,6 +166,25 @@ public class AuthResponse implements Serializable {
       long expiresInSeconds,
       String refreshToken,
       UserDetailsBuilder userDetails) {
+    return of(accessToken, expiresInSeconds, refreshToken, userDetails, null);
+  }
+
+  /**
+   * Build AuthResponse from JWT token, expiration, user details, and session ID.
+   *
+   * @param accessToken the JWT access token
+   * @param expiresInSeconds token expiration in seconds
+   * @param refreshToken the refresh token (optional)
+   * @param userDetails the user details (optional)
+   * @param sessionId the session ID (optional)
+   * @return AuthResponse
+   */
+  public static AuthResponse of(
+      String accessToken,
+      long expiresInSeconds,
+      String refreshToken,
+      UserDetailsBuilder userDetails,
+      String sessionId) {
 
     var localUserDetails = userDetails;
     if (Objects.isNull(localUserDetails)) {
@@ -172,7 +197,8 @@ public class AuthResponse implements Serializable {
             .tokenType(SecurityConstants.BEARER)
             .expiresIn(expiresInSeconds)
             .refreshToken(refreshToken)
-            .issuedAt(Instant.now().getEpochSecond());
+            .issuedAt(Instant.now().getEpochSecond())
+            .sessionId(sessionId);
 
     if (Objects.nonNull(localUserDetails)) {
       List<String> roleList = new ArrayList<>();

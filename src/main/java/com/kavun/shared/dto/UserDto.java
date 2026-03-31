@@ -52,6 +52,7 @@ public class UserDto extends BaseDto {
   private String phone;
   private String profileImage;
   private String verificationToken;
+  private String address;
 
   private int failedLoginAttempts;
   private LocalDateTime lastSuccessfulLogin;

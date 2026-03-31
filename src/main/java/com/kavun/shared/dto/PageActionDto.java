@@ -1,6 +1,6 @@
 package com.kavun.shared.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -26,10 +26,10 @@ public class PageActionDto extends BaseDto {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @NotBlank(message = "Page ID cannot be blank")
+    @NotNull(message = "Page ID cannot be null")
     private Long pageId;
 
-    @NotBlank(message = "Action ID cannot be blank")
+    @NotNull(message = "Action ID cannot be null")
     private Long actionId;
 
     private String apiEndpoint;

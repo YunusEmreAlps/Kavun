@@ -16,16 +16,24 @@ public class AuthConstants {
   public static final String OTP_VERIFIED = "OTP verified successfully.";
   public static final String OTP_NOT_VERIFIED = "Invalid OTP. Please try again.";
   public static final String OTP_EXPIRED = "OTP has expired. Please request a new one.";
-  public static final String OTP_MAX_ATTEMPTS =
-      "Maximum attempts reached. Please request a new OTP.";
+  public static final String OTP_MAX_ATTEMPTS = "Maximum attempts reached. Please request a new OTP.";
   public static final String OTP_SENT = "OTP sent successfully.";
   public static final String OTP_GENERATION_FAILED = "Unable to generate OTP. Please try again.";
-  public static final String OTP_VALIDATION_FAILED =
-      "OTP validation failed. Please check the code.";
+  public static final String OTP_VALIDATION_FAILED = "OTP validation failed. Please check the code.";
   public static final String OTP_DELETED = "OTP deleted successfully.";
   public static final String OTP_NOT_FOUND = "OTP not found.";
   public static final String USER_HAS_NO_OTP_DELIVERY_METHOD = "User has no OTP delivery method configured.";
   public static final String OTP_SENT_SUCCESSFULLY = "OTP sent successfully.";
+  public static final String TOO_MANY_CAPTCHA_REQUESTS = "So many CAPTCHA requests. Please wait %d seconds before trying again.";
+  public static final String CAPTCHA_CREATION_FAILED = "Unable to create CAPTCHA. Please try again.";
+  public static final String TOO_MANY_LOGIN_ATTEMPTS = "Too many login attempts. Please wait 1 minute.";
+  public static final String INVALID_CAPTCHA = "Invalid or used CAPTCHA. Please try again.";
+  public static final String INVALID_OTP = "Invalid OTP. Please try again.";
+  public static final String INVALID_CREDENTIALS = "Invalid username or password.";
+  public static final String TOO_MANY_PASSWORD_RESET_REQUESTS = "Too many password reset requests. Please wait %d minutes.";
+  public static final String CAPTCHA_GENERATION_FAILED = "Unable to generate CAPTCHA. Please try again.";
+  public static final String USER_HAS_NO_PHONE_FOR_OTP = "User has no phone number configured for OTP.";
+  public static final String USER_HAS_NO_EMAIL_FOR_OTP = "User has no email configured for OTP.";
 
   private AuthConstants() {
     throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);

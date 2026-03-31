@@ -34,8 +34,10 @@ public abstract class PermissionMapper implements BaseMapper<PermissionRequest, 
 
     protected PageAction mapPageAction(Long pageActionId) {
         if (pageActionId == null) {
-            return null;
+            throw new IllegalArgumentException("PageAction ID cannot be null");
         }
-        return pageActionRepository.findById(pageActionId).orElse(null);
+        return pageActionRepository.findById(pageActionId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "PageAction not found with ID: " + pageActionId));
     }
 }

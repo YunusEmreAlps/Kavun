@@ -53,11 +53,11 @@ public class PageAction extends BaseEntity<Long> implements Serializable {
     @JoinColumn(name = "action_id", nullable = false)
     private Action action;
 
-    @Column(name = "api_endpoint", nullable = false)
+    @Column(name = "api_endpoint")
     private String apiEndpoint;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "http_method", nullable = false)
+    @Column(name = "http_method")
     private HttpMethod httpMethod;
 
     @Column(nullable = false, length = 200)

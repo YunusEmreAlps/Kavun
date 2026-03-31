@@ -2,6 +2,7 @@ package com.kavun.annotation;
 
 import com.kavun.backend.persistent.domain.siem.ApplicationLog;
 import com.kavun.backend.persistent.repository.ApplicationLogRepository;
+import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import jakarta.servlet.FilterChain;
@@ -38,6 +39,7 @@ import static com.kavun.constant.LoggingConstants.*;
 public class LoggingFilter extends OncePerRequestFilter {
 
     private final ApplicationLogRepository applicationLogRepository;
+    private final DeviceDetectionService deviceDetectionService;
 
     /** Cached server info (computed once at startup) */
     private static final String CACHED_HOSTNAME = resolveHostname();
@@ -147,6 +149,13 @@ public class LoggingFilter extends OncePerRequestFilter {
                     ? sanitizeBody(cachedRequest.getBody(), request.getRequestURI())
                     : null;
 
+            // Parse device information from User-Agent
+            String userAgent = request.getHeader(USER_AGENT_HEADER);
+            DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
+
+            // Get device ID from header if client provided it
+            String deviceId = request.getHeader(DEVICE_ID_HEADER);
+
             ApplicationLog applicationLog = ApplicationLog.builder()
                     .correlationId(correlationId)
                     .logLevel(determineLogLevel(response.getStatus()))
@@ -164,6 +173,11 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .requestBody(requestBody)
                     .durationMs(duration)
                     .httpStatus(response.getStatus())
+                    .deviceId(deviceId)
+                    .deviceType(deviceInfo.getDeviceType())
+                    .operatingSystem(deviceInfo.getOperatingSystem())
+                    .browser(deviceInfo.getBrowser())
+                    .userAgent(userAgent)
                     .build();
 
             saveLogAsync(applicationLog);

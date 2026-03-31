@@ -26,4 +26,8 @@ public final class LoginRequest {
   @NotBlank(message = UserConstants.BLANK_PASSWORD)
   @Size(min = 4, message = UserConstants.PASSWORD_SIZE)
   private String password;
+
+  // If captcha is enabled, these fields will be used to validate the captcha response from the client.
+  private String captchaText;
+  private String captchaId;
 }

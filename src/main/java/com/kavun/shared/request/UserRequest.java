@@ -55,6 +55,8 @@ public class UserRequest extends BaseRequest {
 
   private String phone;
   private String profileImage;
+  private String title;
+  private String address;
 
   private boolean enabled;
   private boolean accountNonExpired;

@@ -158,7 +158,9 @@ public class UserRestApi {
     var verificationToken = jwtService.generateJwtToken(userDto.getUsername());
     userDto.setVerificationToken(verificationToken);
 
-    var savedUserDto = userService.createUser(userDto);
+    // If roles are provided in request, skip default ROLE_USER assignment
+    boolean hasRoles = request.getRoles() != null && !request.getRoles().isEmpty();
+    var savedUserDto = userService.createUser(userDto, hasRoles);
 
     var encryptedToken = encryptionService.encrypt(verificationToken);
     LOG.debug("Encrypted JWT token: {}", encryptedToken);
@@ -226,13 +228,7 @@ public class UserRestApi {
     }
   }
 
-  /**
-   * Update the user password for the currently authenticated user.
-   *
-   * @param oldPassword the old password
-   * @param newPassword the new password
-   * @return "Password updated successfully" if the password is updated
-   */
+  // Update the user password for the currently authenticated user.
   @Loggable
   @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<String> updatePassword(

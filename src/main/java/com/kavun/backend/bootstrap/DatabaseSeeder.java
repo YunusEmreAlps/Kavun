@@ -77,7 +77,7 @@ public class DatabaseSeeder implements CommandLineRunner {
       LOG.info("Creating default admin user with username: {}", adminUsername);
       Set<RoleType> adminRoleType = Collections.singleton(RoleType.ROLE_ADMIN);
 
-      userService.createUser(adminDto, adminRoleType);
+      userService.createUser(adminDto, adminRoleType, false);
       LOG.info("Default admin user created successfully");
     } catch (UserAlreadyExistsException e) {
       LOG.warn("Admin user already exists: {}", e.getMessage());

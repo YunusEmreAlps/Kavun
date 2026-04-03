@@ -1,5 +1,6 @@
 package com.kavun.backend.service.user;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +13,6 @@ import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.constant.CacheConstants;
 import com.kavun.constant.user.UserConstants;
-import com.kavun.shared.dto.RoleDto;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserMapper;
 import com.kavun.shared.request.UserRequest;
@@ -63,13 +63,15 @@ public class UserService
   private final Clock clock;
   private final RoleService roleService;
   private final PasswordEncoder passwordEncoder;
+  private final EntityManager entityManager;
 
   public UserService(UserMapper mapper, UserRepository repository, UserSpecification specification,
-      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder) {
+      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, EntityManager entityManager) {
     super(mapper, repository, specification);
     this.clock = clock;
     this.roleService = roleService;
     this.passwordEncoder = passwordEncoder;
+    this.entityManager = entityManager;
   }
 
   public Specification<User> search(Map<String, Object> paramaterMap) {
@@ -96,26 +98,19 @@ public class UserService
     return UserUtils.convertToUserDto(persistedUser);
   }
 
-  /**
-   * Create the userDto with the userDto instance given.
-   *
-   * @param userDto the userDto with updated information
-   * @return the updated userDto.
-   * @throws NullPointerException in case the given entity is {@literal null}
-   */
+  // Create the userDto with the userDto instance given.
   public @NonNull UserDto createUser(final UserDto userDto) {
-    return createUser(userDto, Collections.emptySet());
+    return createUser(userDto, Collections.emptySet(), false);
   }
 
-  /**
-   * Create the userDto with the userDto instance given.
-   *
-   * @param userDto   the userDto with updated information
-   * @param roleTypes the roleTypes.
-   * @return the updated userDto.
-   * @throws NullPointerException in case the given entity is {@literal null}
-   */
-  public @NonNull UserDto createUser(final UserDto userDto, final Set<RoleType> roleTypes) {
+  // Create the userDto with the userDto instance given.
+  @Transactional
+  public @NonNull UserDto createUser(final UserDto userDto, boolean skipDefaultRole) {
+    return createUser(userDto, Collections.emptySet(), skipDefaultRole);
+  }
+
+  // Create the userDto with the userDto instance given.
+  public @NonNull UserDto createUser(final UserDto userDto, final Set<RoleType> roleTypes, boolean skipDefaultRole) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
 
     var localUser = repository.findByEmail(userDto.getEmail());
@@ -143,7 +138,7 @@ public class UserService
     // Update the user password with an encrypted copy of the password
     userDto.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
-    return persistUser(userDto, roleTypes, UserHistoryType.CREATED, false);
+    return persistUser(userDto, roleTypes, UserHistoryType.CREATED, false, skipDefaultRole);
   }
 
   public Page<UserResponse> findAll(Pageable pageable) {
@@ -458,7 +453,7 @@ public class UserService
     return usersPage.stream().map(mapper::toUserResponse).toList();
   }
 
-  /**
+    /**
    * Transfers user details to a user object then persist to a database.
    *
    * @param userDto     the userDto
@@ -472,10 +467,30 @@ public class UserService
       final Set<RoleType> roleTypes,
       final UserHistoryType historyType,
       final boolean isUpdate) {
+    return persistUser(userDto, roleTypes, historyType, isUpdate, false);
+  }
+
+
+  /**
+   * Transfers user details to a user object then persist to a database.
+   *
+   * @param userDto     the userDto
+   * @param roleTypes   the roleTypes
+   * @param historyType the user history type
+   * @param isUpdate    if the operation is an update
+   * @return the userDto
+   */
+  private UserDto persistUser(
+      final UserDto userDto,
+      final Set<RoleType> roleTypes,
+      final UserHistoryType historyType,
+      final boolean isUpdate,
+      final boolean skipDefaultRole
+    ) {
 
     // If no role types are specified, then set the default role type
     var localRoleTypes = new HashSet<>(roleTypes);
-    if (localRoleTypes.isEmpty() && !isUpdate) {
+    if (localRoleTypes.isEmpty() && !isUpdate && !skipDefaultRole) {
       localRoleTypes.add(RoleType.ROLE_USER);
     }
 
@@ -500,46 +515,39 @@ public class UserService
    * @param userId the user id
    * @param roleRequests the list of role requests containing role IDs
    */
+  @Transactional
   public void assignRolesToUser(Long userId, List<UserRoleRequest> roleRequests) {
     User user = repository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException(UserConstants.USER_NOT_FOUND));
 
-    // Get requested role IDs
-    Set<Long> requestedRoleIds = new HashSet<>();
+    // Delete all existing roles using native query to avoid constraint issues
+    int deletedCount = entityManager.createNativeQuery(
+        "DELETE FROM user_role WHERE user_id = :userId")
+        .setParameter("userId", userId)
+        .executeUpdate();
+
+    LOG.debug("Deleted {} existing roles for user {}", deletedCount, userId);
+
+    // Clear the collection to sync with database state
+    user.getUserRoles().clear();
+    entityManager.flush();
+
+    // Add new roles
+    int addedCount = 0;
     if (roleRequests != null && !roleRequests.isEmpty()) {
-      roleRequests.forEach(req -> requestedRoleIds.add(req.getRoleId()));
-    }
-
-    // Get existing role IDs
-    Set<Long> existingRoleIds = new HashSet<>();
-    user.getUserRoles().forEach(userRole -> existingRoleIds.add(userRole.getRole().getId()));
-
-    // Remove roles that are no longer requested
-    user.getUserRoles().removeIf(userRole -> !requestedRoleIds.contains(userRole.getRole().getId()));
-
-    // Flush deletions to database
-    repository.saveAndFlush(user);
-
-    // Add new roles that don't already exist
-    for (UserRoleRequest roleRequest : roleRequests) {
-      if (!existingRoleIds.contains(roleRequest.getRoleId())) {
-        RoleDto roleDto = roleService.findById(roleRequest.getRoleId());
-        if (roleDto == null) {
+      for (UserRoleRequest roleRequest : roleRequests) {
+        Role role = roleService.findRoleById(roleRequest.getRoleId());
+        if (role == null) {
           LOG.warn("Role not found with id: {}", roleRequest.getRoleId());
           continue;
         }
-        Role role = new Role();
-        role.setId(roleDto.getId());
-        role.setName(roleDto.getName());
         user.addUserRole(role);
+        addedCount++;
       }
     }
 
     repository.save(user);
-    LOG.info("Updated roles for user {} - added: {}, removed: {}",
-        userId,
-        requestedRoleIds.size() - existingRoleIds.stream().filter(requestedRoleIds::contains).count(),
-        existingRoleIds.size() - existingRoleIds.stream().filter(requestedRoleIds::contains).count());
+    LOG.info("Updated roles for user {} - deleted: {}, added: {}", userId, deletedCount, addedCount);
   }
 
   // Generates a secure temporary password.

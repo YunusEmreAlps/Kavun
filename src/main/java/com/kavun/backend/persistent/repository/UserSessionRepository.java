@@ -61,9 +61,9 @@ public interface UserSessionRepository extends BaseRepository<UserSession> {
     @Query(value = """
             SELECT DATE_TRUNC('month', login_at) AS month, SUM(EXTRACT(EPOCH FROM (COALESCE(logout_at, CURRENT_TIMESTAMP) - login_at))) AS total_duration
             FROM user_sessions
-            WHERE deleted IS NULL OR deleted = false
+            WHERE (deleted IS NULL OR deleted = false) AND EXTRACT(YEAR FROM login_at) = :year
             GROUP BY month
             ORDER BY month
             """, nativeQuery = true)
-    List<Object[]> countMonthlySessionDurations();
+    List<Object[]> countMonthlySessionDurations(@Param("year") Integer year);
 }

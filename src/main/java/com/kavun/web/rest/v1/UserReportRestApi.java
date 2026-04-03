@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,6 +71,14 @@ public class UserReportRestApi {
     public Map<String, Long> getDeviceUsageAnalytics() {
         return userDeviceService.getDeviceUsageAnalytics();
     }
+
+    // Monthly total session duration analytics for all users.
+    @Loggable
+    @GetMapping(value = "/session-trends", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Object[]> getUserSessionTrends(@RequestParam(required = false) Integer year) {
+        return userSessionService.getMonthlySessionDurationTrends(year);
+    }
+
 
     // Get user activity logs with dynamic filtering and pagination.
     @Loggable

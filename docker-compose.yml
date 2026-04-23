@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - kavun-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-kavun}"]
       interval: 10s
@@ -56,7 +56,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus.rules.yml:/etc/prometheus/prometheus.rules.yml:ro
-      - prometheus-data:/prometheus
+      - kavun-prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -76,7 +76,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
-      - grafana-data:/var/lib/grafana
+      - kavun-grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
     networks:
@@ -106,7 +106,7 @@ services:
       - '9093:9093'
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/config.yml:ro
-      - alertmanager-data:/alertmanager
+      - kavun-alertmanager-data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
@@ -124,7 +124,7 @@ services:
       - '514:514/tcp'
       - '601:601/tcp'
     volumes:
-      - syslog-data:/var/log/syslog-ng
+      - kavun-syslog-data:/var/log/syslog-ng
     networks:
       - kavun-network
 
@@ -140,7 +140,7 @@ services:
       # Scan options
       CLAMD_STARTUP_TIMEOUT: 90
     volumes:
-      - clamav-data:/var/lib/clamav
+      - kavun-clamav-data:/var/lib/clamav
     healthcheck:
       test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
       interval: 60s
@@ -155,15 +155,15 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
+  kavun-postgres-data:
     driver: local
-  prometheus-data:
+  kavun-prometheus-data:
     driver: local
-  grafana-data:
+  kavun-grafana-data:
     driver: local
-  alertmanager-data:
+  kavun-alertmanager-data:
     driver: local
-  syslog-data:
+  kavun-syslog-data:
     driver: local
-  clamav-data:
+  kavun-clamav-data:
     driver: local

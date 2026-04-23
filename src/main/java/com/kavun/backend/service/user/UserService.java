@@ -301,6 +301,9 @@ public class UserService
     existingUser.setAccountNonLocked(request.isAccountNonLocked());
     existingUser.setCredentialsNonExpired(request.isCredentialsNonExpired());
     existingUser.setOtpDeliveryMethod(request.getOtpDeliveryMethod());
+    existingUser.setAddress(request.getAddress());
+    existingUser.setTitle(request.getTitle());
+
 
     var savedUser = repository.save(existingUser);
 

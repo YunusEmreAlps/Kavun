@@ -66,4 +66,6 @@ public abstract class BaseDto implements Serializable {
 
   @JsonSerialize(using = UserInfoObjectSerializer.class)
   private Long deletedBy;
+
+  private Integer orderIndex;
 }

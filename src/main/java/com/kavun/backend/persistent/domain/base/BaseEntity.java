@@ -82,6 +82,9 @@ public abstract class BaseEntity<T extends Serializable> {
   @Column(nullable = false)
   private boolean deleted = false;
 
+  @Column
+  private Integer orderIndex = 0;
+
   @PrePersist
   protected void generatePublicId() {
     if (this.publicId == null) {

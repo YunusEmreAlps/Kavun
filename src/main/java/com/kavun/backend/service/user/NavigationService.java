@@ -149,12 +149,12 @@ public class NavigationService {
 
         List<ActionResponse> actions = pageActions.stream()
                 .filter(pa -> !pa.isViewAction()) // Exclude VIEW action from the list
+                .filter(pa -> permissionCheckService.hasPermission(user, pa)) // Only include actions user has permission for
                 .map(pa -> {
-                    boolean hasAccess = permissionCheckService.hasPermission(user, pa);
                     Action action = pa.getAction();
 
-                    LOG.debug("Action {} for page {}: hasAccess={}",
-                            action.getCode(), page.getCode(), hasAccess);
+                    LOG.debug("Action {} for page {}: included (user has permission)",
+                            action.getCode(), page.getCode());
 
                     return ActionResponse.builder()
                             .code(action.getCode())
@@ -164,7 +164,7 @@ public class NavigationService {
                 })
                 .toList();
 
-        LOG.debug("Returning {} actions for page {}", actions.size(), page.getCode());
+        LOG.debug("Returning {} accessible actions for page {}", actions.size(), page.getCode());
         return actions;
     }
 

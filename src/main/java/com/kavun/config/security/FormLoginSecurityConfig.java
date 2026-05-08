@@ -11,15 +11,12 @@ import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 
 /**
  * This configuration handles form login requests with session. This configuration is considered
@@ -35,7 +32,7 @@ import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 public class FormLoginSecurityConfig {
 
   private final Environment environment;
-  private final DaoAuthenticationProvider authenticationProvider;
+  private final UserDetailsService userDetailsService;
   private final PersistentTokenRepository persistentRepository;
 
   /**
@@ -43,11 +40,10 @@ public class FormLoginSecurityConfig {
    * override their configuration.
    *
    * @param http the {@link HttpSecurity} to modify.
-   * @param mvc the {@link MvcRequestMatcher.Builder}
    * @throws Exception thrown when error happens during authentication.
    */
   @Bean
-  public SecurityFilterChain formLoginFilterChain(HttpSecurity http, MvcRequestMatcher.Builder mvc)
+  public SecurityFilterChain formLoginFilterChain(HttpSecurity http)
       throws Exception {
 
     // if we are running with dev profile, disable csrf and frame options to enable h2 to work.
@@ -65,17 +61,15 @@ public class FormLoginSecurityConfig {
           .cors(AbstractHttpConfigurer::disable);
     }
 
-    http.securityMatcher(
-            new NegatedRequestMatcher(
-                new AntPathRequestMatcher(SecurityConstants.API_ROOT_URL_MAPPING)))
+    http.securityMatcher(request -> !request.getRequestURI().startsWith("/api"))
         .authorizeHttpRequests(
             requests ->
                 requests
-                    .requestMatchers(SecurityConstants.getPublicMatchers(mvc))
+                    .requestMatchers(SecurityConstants.getPublicMatchers())
                     .permitAll()
                     .anyRequest()
                     .authenticated())
-        .authenticationProvider(authenticationProvider) // Register the provider
+        .userDetailsService(userDetailsService)
         .formLogin(
             (form) ->
                 form.loginPage(SecurityConstants.LOGIN)
@@ -84,7 +78,7 @@ public class FormLoginSecurityConfig {
         .logout(
             (logout) ->
                 logout
-                    .logoutRequestMatcher(new AntPathRequestMatcher(SecurityConstants.LOGOUT))
+                    .logoutUrl(SecurityConstants.LOGOUT)
                     .logoutSuccessUrl(SecurityConstants.LOGIN_LOGOUT)
                     .invalidateHttpSession(true)
                     .deleteCookies(SecurityConstants.JSESSIONID, SecurityConstants.REMEMBER_ME)

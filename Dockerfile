@@ -14,24 +14,18 @@ COPY build.gradle .
 # Set permission to execute file
 RUN chmod +x gradlew
 
-# Prepare and install dos2unix to make gradlew file accessible
-RUN yum clean all && \
-    yum -y update && \
-    yum -y install dos2unix
-
-#RUN yum update
-#RUN yum install dos2unix
-RUN dos2unix gradlew
+# Convert line endings from Windows (CRLF) to Unix (LF)
+RUN sed -i 's/\r$//' gradlew
 
 # Copy the project source
 COPY src src
 # COPY libs/newrelic newrelic
 
 COPY src/main/scripts/wait-for-it.sh wait-for-it.sh
-RUN chmod +x wait-for-it.sh && dos2unix wait-for-it.sh
+RUN sed -i 's/\r$//' wait-for-it.sh && chmod +x wait-for-it.sh
 
 COPY src/main/scripts/start.sh start.sh
-RUN chmod +x start.sh && dos2unix start.sh
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 
 # Package the application
 RUN ./gradlew bootJar

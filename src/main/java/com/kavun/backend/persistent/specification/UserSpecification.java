@@ -19,7 +19,7 @@ import java.util.Map;
 public class UserSpecification extends BaseSpecification<User> {
 
     public Specification<User> search(Map<String, Object> search) {
-        Specification<User> spec = Specification.where(null);
+        Specification<User> spec = (root, query, cb) -> cb.conjunction();
 
         if (search == null || search.isEmpty()) {
             return spec;

@@ -379,6 +379,7 @@ public class UserService
     if (authenticatedUser != null) {
       storedUser.setDeletedBy(authenticatedUser.getId());
     }
+    storedUser.setDeleted(true);
     storedUser.setDeletedAt(LocalDateTime.now(clock));
     storedUser.setDeletedBy(SecurityUtils.getAuthenticatedUserDetails().getId());
     repository.saveAndFlush(storedUser);

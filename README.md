@@ -29,7 +29,6 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
   - [Architecture](#architecture)
   - [Database Schema](#database-schema)
   - [Roadmap](#roadmap)
-  - [Development Workflow](#development-workflow)
   - [Contributing](#contributing)
   - [Contact](#contact)
 
@@ -334,14 +333,9 @@ The project is structured in a layered architecture with the following layers:
 
 Please refer to the [Roadmap](docs/ROADMAP.md) for the project roadmap and future plans.
 
-## Development Workflow
-
-In the **Kavun** project, we follow a structured development workflow to ensure efficient collaboration and code management. This workflow includes the following key components: branching strategy, versioning, and commit message conventions. By following these guidelines, we aim to maintain a clean and organized codebase that is easy to manage and contribute to. For more information, please refer to the [Development Workflow](docs/DEVELOPMENT_WORKFLOW.md) document.
-
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426)
-for details on our code of conduct, and the process for submitting pull requests to us.
+In the **Kavun** project, we follow a structured development workflow to ensure efficient collaboration and code management. This workflow includes the following key components: branching strategy, versioning, and commit message conventions. By following these guidelines, we aim to maintain a clean and organized codebase that is easy to manage and contribute to. For more information, please refer to the [Contributing Guide](CONTRIBUTING.md) document.
 
 ## Contact
 

@@ -74,7 +74,7 @@ public interface UserMapper extends BaseMapper<UserRequest, User, UserDto> {
     @Mapping(target = "createdBy", expression = "java(mapToAuditInfo(user.getCreatedBy()))")
     @Mapping(target = "updatedBy", expression = "java(mapToAuditInfo(user.getUpdatedBy()))")
     @Mapping(target = "deletedBy", expression = "java(mapToAuditInfo(user.getDeletedBy()))")
-    @Mapping(target = "roles", expression = "java(mapUserRolesToAuditInfo(user.getUserRoles()))")
+    @Mapping(target = "roles", expression = "java(mapUserRolesToRoleInfo(user.getUserRoles()))")
     UserResponse toUserResponse(User user);
 
     /**
@@ -91,15 +91,20 @@ public interface UserMapper extends BaseMapper<UserRequest, User, UserDto> {
         return new UserResponse.AuditInfo(userId, fullName);
     }
 
-        // Maps a set of UserRoles to a set of AuditInfo objects with id and name.
-    default Set<UserResponse.AuditInfo> mapUserRolesToAuditInfo(Set<UserRole> userRoles) {
-        Set<UserResponse.AuditInfo> auditInfoSet = new HashSet<>();
+    /**
+     * Maps a set of UserRoles to a set of RoleInfo objects with role id and role name.
+     *
+     * @param userRoles the user roles
+     * @return Set of RoleInfo objects
+     */
+    default Set<UserResponse.RoleInfo> mapUserRolesToRoleInfo(Set<UserRole> userRoles) {
+        Set<UserResponse.RoleInfo> roleInfoSet = new HashSet<>();
         for (UserRole userRole : userRoles) {
             if (userRole.getRole() != null) {
-                auditInfoSet.add(new UserResponse.AuditInfo(userRole.getRole().getId(), userRole.getRole().getName()));
+                roleInfoSet.add(new UserResponse.RoleInfo(userRole.getRole().getId(), userRole.getRole().getName()));
             }
         }
-        return auditInfoSet;
+        return roleInfoSet;
     }
 
     /**

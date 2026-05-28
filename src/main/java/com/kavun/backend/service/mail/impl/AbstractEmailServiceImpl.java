@@ -129,6 +129,29 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
     sendHtmlEmail(prepareEmailRequest(emailRequest));
   }
 
+  @Override
+  public void sendOtpEmail(String email, String otpCode, String userName) {
+    Validate.notBlank(email, "Email cannot be blank");
+    Validate.notBlank(otpCode, "OTP code cannot be blank");
+
+    // Prepare context with OTP code
+    var context = new Context();
+    context.setVariable("otpCode", otpCode);
+    context.setVariable(UserConstants.USERNAME, StringUtils.defaultIfBlank(userName, "User"));
+    context.setVariable(EmailConstants.URLS, WebUtils.getDefaultEmailUrls());
+
+    // Build email request
+    var emailRequest = new HtmlEmailRequest();
+    emailRequest.setTo(email);
+    emailRequest.setSubject(EmailConstants.OTP_EMAIL_SUBJECT);
+    emailRequest.setTemplate(EmailConstants.OTP_TEMPLATE);
+    emailRequest.setContext(context);
+
+    // Send the email
+    sendHtmlEmail(emailRequest);
+    LOG.info("OTP email sent to: {}", email);
+  }
+
   /**
    * Prepares the html request object with the appropriate details given.
    *

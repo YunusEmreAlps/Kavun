@@ -52,26 +52,13 @@ public class UserSessionService extends
         this.deviceDetectionService = deviceDetectionService;
     }
 
-    /**
-     * Creates a new user session from HTTP request.
-     *
-     * @param userId User ID
-     * @param request HTTP request containing device information
-     * @return Created UserSession
-     */
+    // Creates a new user session from HTTP request.
     @Transactional
     public UserSession createSession(Long userId, HttpServletRequest request) {
         return createSession(userId, request, null);
     }
 
-    /**
-     * Creates a new user session with optional refresh token.
-     *
-     * @param userId User ID
-     * @param request HTTP request
-     * @param refreshTokenHash Hashed refresh token (optional)
-     * @return Created UserSession
-     */
+    // Creates a new user session with optional refresh token.
     @Transactional
     public UserSession createSession(Long userId, HttpServletRequest request, String refreshTokenHash) {
         String userAgent = request.getHeader(LoggingConstants.USER_AGENT_HEADER);
@@ -117,21 +104,13 @@ public class UserSessionService extends
         return savedSession;
     }
 
-    /**
-     * Updates the last activity timestamp for a session.
-     *
-     * @param sessionId Session ID
-     */
+    // Updates the last activity timestamp for a session.
     @Transactional
     public void updateActivity(Long sessionId) {
         repository.updateLastActivity(sessionId, LocalDateTime.now());
     }
 
-    /**
-     * Logs out a specific session (manual logout).
-     *
-     * @param sessionId Session ID
-     */
+    // Logs out a specific session (manual logout).
     @Transactional
     public void logout(Long sessionId) {
         repository.findById(sessionId).ifPresent(session -> {
@@ -141,12 +120,7 @@ public class UserSessionService extends
         });
     }
 
-    /**
-     * Logs out a user from a specific device.
-     *
-     * @param userId User ID
-     * @param deviceId Device ID
-     */
+    // Logs out a user from a specific device.
     @Transactional
     public void logoutFromDevice(Long userId, String deviceId) {
         repository.findByUserIdAndDeviceIdAndIsActiveTrue(userId, deviceId)
@@ -157,12 +131,7 @@ public class UserSessionService extends
                 });
     }
 
-    /**
-     * Force logout from all devices (e.g., password change, security event).
-     *
-     * @param userId User ID
-     * @return Number of sessions terminated
-     */
+    // Force logout from all devices (e.g., password change, security event).
     @Transactional
     public int logoutFromAllDevices(Long userId) {
         int count = repository.deactivateAllUserSessions(userId, LocalDateTime.now());
@@ -170,52 +139,37 @@ public class UserSessionService extends
         return count;
     }
 
-    /**
-     * Gets all active sessions for a user.
-     *
-     * @param userId User ID
-     * @return List of active sessions
-     */
+    // Gets all active sessions for a user.
     @Transactional(readOnly = true)
     public List<UserSession> getActiveSessions(Long userId) {
         return repository.findByUserIdAndIsActiveTrueOrderByLoginAtDesc(userId);
     }
 
-    /**
-     * Gets all sessions (active and inactive) for a user.
-     *
-     * @param userId User ID
-     * @return List of all sessions
-     */
+    // Gets all sessions (active and inactive) for a user.
     @Transactional(readOnly = true)
     public List<UserSession> getAllSessions(Long userId) {
         return repository.findByUserIdOrderByLoginAtDesc(userId);
     }
 
-    /**
-     * Finds session by refresh token hash.
-     *
-     * @param refreshTokenHash Hashed refresh token
-     * @return Optional UserSession
-     */
+    // Monthly total session duration analytics for all users.
+    @Transactional(readOnly = true)
+    public List<Object[]> getMonthlySessionDurationTrends(Integer year) {
+        year = (year == null) ? LocalDateTime.now().getYear() : year;
+        return repository.countMonthlySessionDurations(year);
+    }
+
+    // Finds session by refresh token hash.
     @Transactional(readOnly = true)
     public Optional<UserSession> findByRefreshToken(String refreshTokenHash) {
         return repository.findByRefreshTokenHashAndIsActiveTrue(refreshTokenHash);
     }
 
-    /**
-     * Checks if a session is expired.
-     *
-     * @param session UserSession
-     * @return true if expired
-     */
+    // Checks if a session is expired.
     public boolean isExpired(UserSession session) {
         return session.isExpired(sessionTimeoutMinutes);
     }
 
-    /**
-     * Extracts IP address from HTTP request.
-     */
+    // Extracts IP address from HTTP request.
     private String extractIpAddress(HttpServletRequest request) {
         String[] headerNames = {
                 "X-Forwarded-For",
@@ -246,6 +200,7 @@ public class UserSessionService extends
         return request.getRemoteAddr();
     }
 
+    // Search sessions based on dynamic criteria.
     public Specification<UserSession> search(Map<String, Object> paramaterMap) {
         return specification.search(paramaterMap);
     }

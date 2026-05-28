@@ -50,7 +50,7 @@ public class PageRestApi {
 
         Specification<WebPage> spec = filters != null && !filters.isEmpty()
             ? pageService.search(filters)
-            : Specification.where(null);
+            : null;
 
         Page<PageDto> pages = pageService.findAll(spec, pageable);
         return ResponseEntity.ok(pages);
@@ -69,7 +69,7 @@ public class PageRestApi {
 
         Specification<WebPage> spec = filters != null && !filters.isEmpty()
             ? pageService.search(filters)
-            : Specification.where(null);
+            : null;
 
         List<PageDto> pages = pageService.findAll(spec);
         return ResponseEntity.ok(pages);
@@ -208,7 +208,7 @@ public class PageRestApi {
 
         Specification<WebPage> spec = filters != null && !filters.isEmpty()
             ? pageService.search(filters)
-            : Specification.where(null);
+            : null;
 
         long count = pageService.count(spec);
         return ResponseEntity.ok(count);

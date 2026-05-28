@@ -52,7 +52,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -109,7 +109,7 @@ public class AuthRestApi {
   private final UserDetailsService userDetailsService;
   private final UserSessionService userSessionService;
   private final UserDeviceService userDeviceService;
-  private final DaoAuthenticationProvider authenticationManager;
+  private final AuthenticationManager authenticationManager;
 
   private final CaptchaRepository captchaRepository;
 

@@ -35,13 +35,13 @@ public final class EmailConstants {
   public static final String CONFIRMATION_SUCCESS_EMAIL_SUBJECT = "Thank you for choosing us";
   public static final String PASSWORD_RESET_EMAIL_SUBJECT = "How to Reset Your Password";
   public static final String PASSWORD_RESET_SUCCESS_SUBJECT = "Password successfully updated.";
+  public static final String OTP_EMAIL_SUBJECT = "Your One-Time Password (OTP)";
   public static final String SIMULATING_SENDING_AN_EMAIL = "Simulating sending an email...";
 
   // API Paths
   public static final String HOME_LINK = "home";
   public static final String OTP_TEMPLATE = "email/otp";
   public static final String ABOUT_US_LINK = "aboutUsLink";
-  public static final String CONTACT_US_LINK = "contact-us";
   public static final String COPY_ABOUT_US = "/copy/about-us";
 
   // Templates

@@ -69,7 +69,7 @@ public class RoleRestApi {
 
         Specification<Role> spec = filters != null && !filters.isEmpty()
             ? roleService.search(filters)
-            : Specification.where(null);
+            : null;
 
         Page<RoleDto> roles = roleService.findAll(spec, pageable);
         return ResponseEntity.ok(roles);
@@ -88,7 +88,7 @@ public class RoleRestApi {
 
         Specification<Role> spec = filters != null && !filters.isEmpty()
             ? roleService.search(filters)
-            : Specification.where(null);
+            : null;
 
         List<RoleDto> roles = roleService.findAll(spec);
         return ResponseEntity.ok(roles);
@@ -226,7 +226,7 @@ public class RoleRestApi {
 
         Specification<Role> spec = filters != null && !filters.isEmpty()
             ? roleService.search(filters)
-            : Specification.where(null);
+            : null;
 
         long count = roleService.count(spec);
         return ResponseEntity.ok(count);

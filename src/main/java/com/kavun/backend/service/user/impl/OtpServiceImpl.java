@@ -2,9 +2,13 @@ package com.kavun.backend.service.user.impl;
 
 import com.kavun.backend.persistent.domain.user.Otp;
 import com.kavun.backend.persistent.repository.OtpRepository;
+import com.kavun.backend.service.mail.EmailService;
+import com.kavun.backend.service.sms.SmsService;
 import com.kavun.backend.service.user.OtpService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.SecurityConstants;
+import com.kavun.exception.user.EmailServiceException;
+import com.kavun.exception.user.SmsServiceException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -35,6 +39,8 @@ public class OtpServiceImpl implements OtpService {
 
     private final transient Environment environment;
     private final transient OtpRepository otpRepository;
+    private final transient EmailService emailService;
+    private final transient SmsService smsService;
 
     /**
      * Generates the otp code for the user with the given email or sms.
@@ -113,18 +119,18 @@ public class OtpServiceImpl implements OtpService {
         // Skip SMS sending in dev/test environments
         if (!isDevOrTestEnvironment()) {
             try {
-                // NOTE: SMS Service integration required
-                // Integrate with SMS provider (e.g., Twilio, AWS SNS) to send OTP
-                // Example: smsService.sendOtp(phoneNumber, otp.getCode());
-                LOG.warn("SMS Service not implemented yet. OTP code: {}", otp.getCode());
+                // Send OTP via SMS Service
+                smsService.sendOtpSms(phoneNumber, otp.getCode());
+                LOG.info("OTP SMS sent successfully to: {}", phoneNumber);
 
             } catch (Exception e) {
                 LOG.error("Failed to send OTP SMS: {}", e.getMessage(), e);
                 otp.setActive(false);
                 otpRepository.save(otp);
-                throw new RuntimeException("Failed to send OTP SMS: " + e.getMessage(), e);
+                throw new SmsServiceException("Failed to send OTP SMS: " + e.getMessage(), e);
             }
         } else {
+            LOG.info("Skipping SMS sending in development/test environment. OTP code: {}", otp.getCode());
             LOG.info("Skipping SMS sending in development/test environment");
         }
 
@@ -146,19 +152,18 @@ public class OtpServiceImpl implements OtpService {
 
         if(!isDevOrTestEnvironment()) {
             try {
-                // NOTE: Email Service integration required
-                // Integrate with email service (e.g., JavaMailSender, SendGrid) to send OTP email
-                // Example: emailService.sendOtpEmail(email, otp.getCode());
-                LOG.warn("Email Service not implemented yet. OTP code: {}", otp.getCode());
+                // Send OTP via Email Service
+                emailService.sendOtpEmail(email, otp.getCode(), null);
+                LOG.info("OTP email sent successfully to: {}", email);
 
             } catch (Exception e) {
                 LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);
                 otp.setActive(false);
                 otpRepository.save(otp);
-                throw new RuntimeException("Failed to send OTP Email: " + e.getMessage(), e);
+                throw new EmailServiceException("Failed to send OTP Email: " + e.getMessage(), e);
             }
         } else {
-            LOG.info("Skipping Email sending in development/test environment");
+            LOG.info("Skipping Email sending in development/test environment. OTP code: {}", otp.getCode());
         }
 
         Map<String, Object> params = new HashMap<>();

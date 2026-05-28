@@ -48,9 +48,9 @@ public class PermissionAspect {
     private boolean adminBypassEnabled;
 
     public PermissionAspect(
-        PermissionCheckService permissionCheckService,
-        PageActionRepository pageActionRepository,
-        PageRepository pageRepository) {
+            PermissionCheckService permissionCheckService,
+            PageActionRepository pageActionRepository,
+            PageRepository pageRepository) {
         this.permissionCheckService = permissionCheckService;
         this.pageActionRepository = pageActionRepository;
         this.pageRepository = pageRepository;
@@ -65,8 +65,12 @@ public class PermissionAspect {
                 throw new AccessDeniedException("User not authenticated");
             }
 
+            LOG.info("User: {}, adminBypassEnabled: {}", userDto.getUsername(), adminBypassEnabled);
+
             // Check if user is admin and admin bypass is enabled (from properties)
-            if (adminBypassEnabled && isAdmin(userDto)) {
+            boolean userIsAdmin = isAdmin(userDto);
+            LOG.info("isAdmin() returned: {}", userIsAdmin);
+            if (adminBypassEnabled && userIsAdmin) {
                 LOG.info("Admin user {} bypassing permission check (adminBypassEnabled={})",
                         userDto.getUsername(), adminBypassEnabled);
                 return;
@@ -140,7 +144,12 @@ public class PermissionAspect {
             if (authentication != null && authentication.getAuthorities() != null) {
                 LOG.debug("Authorities: {}", authentication.getAuthorities());
                 boolean hasAdminRole = authentication.getAuthorities().stream()
-                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+                        .anyMatch(authority -> {
+                            String auth = authority.getAuthority();
+                            LOG.info(">>> Checking authority: '{}' == 'ROLE_ADMIN'? {}", auth,
+                                    "ROLE_ADMIN".equals(auth));
+                            return "ROLE_ADMIN".equals(auth);
+                        });
 
                 LOG.info("Admin check from authorities for user {}: {} (authorities={})",
                         userDto.getUsername(), hasAdminRole, authentication.getAuthorities());
@@ -166,21 +175,20 @@ public class PermissionAspect {
     }
 
     private String autoDetectPageAction(String pageCodeHeader, String pageUrlHeader, String requestUri,
-                                        String httpMethod, String actionOverride) {
+            String httpMethod, String actionOverride) {
         try {
             WebPage page = null;
 
             if (pageCodeHeader != null && !pageCodeHeader.trim().isEmpty()) {
                 page = pageRepository.findByCodeAndDeletedFalse(pageCodeHeader);
                 LOG.debug("Looking up page by code header: {} -> {}",
-                    pageCodeHeader, page != null ? "found" : "not found");
+                        pageCodeHeader, page != null ? "found" : "not found");
             }
-
 
             if (page == null && pageUrlHeader != null && !pageUrlHeader.trim().isEmpty()) {
                 page = pageRepository.findByUrlAndDeletedFalse(pageUrlHeader);
                 LOG.debug("Looking up page by URL header: {} -> {}", pageUrlHeader,
-                    page != null ? page.getCode() : "not found");
+                        page != null ? page.getCode() : "not found");
             }
 
             if (page == null) {
@@ -215,7 +223,7 @@ public class PermissionAspect {
      * Normalize request path for database URL matching.
      * Removes /api/v1 prefix and query parameters.
      * Example: /api/v1/users/list?page=1 -> /users/list
-     *          /api/v1/admin -> /admin
+     * /api/v1/admin -> /admin
      */
     private String normalizeRequestPath(String requestUri) {
         try {

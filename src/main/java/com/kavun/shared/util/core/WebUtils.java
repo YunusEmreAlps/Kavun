@@ -1,6 +1,5 @@
 package com.kavun.shared.util.core;
 
-import com.kavun.constant.ContactConstants;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.HomeConstants;
 import com.kavun.constant.email.EmailConstants;
@@ -58,7 +57,6 @@ public final class WebUtils {
   public static Map<String, String> getDefaultEmailUrls() {
     Map<String, String> links = new ConcurrentHashMap<>();
     links.put(EmailConstants.HOME_LINK, getGenericUri(HomeConstants.INDEX_URL_MAPPING));
-    links.put(EmailConstants.CONTACT_US_LINK, getGenericUri(ContactConstants.CONTACT_URL_MAPPING));
 
     return links;
   }

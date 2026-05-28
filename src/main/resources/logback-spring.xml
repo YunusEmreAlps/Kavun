@@ -12,10 +12,10 @@
 
 
 	<!-- System logs (simpler) -->
-	<property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | %X{correlationId:-} | %-40.40logger{39} | %.-500msg%n" />
+	<property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %-5level | [%15.15thread] | %X{correlationId:-} | %-40.40logger{39} | %.-500msg%n" />
 	
 	<!-- Audit/Application logs -->
-	<property name="AUDIT_LOG_PATTERN" value="${APP_NAME}-audit | %d{yyyy-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | [%15.15thread] | correlationId=%X{correlationId:-N/A} | %-40.40logger{39} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | duration=%X{duration:-0}ms | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %.-500replace(%msg){'[\r\n]+', ' '}%n" />
+	<property name="AUDIT_LOG_PATTERN" value="${APP_NAME}-audit | %d{yyyy-MM-dd HH:mm:ss.SSS} | %-5level | [%15.15thread] | correlationId=%X{correlationId:-N/A} | %-40.40logger{39} | hostname=%X{hostname:-N/A} | ip=%X{ip:-N/A} | userIp=%X{userIp:-N/A} | user=%X{user:-N/A} | url=%X{url:-N/A} | action=%X{action:-N/A} | duration=%X{duration:-0}ms | queryParams=%X{queryParams:-N/A} | body=%replace(%X{body:-N/A}){'[\r\n]+', ' '} | %.-500replace(%msg){'[\r\n]+', ' '}%n" />
 	
 	<!-- Web access logs (Apache Combined Log Format with correlation ID and duration) -->
 	<property name="ACCESS_LOG_PATTERN" value="${APP_NAME}-access | %X{correlationId:-} | %X{ip:-0.0.0.0} - %X{user:-} [%d{dd/MMM/yyyy:HH:mm:ss Z}] &quot;%X{action:-GET} %X{url:-/} %X{protocol:-HTTP/1.1}&quot; %X{status:-200} %X{responseSize:-0} %X{duration:-0}ms &quot;%X{referer:--}&quot; &quot;%X{userAgent:--}&quot;%n" />

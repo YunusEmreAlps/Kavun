@@ -49,6 +49,11 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     return (int) repository.count();
   }
 
+  // Custom method to find role by name
+  public Role findRoleById(final Long id) {
+    return repository.findById(id).orElse(null);
+  }
+
   public Role findByName(final String name) {
     return repository.findByName(name).orElse(null);
   }

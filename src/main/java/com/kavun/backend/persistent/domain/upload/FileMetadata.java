@@ -58,8 +58,7 @@ public class FileMetadata extends BaseEntity<Long> implements Serializable {
     @Column(name = "entity_type", nullable = false, length = 50)
     private EntityType entityType;
 
-    @NotNull(message = "Entity ID is required")
-    @Column(name = "entity_id", nullable = false)
+    @Column(name = "entity_id", nullable = true)
     private UUID entityId;
 
     @NotBlank(message = "Bucket name is required")

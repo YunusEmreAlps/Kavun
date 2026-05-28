@@ -12,13 +12,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * This configuration handles api web requests with stateless session.
@@ -38,7 +37,7 @@ public class ApiWebSecurityConfig {
 
   private final JwtAuthTokenFilter jwtAuthTokenFilter;
   private final JwtAuthenticationEntryPoint unauthorizedHandler;
-  private final DaoAuthenticationProvider authenticationManager;
+  private final UserDetailsService userDetailsService;
 
   /**
    * Configure the {@link HttpSecurity}. Typically, subclasses should not call supper as it may
@@ -69,14 +68,12 @@ public class ApiWebSecurityConfig {
                   .requestMatchers(SecurityConstants.ERROR_URL_MAPPING)
                   .permitAll()
                   .requestMatchers(
-                      new AntPathRequestMatcher(
-                          AdminConstants.API_V1_USERS_ROOT_URL, HttpMethod.POST.name()))
+                          AdminConstants.API_V1_USERS_ROOT_URL, HttpMethod.POST.name())
                   .permitAll();
 
               // Allow access for users to authenticate after registration and refresh tokens
               requests
-                  .requestMatchers(
-                      new AntPathRequestMatcher(SecurityConstants.API_V1_AUTH_URL_MAPPING))
+                  .requestMatchers(SecurityConstants.API_V1_AUTH_URL_MAPPING)
                   .permitAll();
               requests.anyRequest().authenticated();
             })
@@ -86,7 +83,7 @@ public class ApiWebSecurityConfig {
         // then the browser can't automatically authenticate the requests,
         // and CSRF isn't possible.
         .csrf(AbstractHttpConfigurer::disable)
-        .authenticationProvider(authenticationManager)
+        .userDetailsService(userDetailsService)
         .addFilterBefore(jwtAuthTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();

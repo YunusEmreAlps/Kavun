@@ -27,6 +27,8 @@ public class UserResponse implements Serializable {
   private String lastName;
   private String email;
   private String phone;
+  private String title;
+  private String address;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
   private AuditInfo createdBy;
@@ -34,7 +36,7 @@ public class UserResponse implements Serializable {
   private AuditInfo deletedBy;
   private boolean deleted;
   private boolean enabled;
-  private Set<AuditInfo> roles;
+  private Set<RoleInfo> roles;
 
   /**
    * Inner class to represent audit information with id and name.
@@ -43,6 +45,20 @@ public class UserResponse implements Serializable {
   @NoArgsConstructor
   @AllArgsConstructor
   public static class AuditInfo implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    private Long id;
+    private String name;
+  }
+
+    /**
+   * Inner class to represent audit information with id and name.
+   */
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class RoleInfo implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 

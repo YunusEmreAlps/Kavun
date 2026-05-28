@@ -12,6 +12,6 @@ public class PageRequest extends BaseRequest {
     private String url;
     private String description;
     private String icon;
-    private Integer displayOrder;
+    private Integer orderIndex;
     private Long parentId;
 }

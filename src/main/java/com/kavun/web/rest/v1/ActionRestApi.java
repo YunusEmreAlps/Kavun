@@ -50,7 +50,7 @@ public class ActionRestApi {
 
         Specification<Action> spec = filters != null && !filters.isEmpty()
             ? actionService.search(filters)
-            : Specification.where(null);
+            : null;
 
         Page<ActionDto> actions = actionService.findAll(spec, pageable);
         return ResponseEntity.ok(actions);
@@ -69,7 +69,7 @@ public class ActionRestApi {
 
         Specification<Action> spec = filters != null && !filters.isEmpty()
             ? actionService.search(filters)
-            : Specification.where(null);
+            : null;
 
         List<ActionDto> actions = actionService.findAll(spec);
         return ResponseEntity.ok(actions);
@@ -208,7 +208,7 @@ public class ActionRestApi {
 
         Specification<Action> spec = filters != null && !filters.isEmpty()
             ? actionService.search(filters)
-            : Specification.where(null);
+            : null;
 
         long count = actionService.count(spec);
         return ResponseEntity.ok(count);

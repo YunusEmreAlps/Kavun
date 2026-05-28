@@ -2,13 +2,8 @@ package com.kavun.constant;
 
 import com.kavun.constant.user.PasswordConstants;
 import com.kavun.constant.user.SignUpConstants;
-import com.kavun.shared.util.core.ValidationUtils;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
 
 /**
  * This class holds all security-related URL mappings constants.
@@ -75,13 +70,13 @@ public final class SecurityConstants {
     "/console/**",
     "/actuator/health/**",
     "/actuator/prometheus",
+    "/actuator/metrics",
     "/v3/api-docs/**",
     "/swagger-ui/**",
     "/swagger-ui.html",
     ROOT_PATH,
     String.join("/", SecurityConstants.LOGIN, "**"),
     String.join("/", SignUpConstants.SIGN_UP_MAPPING, "**"),
-    String.join("/", ContactConstants.CONTACT_URL_MAPPING, "**"),
     String.join("/", PasswordConstants.PASSWORD_RESET_ROOT_MAPPING, "**"),
   };
 
@@ -94,13 +89,7 @@ public final class SecurityConstants {
    *
    * @return public matchers.
    */
-  public static Collection<String> getPublicMatchers() {
-    return Collections.unmodifiableCollection(Arrays.asList(PUBLIC_MATCHERS));
-  }
-
-  public static MvcRequestMatcher[] getPublicMatchers(final MvcRequestMatcher.Builder mvc) {
-    ValidationUtils.validateInputs(mvc);
-
-    return getPublicMatchers().stream().map(mvc::pattern).toArray(MvcRequestMatcher[]::new);
+  public static String[] getPublicMatchers() {
+    return PUBLIC_MATCHERS;
   }
 }

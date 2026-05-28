@@ -136,16 +136,14 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
     @Transactional(readOnly = true)
     public Page<DTO> findAll(Specification<ENTITY> specification, Pageable pageable) {
         LOG.debug("Finding entities with specification and pagination: {}", pageable);
-        Specification<ENTITY> spec = specification != null ? specification : Specification.where(null);
-        return repository.findAll(spec, pageable).map(mapper::toDto);
+        return repository.findAll(specification, pageable).map(mapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DTO> findAll(Specification<ENTITY> specification) {
         LOG.debug("Finding all entities with specification");
-        Specification<ENTITY> spec = specification != null ? specification : Specification.where(null);
-        return repository.findAll(spec).stream()
+        return repository.findAll(specification).stream()
                 .map(mapper::toDto)
                 .toList();
     }
@@ -161,8 +159,7 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
     @Transactional(readOnly = true)
     public long count(Specification<ENTITY> specification) {
         LOG.debug("Counting entities with specification");
-        Specification<ENTITY> spec = specification != null ? specification : Specification.where(null);
-        return repository.count(spec);
+        return repository.count(specification);
     }
 
     // Protected helper methods

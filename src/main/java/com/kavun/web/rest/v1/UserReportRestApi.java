@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(BaseConstants.API_V1_USERS_ROOT_URL + "/reports")
-@Tag(name = "15. User Reports", description = "APIs for user session reporting and analytics")
+@Tag(name = "09. User Reports", description = "APIs for user session reporting and analytics")
 public class UserReportRestApi {
 
     private final UserDeviceService userDeviceService;

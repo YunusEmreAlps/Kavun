@@ -77,7 +77,6 @@ public final class SecurityConstants {
     ROOT_PATH,
     String.join("/", SecurityConstants.LOGIN, "**"),
     String.join("/", SignUpConstants.SIGN_UP_MAPPING, "**"),
-    String.join("/", ContactConstants.CONTACT_URL_MAPPING, "**"),
     String.join("/", PasswordConstants.PASSWORD_RESET_ROOT_MAPPING, "**"),
   };
 

@@ -98,6 +98,16 @@ public interface EmailService {
   void sendPasswordResetConfirmationEmail(final UserDto userDto);
 
   /**
+   * Sends OTP (One-Time Password) email to user.
+   *
+   * @param email the user's email address
+   * @param otpCode the OTP code to send
+   * @param userName the user's name (optional, can be null)
+   * @throws InvalidServiceRequestException if the email request is invalid
+   */
+  void sendOtpEmail(String email, String otpCode, String userName);
+
+  /**
    * Scheduled task to log email service metrics.
    * This method is called periodically to report email service statistics.
    */

@@ -9,6 +9,12 @@ package com.kavun.constant;
  */
 public class AuthConstants {
 
+  // Captcha constants
+  public static final int CAPTCHA_CODE_LENGTH = 5;
+  public static final int CAPTCHA_EXPIRATION_MINUTES = 5;
+  public static final int CAPTCHA_RATE_LIMIT_PER_MINUTE = 5;
+  public static final int LOGIN_RATE_LIMIT_PER_MINUTE = 5;
+
   // One Time Password (OTP) constants
   public static final String BLANK_OTP_DELIVERY_METHOD = "OTP delivery method cannot be left blank";
   public static final String INVALID_OTP_DELIVERY_METHOD = "Invalid OTP delivery method";

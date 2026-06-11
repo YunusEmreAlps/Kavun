@@ -5,12 +5,15 @@ import com.kavun.backend.persistent.repository.ApplicationLogRepository;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.SecurityUtils;
+
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -21,13 +24,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
-
+import java.util.stream.Collectors;
+import java.lang.reflect.Field;
 import static com.kavun.constant.LoggingConstants.*;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Transient;
 
 /**
  * Production-grade HTTP request/response logging filter.
- * Captures request metadata, body content, and access logs for SIEM integration.
+ * Captures request metadata, body content, and access logs for SIEM
+ * integration.
  *
  * @author Yunus Emre Alpu
  * @version 2.0
@@ -38,6 +49,7 @@ import static com.kavun.constant.LoggingConstants.*;
 @RequiredArgsConstructor
 public class LoggingFilter extends OncePerRequestFilter {
 
+    private final EntityManager entityManager;
     private final ApplicationLogRepository applicationLogRepository;
     private final DeviceDetectionService deviceDetectionService;
 
@@ -90,7 +102,8 @@ public class LoggingFilter extends OncePerRequestFilter {
     /**
      * Populates MDC with request context for structured logging.
      */
-    private void populateMdc(HttpServletRequest request, CachedBodyHttpServletRequest cachedRequest, String correlationId) {
+    private void populateMdc(HttpServletRequest request, CachedBodyHttpServletRequest cachedRequest,
+            String correlationId) {
         MDC.put(MDC_CORRELATION_ID, correlationId);
         MDC.put(MDC_HOSTNAME, CACHED_HOSTNAME);
         MDC.put(MDC_IP, CACHED_IP);
@@ -111,8 +124,8 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Logs access information and persists to database.
      */
     private void logAccessAndPersist(HttpServletRequest request, HttpServletResponse response,
-                                      CachedBodyHttpServletRequest cachedRequest,
-                                      String correlationId, long duration) {
+            CachedBodyHttpServletRequest cachedRequest,
+            String correlationId, long duration) {
         String path = request.getRequestURI();
         int status = response.getStatus();
 
@@ -142,8 +155,8 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Persists application log to database asynchronously.
      */
     private void persistApplicationLog(HttpServletRequest request, HttpServletResponse response,
-                                        CachedBodyHttpServletRequest cachedRequest,
-                                        String correlationId, long duration) {
+            CachedBodyHttpServletRequest cachedRequest,
+            String correlationId, long duration) {
         try {
             String requestBody = (cachedRequest != null && shouldLogBody(request))
                     ? sanitizeBody(cachedRequest.getBody(), request.getRequestURI())
@@ -178,12 +191,91 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .operatingSystem(deviceInfo.getOperatingSystem())
                     .browser(deviceInfo.getBrowser())
                     .userAgent(userAgent)
+                    .stateBefore(MDC.get("stateBefore"))
+                    .stateAfter(MDC.get("stateAfter"))
+                    .stateDiff(MDC.get("stateDiff"))
                     .build();
 
             saveLogAsync(applicationLog);
         } catch (Exception e) {
             LOG.warn("Failed to create application log: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Attempts to extract an entity ID from method arguments for logging purposes.
+     */
+    public Object extractEntityId(Object[] args) {
+        for (Object arg : args) {
+            if (arg instanceof Long || arg instanceof Integer || arg instanceof java.util.UUID) {
+                return arg;
+            }
+            // Request DTO içindeki id'yi bul
+            try {
+                var field = arg.getClass().getDeclaredField("id");
+                field.setAccessible(true);
+                Object val = field.get(arg);
+                if (val instanceof Long || val instanceof Integer || val instanceof java.util.UUID) {
+                    return val;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    public Map<String, Object> snapshotEntity(Class<?> entityClass, Object entityId) {
+        try {
+            if (entityClass == null) {
+                LOG.warn("Entity class is null, cannot snapshot");
+                return Map.of();
+            }
+
+            Object entity = entityManager.find(entityClass, entityId);
+            if (entity == null) {
+                LOG.warn("Entity not found for class {} with ID: {}", entityClass.getSimpleName(), entityId);
+                return Map.of();
+            }
+
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            for (Field field : entity.getClass().getDeclaredFields()) {
+                if (field.isAnnotationPresent(Transient.class))
+                    continue;
+                if (field.isAnnotationPresent(OneToMany.class))
+                    continue;
+                if (field.isAnnotationPresent(ManyToMany.class))
+                    continue;
+                field.setAccessible(true);
+                Object value = field.get(entity);
+                if (value instanceof String && field.getName().toLowerCase().contains("password")) {
+                    value = "***MASKED***";
+                }
+                snapshot.put(field.getName(), value);
+            }
+            LOG.debug("Snapshot created for {} with {} fields", entityClass.getSimpleName(), snapshot.size());
+            return snapshot;
+        } catch (Exception e) {
+            LOG.error("Snapshot alınamadı: {}", e.getMessage(), e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * Builds a diff string showing changed fields between two snapshots.
+     * (value=old->Newvalue=new)
+     */
+    public String buildDiff(Map<String, Object> before, Map<String, Object> after) {
+        return after.entrySet().stream()
+                .filter(e -> {
+                    Object oldVal = before.get(e.getKey());
+                    return !Objects.equals(oldVal, e.getValue());
+                })
+                .map(e -> String.format("%s=%s->New%s=%s",
+                        capitalize(e.getKey()),
+                        before.get(e.getKey()),
+                        capitalize(e.getKey()),
+                        e.getValue()))
+                .collect(Collectors.joining(", "));
     }
 
     /**
@@ -201,8 +293,10 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Determines log level based on HTTP status code.
      */
     private String determineLogLevel(int status) {
-        if (status >= 500) return LOG_LEVEL_ERROR;
-        if (status >= 400) return LOG_LEVEL_WARN;
+        if (status >= 500)
+            return LOG_LEVEL_ERROR;
+        if (status >= 400)
+            return LOG_LEVEL_WARN;
         return LOG_LEVEL_INFO;
     }
 
@@ -229,7 +323,8 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Checks if the path contains sensitive data.
      */
     private boolean isSensitivePath(String path) {
-        if (path == null) return false;
+        if (path == null)
+            return false;
         String lowerPath = path.toLowerCase();
         return SENSITIVE_PATHS.stream().anyMatch(lowerPath::contains);
     }
@@ -345,5 +440,11 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     private String nullSafe(String value, String defaultValue) {
         return value != null ? value : defaultValue;
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty())
+            return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }

@@ -1,13 +1,20 @@
 package com.kavun.annotation.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.LoggingFilter;
 import com.kavun.shared.util.MaskPasswordUtils;
+
 import java.util.Arrays;
+import java.util.Map;
+
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.MDC;
 import org.slf4j.event.Level;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,6 +34,12 @@ public class MethodLogger {
   private static final long SLOW_THRESHOLD_MS = 3000L;
   private static final String ENTRY_FORMAT = "=> Starting - {} args: {}";
   private static final String EXIT_FORMAT = "<= {} : {} - Finished, duration: {} ms";
+
+  @Autowired
+  private LoggingFilter loggingFilter;
+
+  @Autowired
+  private ObjectMapper objectMapper;
 
   /**
    * Intercepts and logs methods annotated with {@link Loggable}.
@@ -49,7 +62,28 @@ public class MethodLogger {
     final long start = System.nanoTime();
 
     try {
+      Object entityId = loggingFilter.extractEntityId(joinPoint.getArgs());
+
+      Map<String, Object> before = (entityId != null && loggable.entityClass() != Object.class)
+          ? loggingFilter.snapshotEntity(loggable.entityClass(), entityId)
+          : Map.of();
+
       Object response = joinPoint.proceed();
+
+      Map<String, Object> after = (entityId != null && loggable.entityClass() != Object.class)
+          ? loggingFilter.snapshotEntity(loggable.entityClass(), entityId)
+          : Map.of();
+
+      String diff = (!before.isEmpty() && !after.isEmpty())
+          ? loggingFilter.buildDiff(before, after)
+          : "";
+      if (!diff.isEmpty() && loggable.entityClass() != Object.class) {
+        LOG.info("Entity changes: {}", diff);
+          MDC.put("stateBefore", objectMapper.writeValueAsString(before));
+          MDC.put("stateAfter",  objectMapper.writeValueAsString(after));
+          MDC.put("stateDiff",   diff);
+      }
+
       final long durationMs = (System.nanoTime() - start) / 1_000_000;
 
       // Exit log

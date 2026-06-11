@@ -73,6 +73,7 @@ public class UserRestApi {
    * @param pageable     pagination parameters
    * @return page of matching users
    */
+  @Loggable
   @PostMapping("/search")
   @Operation(summary = "Search users", description = "Search users with dynamic criteria")
   public ResponseEntity<Page<UserResponse>> search(
@@ -201,7 +202,7 @@ public class UserRestApi {
    * @param request the user details for updating
    * @return the updated user details
    */
-  @Loggable
+  @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   @RequirePermission(autoDetect = true)
   public ApiResponse<?> updateUser(
@@ -252,7 +253,7 @@ public class UserRestApi {
    * @param id the user Long
    * @return if the operation is success
    */
-  @Loggable
+  @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = UserConstants.ENABLE_USER_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> enableUser(@PathVariable Long id) {
     var userDto = userService.enableUser(id);
@@ -266,7 +267,7 @@ public class UserRestApi {
    * @param id the user Long
    * @return if the operation is success
    */
-  @Loggable
+  @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = UserConstants.DISABLE_USER_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> disableUser(@PathVariable Long id) {
     var userDto = userService.disableUser(id);

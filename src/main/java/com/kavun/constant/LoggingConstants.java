@@ -54,9 +54,7 @@ public final class LoggingConstants {
 
 
     public static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
-    public static final Set<String> SENSITIVE_PATHS = Set.of(
-            "/login", "/auth", "/password", "/token", "/refresh", "/register", "/signup"
-    );
+    public static final Set<String> SENSITIVE_PATHS = Set.of("/login", "/reset-password");
 
     public static final String LOG_LEVEL_ERROR = "ERROR";
     public static final String LOG_LEVEL_WARN = "WARN";

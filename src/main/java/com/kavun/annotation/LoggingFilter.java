@@ -179,7 +179,8 @@ public class LoggingFilter extends OncePerRequestFilter {
                     .ip(CACHED_IP)
                     .logType(LOG_TYPE_HTTP_REQUEST)
                     .userIpAddress(extractUserIp(request))
-                    .username(extractUserPublicId())
+                    .username(extractUsername())
+                    .userId(extractUserPublicId())
                     .requestUrl(request.getRequestURL().toString())
                     .action(request.getMethod())
                     .requestParams(request.getQueryString())
@@ -337,9 +338,9 @@ public class LoggingFilter extends OncePerRequestFilter {
             return NOT_AVAILABLE;
         }
 
-        if (isSensitivePath(path)) {
+        /*if (isSensitivePath(path)) {
             return PROTECTED_DATA;
-        }
+        }*/
 
         // Mask passwords and sensitive data
         Object masked = MaskPasswordUtils.maskPasswordJson(body);

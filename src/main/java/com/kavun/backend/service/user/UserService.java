@@ -74,8 +74,8 @@ public class UserService
     this.entityManager = entityManager;
   }
 
-  public Specification<User> search(Map<String, Object> paramaterMap) {
-    return specification.search(paramaterMap);
+  public Specification<User> search(Map<String, Object> parameterMap) {
+    return specification.search(parameterMap);
   }
 
   public Integer count() {
@@ -144,11 +144,6 @@ public class UserService
   public Page<UserResponse> findAll(Pageable pageable) {
     Page<User> usersPage = repository.findAll(pageable);
     return usersPage.map(mapper::toUserResponse);
-  }
-
-  public Page<UserDto> findAll(Specification<User> spec, Pageable pageable) {
-    return repository.findAll(spec, pageable)
-        .map(mapper::toDto);
   }
 
   /**
@@ -376,12 +371,11 @@ public class UserService
     }
 
     var authenticatedUser = SecurityUtils.getAuthenticatedUserDetails();
+    storedUser.setDeleted(true);
+    storedUser.setDeletedAt(LocalDateTime.now(clock));
     if (authenticatedUser != null) {
       storedUser.setDeletedBy(authenticatedUser.getId());
     }
-    storedUser.setDeleted(true);
-    storedUser.setDeletedAt(LocalDateTime.now(clock));
-    storedUser.setDeletedBy(SecurityUtils.getAuthenticatedUserDetails().getId());
     repository.saveAndFlush(storedUser);
 
     LOG.info("Soft deleted user with id {}", id);
@@ -537,21 +531,18 @@ public class UserService
     entityManager.flush();
 
     // Add new roles
-    int addedCount = 0;
     if (roleRequests != null && !roleRequests.isEmpty()) {
       for (UserRoleRequest roleRequest : roleRequests) {
-        Role role = roleService.findRoleById(roleRequest.getRoleId());
+        Role role = roleService.findRoleEntityById(roleRequest.getRoleId());
         if (role == null) {
-          LOG.warn("Role not found with id: {}", roleRequest.getRoleId());
-          continue;
+          throw new IllegalArgumentException("Role not found with id: " + roleRequest.getRoleId());
         }
         user.addUserRole(role);
-        addedCount++;
       }
     }
 
     repository.save(user);
-    LOG.info("Updated roles for user {} - deleted: {}, added: {}", userId, deletedCount, addedCount);
+    LOG.info("Updated roles for user {} - deleted: {}, added: {}", userId, deletedCount, roleRequests == null ? 0 : roleRequests.size());
   }
 
   // Generates a secure temporary password.

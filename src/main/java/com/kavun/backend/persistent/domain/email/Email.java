@@ -28,26 +28,26 @@ import lombok.*;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Email extends BaseEntity<Long> implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1L;
+  @Serial
+  private static final long serialVersionUID = 1L;
 
-    @Column
-    @Size(max = com.kavun.constant.email.EmailConstants.TITLE_MAX_SIZE, message = EmailConstants.TITLE_SIZE)
-    private String title;
+  @Column
+  @Size(max = EmailConstants.TITLE_MAX_SIZE, message = EmailConstants.TITLE_SIZE)
+  private String title;
 
-    @Column
-    @Size(max = EmailConstants.MAIL_MAX_SIZE, message = EmailConstants.MAIL_SIZE)
-    private String mail;
+  @Column
+  @Size(max = EmailConstants.MAIL_MAX_SIZE, message = EmailConstants.MAIL_SIZE)
+  private String mail;
 
-    @Column(columnDefinition = "TEXT")
-    private String message;
+  @Column(columnDefinition = "TEXT")
+  private String message;
 
-    @Column(columnDefinition = "TEXT")
-    private String result;
+  @Column(columnDefinition = "TEXT")
+  private String result;
 
-    @Column(nullable = false)
-    private boolean isBodyHtml = false;
+  @Column(nullable = false)
+  private boolean isBodyHtml = false;
 
-    @Column(nullable = false)
-    private boolean status = false;
+  @Column(nullable = false)
+  private boolean status = false;
 }

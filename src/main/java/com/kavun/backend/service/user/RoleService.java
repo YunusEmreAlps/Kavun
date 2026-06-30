@@ -41,8 +41,8 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     this.userRepository = userRepository;
   }
 
-  public Specification<Role> search(Map<String, Object> paramaterMap) {
-    return specification.search(paramaterMap);
+  public Specification<Role> search(Map<String, Object> parameterMap) {
+    return specification.search(parameterMap);
   }
 
   public Integer count() {
@@ -50,9 +50,6 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
   }
 
   // Custom method to find role by name
-  public Role findRoleById(final Long id) {
-    return repository.findById(id).orElse(null);
-  }
 
   public Role findByName(final String name) {
     return repository.findByName(name).orElse(null);

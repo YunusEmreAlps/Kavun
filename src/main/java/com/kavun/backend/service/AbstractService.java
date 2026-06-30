@@ -25,325 +25,327 @@ import java.util.Objects;
 /**
  * Abstract base service implementation providing common CRUD operations.
  * <p>
- * This class implements the Template Method pattern, allowing subclasses to customize
- * behavior through protected hook methods while maintaining consistent operation flow.
+ * This class implements the Template Method pattern, allowing subclasses to
+ * customize
+ * behavior through protected hook methods while maintaining consistent
+ * operation flow.
  * </p>
  *
  * @param <REQUEST> Request type for create/update operations
- * @param <ENTITY> Entity type extending BaseEntity
- * @param <DTO> Data Transfer Object type for responses
- * @param <REPO> Repository interface extending BaseRepository
- * @param <MAPPER> Mapper interface for entity/dto conversions
- * @param <SPEC> Specification builder for queries
+ * @param <ENTITY>  Entity type extending BaseEntity
+ * @param <DTO>     Data Transfer Object type for responses
+ * @param <REPO>    Repository interface extending BaseRepository
+ * @param <MAPPER>  Mapper interface for entity/dto conversions
+ * @param <SPEC>    Specification builder for queries
  */
 @Slf4j
 public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extends BaseEntity<Long>, DTO extends BaseDto, REPO extends BaseRepository<ENTITY>, MAPPER extends BaseMapper<REQUEST, ENTITY, DTO>, SPEC extends BaseSpecification<ENTITY>>
-        implements BaseService<REQUEST, DTO, ENTITY> {
+    implements BaseService<REQUEST, DTO, ENTITY> {
 
-    protected final MAPPER mapper;
-    protected final REPO repository;
-    protected final SPEC specification;
+  protected final MAPPER mapper;
+  protected final REPO repository;
+  protected final SPEC specification;
 
-    protected AbstractService(MAPPER mapper, REPO repository, SPEC specification) {
-        this.mapper = Objects.requireNonNull(mapper, "Mapper cannot be null");
-        this.repository = Objects.requireNonNull(repository, "Repository cannot be null");
-        this.specification = Objects.requireNonNull(specification, "Specification cannot be null");
+  protected AbstractService(MAPPER mapper, REPO repository, SPEC specification) {
+    this.mapper = Objects.requireNonNull(mapper, "Mapper cannot be null");
+    this.repository = Objects.requireNonNull(repository, "Repository cannot be null");
+    this.specification = Objects.requireNonNull(specification, "Specification cannot be null");
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public DTO findById(Long id) {
+    LOG.debug("Finding entity by id: {}", id);
+    ENTITY entity = getEntityById(id);
+    return mapper.toDto(entity);
+  }
+
+  @Override
+  @Transactional
+  public DTO create(REQUEST request) {
+    validateCreateRequest(request);
+    LOG.debug("Creating new entity from request: {}", request);
+
+    ENTITY entity = mapper.toEntity(request);
+    beforeCreate(entity);
+    ENTITY savedEntity = repository.save(entity);
+    afterCreate(savedEntity);
+
+    LOG.info("Entity created successfully with id: {}", savedEntity.getId());
+    return mapper.toDto(savedEntity);
+  }
+
+  @Override
+  @Transactional
+  public DTO update(Long id, REQUEST request) {
+    validateUpdateRequest(request);
+    LOG.debug("Updating entity with id: {}", id);
+
+    ENTITY entity = getEntityById(id);
+    ensureNotDeleted(entity);
+
+    mapper.updateEntityFromDto(request, entity);
+    beforeUpdate(entity);
+    ENTITY updatedEntity = repository.save(entity);
+    afterUpdate(updatedEntity);
+
+    LOG.info("Entity updated successfully with id: {}", id);
+    return mapper.toDto(updatedEntity);
+  }
+
+  @Override
+  @Transactional
+  public void delete(Long id) {
+    LOG.debug("Soft deleting entity with id: {}", id);
+
+    ENTITY entity = getEntityById(id);
+
+    if (entity.isDeleted()) {
+      LOG.warn("Entity with id {} is already deleted", id);
+      throw new IllegalStateException("Entity is already deleted");
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public DTO findById(Long id) {
-        LOG.debug("Finding entity by id: {}", id);
-        ENTITY entity = getEntityById(id);
-        return mapper.toDto(entity);
+    beforeDelete(entity);
+    applySoftDelete(entity);
+    repository.save(entity);
+    afterDelete(entity);
+
+    LOG.info("Entity soft deleted successfully with id: {}", id);
+  }
+
+  @Override
+  @Transactional
+  public DTO restore(Long id) {
+    LOG.debug("Restoring deleted entity with id: {}", id);
+
+    ENTITY entity = getEntityById(id);
+
+    if (!entity.isDeleted()) {
+      LOG.warn("Entity with id {} is not in deleted state", id);
+      throw new IllegalStateException("Entity is not deleted, cannot restore");
     }
 
-    @Override
-    @Transactional
-    public DTO create(REQUEST request) {
-        validateCreateRequest(request);
-        LOG.debug("Creating new entity from request: {}", request);
+    beforeRestore(entity);
+    applyRestore(entity);
+    ENTITY restoredEntity = repository.save(entity);
+    afterRestore(restoredEntity);
 
-        ENTITY entity = mapper.toEntity(request);
-        beforeCreate(entity);
-        ENTITY savedEntity = repository.save(entity);
-        afterCreate(savedEntity);
+    LOG.info("Entity restored successfully with id: {}", id);
+    return mapper.toDto(restoredEntity);
+  }
 
-        LOG.info("Entity created successfully with id: {}", savedEntity.getId());
-        return mapper.toDto(savedEntity);
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DTO> findAll(Specification<ENTITY> specification, Pageable pageable) {
+    LOG.debug("Finding entities with specification and pagination: {}", pageable);
+    return repository.findAll(specification, pageable).map(mapper::toDto);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<DTO> findAll(Specification<ENTITY> specification) {
+    LOG.debug("Finding all entities with specification");
+    return repository.findAll(specification).stream()
+        .map(mapper::toDto)
+        .toList();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public boolean existsById(Long id) {
+    LOG.debug("Checking if entity exists with id: {}", id);
+    return id != null && repository.existsById(id);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public long count(Specification<ENTITY> specification) {
+    LOG.debug("Counting entities with specification");
+    return repository.count(specification);
+  }
+
+  // Protected helper methods
+
+  /**
+   * Retrieves an entity by ID or throws EntityNotFoundException.
+   *
+   * @param id the entity ID
+   * @return the entity
+   * @throws EntityNotFoundException if entity not found
+   */
+  protected ENTITY getEntityById(Long id) {
+    if (id == null) {
+      LOG.error("Entity ID cannot be null");
+      throw new IllegalArgumentException("ID cannot be null");
     }
 
-    @Override
-    @Transactional
-    public DTO update(Long id, REQUEST request) {
-        validateUpdateRequest(request);
-        LOG.debug("Updating entity with id: {}", id);
+    return repository.findById(id)
+        .orElseThrow(() -> {
+          LOG.error("Entity not found with id: {}", id);
+          return new EntityNotFoundException("Entity not found: " + id);
+        });
+  }
 
-        ENTITY entity = getEntityById(id);
-        ensureNotDeleted(entity);
-
-        mapper.updateEntityFromDto(request, entity);
-        beforeUpdate(entity);
-        ENTITY updatedEntity = repository.save(entity);
-        afterUpdate(updatedEntity);
-
-        LOG.info("Entity updated successfully with id: {}", id);
-        return mapper.toDto(updatedEntity);
+  /**
+   * Validates create request. Override for custom validation.
+   *
+   * @param request the create request
+   * @throws IllegalArgumentException if validation fails
+   */
+  protected void validateCreateRequest(REQUEST request) {
+    if (request == null) {
+      LOG.error("Create request cannot be null");
+      throw new IllegalArgumentException("Create request cannot be null");
     }
+  }
 
-    @Override
-    @Transactional
-    public void delete(Long id) {
-        LOG.debug("Soft deleting entity with id: {}", id);
-
-        ENTITY entity = getEntityById(id);
-
-        if (entity.isDeleted()) {
-            LOG.warn("Entity with id {} is already deleted", id);
-            throw new IllegalStateException("Entity is already deleted");
-        }
-
-        beforeDelete(entity);
-        applySoftDelete(entity);
-        repository.save(entity);
-        afterDelete(entity);
-
-        LOG.info("Entity soft deleted successfully with id: {}", id);
+  /**
+   * Validates update request. Override for custom validation.
+   *
+   * @param request the update request
+   * @throws IllegalArgumentException if validation fails
+   */
+  protected void validateUpdateRequest(REQUEST request) {
+    if (request == null) {
+      LOG.error("Update request cannot be null");
+      throw new IllegalArgumentException("Update request cannot be null");
     }
+  }
 
-    @Override
-    @Transactional
-    public DTO restore(Long id) {
-        LOG.debug("Restoring deleted entity with id: {}", id);
-
-        ENTITY entity = getEntityById(id);
-
-        if (!entity.isDeleted()) {
-            LOG.warn("Entity with id {} is not in deleted state", id);
-            throw new IllegalStateException("Entity is not deleted, cannot restore");
-        }
-
-        beforeRestore(entity);
-        applyRestore(entity);
-        ENTITY restoredEntity = repository.save(entity);
-        afterRestore(restoredEntity);
-
-        LOG.info("Entity restored successfully with id: {}", id);
-        return mapper.toDto(restoredEntity);
+  /**
+   * Ensures entity is not in deleted state.
+   *
+   * @param entity the entity to check
+   * @throws IllegalStateException if entity is deleted
+   */
+  protected void ensureNotDeleted(ENTITY entity) {
+    if (entity.isDeleted()) {
+      LOG.error("Cannot operate on deleted entity with id: {}", entity.getId());
+      throw new IllegalStateException("Cannot operate on deleted entity");
     }
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Page<DTO> findAll(Specification<ENTITY> specification, Pageable pageable) {
-        LOG.debug("Finding entities with specification and pagination: {}", pageable);
-        return repository.findAll(specification, pageable).map(mapper::toDto);
+  /**
+   * Applies soft delete to entity, setting deleted flag and audit information.
+   *
+   * @param entity the entity to soft delete
+   */
+  protected void applySoftDelete(ENTITY entity) {
+    entity.setDeleted(true);
+    entity.setDeletedAt(LocalDateTime.now());
+
+    Authentication authentication = SecurityUtils.getAuthentication();
+    if (SecurityUtils.isAuthenticated(authentication)) {
+      Long currentUserId = SecurityUtils.getAuthorizedUserDetails().getId();
+      entity.setDeletedBy(currentUserId);
+      LOG.debug("Entity soft deleted by user: {}", currentUserId);
+    } else {
+      LOG.debug("Entity soft deleted without authenticated user");
     }
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<DTO> findAll(Specification<ENTITY> specification) {
-        LOG.debug("Finding all entities with specification");
-        return repository.findAll(specification).stream()
-                .map(mapper::toDto)
-                .toList();
+  /**
+   * Applies restore to entity, clearing deleted flag and audit information.
+   * You may want to add restoredBy/restoredAt fields to track restoration.
+   *
+   * @param entity the entity to restore
+   */
+  protected void applyRestore(ENTITY entity) {
+    entity.setDeleted(false);
+    entity.setDeletedAt(null);
+    entity.setDeletedBy(0L);
+
+    Authentication authentication = SecurityUtils.getAuthentication();
+    if (SecurityUtils.isAuthenticated(authentication)) {
+      Long currentUserId = SecurityUtils.getAuthorizedUserDetails().getId();
+      LOG.debug("Entity restored by user: {}", currentUserId);
+      entity.setDeletedBy(currentUserId);
+      // Consider adding: entity.setRestoredBy(currentUserId);
+      // Consider adding: entity.setRestoredAt(LocalDateTime.now());
+    } else {
+      LOG.debug("Entity restored without authenticated user");
     }
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean existsById(Long id) {
-        LOG.debug("Checking if entity exists with id: {}", id);
-        return id != null && repository.existsById(id);
-    }
+  // Template method hooks for subclasses (optional overrides)
 
-    @Override
-    @Transactional(readOnly = true)
-    public long count(Specification<ENTITY> specification) {
-        LOG.debug("Counting entities with specification");
-        return repository.count(specification);
-    }
+  /**
+   * Hook method called before entity creation.
+   * Override to add custom logic before save.
+   *
+   * @param entity the entity about to be created
+   */
+  protected void beforeCreate(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-    // Protected helper methods
+  /**
+   * Hook method called after entity creation.
+   * Override to add custom logic after save (e.g., event publishing).
+   *
+   * @param entity the created entity
+   */
+  protected void afterCreate(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-    /**
-     * Retrieves an entity by ID or throws EntityNotFoundException.
-     *
-     * @param id the entity ID
-     * @return the entity
-     * @throws EntityNotFoundException if entity not found
-     */
-    protected ENTITY getEntityById(Long id) {
-        if (id == null) {
-            LOG.error("Entity ID cannot be null");
-            throw new IllegalArgumentException("ID cannot be null");
-        }
+  /**
+   * Hook method called before entity update.
+   * Override to add custom logic before save.
+   *
+   * @param entity the entity about to be updated
+   */
+  protected void beforeUpdate(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-        return repository.findById(id)
-                .orElseThrow(() -> {
-                    LOG.error("Entity not found with id: {}", id);
-                    return new EntityNotFoundException("Entity not found: " + id);
-                });
-    }
+  /**
+   * Hook method called after entity update.
+   * Override to add custom logic after save (e.g., cache invalidation).
+   *
+   * @param entity the updated entity
+   */
+  protected void afterUpdate(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-    /**
-     * Validates create request. Override for custom validation.
-     *
-     * @param request the create request
-     * @throws IllegalArgumentException if validation fails
-     */
-    protected void validateCreateRequest(REQUEST request) {
-        if (request == null) {
-            LOG.error("Create request cannot be null");
-            throw new IllegalArgumentException("Create request cannot be null");
-        }
-    }
+  /**
+   * Hook method called before entity soft deletion.
+   * Override to add custom logic before delete.
+   *
+   * @param entity the entity about to be deleted
+   */
+  protected void beforeDelete(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-    /**
-     * Validates update request. Override for custom validation.
-     *
-     * @param request the update request
-     * @throws IllegalArgumentException if validation fails
-     */
-    protected void validateUpdateRequest(REQUEST request) {
-        if (request == null) {
-            LOG.error("Update request cannot be null");
-            throw new IllegalArgumentException("Update request cannot be null");
-        }
-    }
+  /**
+   * Hook method called after entity soft deletion.
+   * Override to add custom logic after delete (e.g., cleanup).
+   *
+   * @param entity the deleted entity
+   */
+  protected void afterDelete(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-    /**
-     * Ensures entity is not in deleted state.
-     *
-     * @param entity the entity to check
-     * @throws IllegalStateException if entity is deleted
-     */
-    protected void ensureNotDeleted(ENTITY entity) {
-        if (entity.isDeleted()) {
-            LOG.error("Cannot operate on deleted entity with id: {}", entity.getId());
-            throw new IllegalStateException("Cannot operate on deleted entity");
-        }
-    }
+  /**
+   * Hook method called before entity restoration.
+   * Override to add custom logic before restore.
+   *
+   * @param entity the entity about to be restored
+   */
+  protected void beforeRestore(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 
-    /**
-     * Applies soft delete to entity, setting deleted flag and audit information.
-     *
-     * @param entity the entity to soft delete
-     */
-    protected void applySoftDelete(ENTITY entity) {
-        entity.setDeleted(true);
-        entity.setDeletedAt(LocalDateTime.now());
-
-        Authentication authentication = SecurityUtils.getAuthentication();
-        if (SecurityUtils.isAuthenticated(authentication)) {
-            Long currentUserId = SecurityUtils.getAuthorizedUserDetails().getId();
-            entity.setDeletedBy(currentUserId);
-            LOG.debug("Entity soft deleted by user: {}", currentUserId);
-        } else {
-            LOG.debug("Entity soft deleted without authenticated user");
-        }
-    }
-
-    /**
-     * Applies restore to entity, clearing deleted flag and audit information.
-     * You may want to add restoredBy/restoredAt fields to track restoration.
-     *
-     * @param entity the entity to restore
-     */
-    protected void applyRestore(ENTITY entity) {
-        entity.setDeleted(false);
-        entity.setDeletedAt(null);
-        entity.setDeletedBy(0L);
-
-        Authentication authentication = SecurityUtils.getAuthentication();
-        if (SecurityUtils.isAuthenticated(authentication)) {
-            Long currentUserId = SecurityUtils.getAuthorizedUserDetails().getId();
-            LOG.debug("Entity restored by user: {}", currentUserId);
-            entity.setDeletedBy(currentUserId);
-            // Consider adding: entity.setRestoredBy(currentUserId);
-            // Consider adding: entity.setRestoredAt(LocalDateTime.now());
-        } else {
-            LOG.debug("Entity restored without authenticated user");
-        }
-    }
-
-    // Template method hooks for subclasses (optional overrides)
-
-    /**
-     * Hook method called before entity creation.
-     * Override to add custom logic before save.
-     *
-     * @param entity the entity about to be created
-     */
-    protected void beforeCreate(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called after entity creation.
-     * Override to add custom logic after save (e.g., event publishing).
-     *
-     * @param entity the created entity
-     */
-    protected void afterCreate(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called before entity update.
-     * Override to add custom logic before save.
-     *
-     * @param entity the entity about to be updated
-     */
-    protected void beforeUpdate(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called after entity update.
-     * Override to add custom logic after save (e.g., cache invalidation).
-     *
-     * @param entity the updated entity
-     */
-    protected void afterUpdate(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called before entity soft deletion.
-     * Override to add custom logic before delete.
-     *
-     * @param entity the entity about to be deleted
-     */
-    protected void beforeDelete(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called after entity soft deletion.
-     * Override to add custom logic after delete (e.g., cleanup).
-     *
-     * @param entity the deleted entity
-     */
-    protected void afterDelete(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called before entity restoration.
-     * Override to add custom logic before restore.
-     *
-     * @param entity the entity about to be restored
-     */
-    protected void beforeRestore(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
-
-    /**
-     * Hook method called after entity restoration.
-     * Override to add custom logic after restore.
-     *
-     * @param entity the restored entity
-     */
-    protected void afterRestore(ENTITY entity) {
-        // Template method - override in subclasses if needed
-    }
+  /**
+   * Hook method called after entity restoration.
+   * Override to add custom logic after restore.
+   *
+   * @param entity the restored entity
+   */
+  protected void afterRestore(ENTITY entity) {
+    // Template method - override in subclasses if needed
+  }
 }

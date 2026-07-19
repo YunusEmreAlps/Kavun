@@ -48,13 +48,18 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
     }
 
     if (StringUtils.isNotBlank(jwt)) {
-      var accessToken = encryptionService.decrypt(jwt);
+      try {
+        var accessToken = encryptionService.decrypt(jwt);
 
-      if (StringUtils.isNotBlank(accessToken) && jwtService.isValidJwtToken(accessToken)) {
-
-        var username = jwtService.getUsernameFromToken(accessToken);
-        var userDetails = userDetailsService.loadUserByUsername(username);
-        SecurityUtils.authenticateUser(request, userDetails);
+        if (StringUtils.isNotBlank(accessToken) && jwtService.isValidJwtToken(accessToken)) {
+          var username = jwtService.getUsernameFromToken(accessToken);
+          var userDetails = userDetailsService.loadUserByUsername(username);
+          SecurityUtils.authenticateUser(request, userDetails);
+        }
+      }
+      catch (Exception e) {
+        // Invalid or malformed token - log and continue without authentication
+        LOG.warn("Failed to decrypt or validate token: {}", e.getMessage());
       }
     }
     filterChain.doFilter(request, response);

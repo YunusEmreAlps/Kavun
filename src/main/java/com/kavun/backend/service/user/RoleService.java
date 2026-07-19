@@ -8,6 +8,7 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
+import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.RoleSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.RoleDto;
@@ -35,10 +36,13 @@ import java.util.stream.Collectors;
 public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
 
   private final UserRepository userRepository;
+  private final UserRoleRepository userRoleRepository;
 
-  public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification, UserRepository userRepository) {
+  public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification,
+      UserRepository userRepository, UserRoleRepository userRoleRepository) {
     super(mapper, repository, specification);
     this.userRepository = userRepository;
+    this.userRoleRepository = userRoleRepository;
   }
 
   public Specification<Role> search(Map<String, Object> parameterMap) {
@@ -55,7 +59,7 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     return repository.findByName(name).orElse(null);
   }
 
-  public Role findRoleEntityById(final Long id) {
+  public Role findRoleById(final Long id) {
     return repository.findById(id).orElse(null);
   }
 
@@ -74,17 +78,25 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-    // Check if user already has this role
-    boolean hasRole = user.getUserRoles().stream()
+    // Active check via @SQLRestriction-filtered collection
+    boolean alreadyActive = user.getUserRoles().stream()
         .anyMatch(ur -> ur.getRole().getId().equals(roleId));
-
-    if (hasRole) {
+    if (alreadyActive) {
       throw new IllegalArgumentException("User already has this role");
     }
 
-    UserRole userRole = new UserRole(user, role);
-    user.getUserRoles().add(userRole);
-    userRepository.save(user);
+    // Restore if soft-deleted, otherwise create new
+    var existing = userRoleRepository.findByUserIdAndRoleId(userId, roleId);
+    if (existing.isPresent()) {
+      var ur = existing.get();
+      ur.setDeleted(false);
+      ur.setDeletedAt(null);
+      ur.setDeletedBy(null);
+      userRoleRepository.save(ur);
+    } else {
+      user.addUserRole(role);
+      userRepository.save(user);
+    }
   }
 
   public void assignRoleToMultipleUsers(final Long roleId, final List<Long> userIds) {
@@ -102,22 +114,31 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
       throw new IllegalArgumentException("Some users not found");
     }
 
-    // Get existing user IDs that already have this role
+    // Get user IDs that already have this role (active only via @SQLRestriction)
     Set<Long> existingUserIds = users.stream()
         .filter(user -> user.getUserRoles().stream()
             .anyMatch(ur -> ur.getRole().getId().equals(roleId)))
         .map(User::getId)
         .collect(Collectors.toSet());
 
-    // Create UserRole entities only for users who don't have the role yet
-    users.stream()
-        .filter(user -> !existingUserIds.contains(user.getId()))
-        .forEach(user -> {
-          UserRole userRole = new UserRole(user, role);
-          user.getUserRoles().add(userRole);
-        });
+    // For users without the active role: restore soft-deleted or create new
+    for (User user : users) {
+      if (existingUserIds.contains(user.getId())) {
+        continue;
+      }
+      var existing = userRoleRepository.findByUserIdAndRoleId(user.getId(), roleId);
+      if (existing.isPresent()) {
+        var ur = existing.get();
+        ur.setDeleted(false);
+        ur.setDeletedAt(null);
+        ur.setDeletedBy(null);
+        userRoleRepository.save(ur);
+      } else {
+        user.addUserRole(role);
+      }
+    }
 
-    // Single batch save operation
+    // Batch save users that received new assignments
     userRepository.saveAll(users);
   }
 }

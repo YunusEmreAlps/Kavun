@@ -1,13 +1,14 @@
 package com.kavun.backend.service.user;
 
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.UserRepository;
+import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
@@ -29,9 +30,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -63,15 +66,15 @@ public class UserService
   private final Clock clock;
   private final RoleService roleService;
   private final PasswordEncoder passwordEncoder;
-  private final EntityManager entityManager;
+  private final UserRoleRepository userRoleRepository;
 
   public UserService(UserMapper mapper, UserRepository repository, UserSpecification specification,
-      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, EntityManager entityManager) {
+      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository) {
     super(mapper, repository, specification);
     this.clock = clock;
     this.roleService = roleService;
     this.passwordEncoder = passwordEncoder;
-    this.entityManager = entityManager;
+    this.userRoleRepository = userRoleRepository;
   }
 
   public Specification<User> search(Map<String, Object> parameterMap) {
@@ -508,41 +511,64 @@ public class UserService
   }
 
   /**
-   * Assigns multiple roles to a user. Replaces existing roles.
+   * Assigns multiple roles to a user using upsert/restore semantics:
+   * - roles no longer requested  → soft-deleted (orphanRemoval + @SQLDelete)
+   * - roles previously removed   → restored (deleted flag cleared)
+   * - roles not yet assigned     → created
+   * - roles already active       → untouched
    *
-   * @param userId the user id
-   * @param roleRequests the list of role requests containing role IDs
+   * @param userId       the user id
+   * @param roleRequests the desired set of role assignments
    */
   @Transactional
   public void assignRolesToUser(Long userId, List<UserRoleRequest> roleRequests) {
     User user = repository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException(UserConstants.USER_NOT_FOUND));
 
-    // Delete all existing roles using native query to avoid constraint issues
-    int deletedCount = entityManager.createNativeQuery(
-        "DELETE FROM user_role WHERE user_id = :userId")
-        .setParameter("userId", userId)
-        .executeUpdate();
+    Set<Long> requestedRoleIds = roleRequests == null ? Set.of() :
+        roleRequests.stream()
+            .map(UserRoleRequest::getRoleId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
 
-    LOG.debug("Deleted {} existing roles for user {}", deletedCount, userId);
+    // Validate all requested roles exist upfront
+    for (Long roleId : requestedRoleIds) {
+      if (roleService.findRoleById(roleId) == null) {
+        throw new IllegalArgumentException("Role not found with id: " + roleId);
+      }
+    }
 
-    // Clear the collection to sync with database state
-    user.getUserRoles().clear();
-    entityManager.flush();
+    // Soft-delete active roles not in the request (orphanRemoval=true + @SQLDelete)
+    user.getUserRoles().removeIf(ur -> !requestedRoleIds.contains(ur.getRole().getId()));
 
-    // Add new roles
-    if (roleRequests != null && !roleRequests.isEmpty()) {
-      for (UserRoleRequest roleRequest : roleRequests) {
-        Role role = roleService.findRoleEntityById(roleRequest.getRoleId());
-        if (role == null) {
-          throw new IllegalArgumentException("Role not found with id: " + roleRequest.getRoleId());
-        }
-        user.addUserRole(role);
+    // Current active role IDs after removal
+    Set<Long> currentActiveRoleIds = user.getUserRoles().stream()
+        .map(ur -> ur.getRole().getId())
+        .collect(Collectors.toSet());
+
+    // Restore soft-deleted or create new for each requested role
+    for (Long roleId : requestedRoleIds) {
+      if (currentActiveRoleIds.contains(roleId)) {
+        continue; // already active, no change needed
+      }
+      // findByUserIdAndRoleId bypasses @SQLRestriction to include soft-deleted records
+      Optional<UserRole> existing =
+          userRoleRepository.findByUserIdAndRoleId(userId, roleId);
+      if (existing.isPresent()) {
+        // Restore previously removed assignment
+        var ur = existing.get();
+        ur.setDeleted(false);
+        ur.setDeletedAt(null);
+        ur.setDeletedBy(null);
+        userRoleRepository.save(ur);
+      } else {
+        // New assignment
+        user.addUserRole(roleService.findRoleById(roleId));
       }
     }
 
     repository.save(user);
-    LOG.info("Updated roles for user {} - deleted: {}, added: {}", userId, deletedCount, roleRequests == null ? 0 : roleRequests.size());
+    LOG.info("Updated roles for user {} - requested: {}", userId, requestedRoleIds.size());
   }
 
   // Generates a secure temporary password.

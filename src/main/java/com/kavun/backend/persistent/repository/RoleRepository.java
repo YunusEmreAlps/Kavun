@@ -28,7 +28,7 @@ public interface RoleRepository extends BaseRepository<Role> {
 
   long count();
 
-  @Query("SELECT DISTINCT u FROM User u JOIN u.userRoles ur WHERE ur.role.id = :roleId")
+  @Query("SELECT DISTINCT u FROM User u JOIN u.userRoles ur WHERE ur.role.id = :roleId AND ur.deleted = false")
   List<User> getUsersByRoleId(final Long roleId);
 
 }

@@ -5,7 +5,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
-import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;

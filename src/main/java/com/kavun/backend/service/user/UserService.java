@@ -4,7 +4,6 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.UserRepository;
@@ -144,6 +143,7 @@ public class UserService
     return persistUser(userDto, roleTypes, UserHistoryType.CREATED, false, skipDefaultRole);
   }
 
+  @Transactional(readOnly = true)
   public Page<UserResponse> findAll(Pageable pageable) {
     Page<User> usersPage = repository.findAll(pageable);
     return usersPage.map(mapper::toUserResponse);

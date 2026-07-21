@@ -28,6 +28,8 @@ public class NavigationItemResponse {
     private String icon;
     private int level;
     private boolean access;
+    private boolean navigable;
+    private boolean showInMenu;
 
     @Builder.Default
     private List<ActionResponse> actions = new ArrayList<>();

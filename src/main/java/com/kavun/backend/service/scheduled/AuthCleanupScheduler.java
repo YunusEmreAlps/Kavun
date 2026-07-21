@@ -40,8 +40,9 @@ public class AuthCleanupScheduler {
 
     try {
       // Delete OTPs expired more than 1 hour ago
-      Instant threshold = Instant.now().minus(1, ChronoUnit.HOURS);
-      int deletedCount = otpRepository.cleanupOldOtps(threshold);
+      Instant expiresAtThreshold = Instant.now().minus(1, ChronoUnit.HOURS);
+      Instant createdAtThreshold = Instant.now().minus(1, ChronoUnit.HOURS);
+      int deletedCount = otpRepository.cleanupOldOtps(expiresAtThreshold, createdAtThreshold);
 
       if (deletedCount > 0) {
         LOG.info("Cleaned up {} expired OTP records", deletedCount);
@@ -90,8 +91,9 @@ public class AuthCleanupScheduler {
 
     try {
       // Delete OTPs older than 7 days
-      Instant otpThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
-      int deletedOtps = otpRepository.cleanupOldOtps(otpThreshold);
+      Instant expiresAtThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
+      Instant createdAtThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
+      int deletedOtps = otpRepository.cleanupOldOtps(expiresAtThreshold, createdAtThreshold);
 
       // Delete CAPTCHAs older than 7 days
       LocalDateTime captchaThreshold = LocalDateTime.now().minusDays(7);

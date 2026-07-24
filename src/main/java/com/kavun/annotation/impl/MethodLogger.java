@@ -3,7 +3,10 @@ package com.kavun.annotation.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kavun.annotation.Loggable;
 import com.kavun.annotation.LoggingFilter;
+import com.kavun.backend.persistent.context.MethodLogContext;
+import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.shared.util.MaskPasswordUtils;
+import com.kavun.shared.util.core.StringUtils;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -14,8 +17,10 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.MDC;
 import org.slf4j.event.Level;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import static com.kavun.constant.LoggingConstants.*;
 
 /**
  * Aspect for logging method entry, exit, and execution time for methods
@@ -35,11 +40,15 @@ public class MethodLogger {
   private static final String ENTRY_FORMAT = "=> Starting - {} args: {}";
   private static final String EXIT_FORMAT = "<= {} : {} - Finished, duration: {} ms";
 
-  @Autowired
-  private LoggingFilter loggingFilter;
+  private final LoggingFilter loggingFilter;
+  private final ObjectMapper objectMapper;
+  private final ApplicationLogService applicationLogService;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+  MethodLogger(LoggingFilter loggingFilter, ObjectMapper objectMapper, ApplicationLogService applicationLogService) {
+    this.loggingFilter = loggingFilter;
+    this.objectMapper = objectMapper;
+    this.applicationLogService = applicationLogService;
+  }
 
   /**
    * Intercepts and logs methods annotated with {@link Loggable}.
@@ -74,17 +83,28 @@ public class MethodLogger {
           ? loggingFilter.snapshotEntity(loggable.entityClass(), entityId)
           : Map.of();
 
+      boolean isHttpContext = isHttpContext();
+      final long durationMs = (System.nanoTime() - start) / 1_000_000;
+
       String diff = (!before.isEmpty() && !after.isEmpty())
           ? loggingFilter.buildDiff(before, after)
           : "";
-      if (!diff.isEmpty() && loggable.entityClass() != Object.class) {
-        LOG.info("Entity changes: {}", diff);
+      if (isHttpContext) {
+        if (!diff.isEmpty() && loggable.entityClass() != Object.class) {
+          LOG.info("Entity changes: {}", diff);
           MDC.put("stateBefore", objectMapper.writeValueAsString(before));
-          MDC.put("stateAfter",  objectMapper.writeValueAsString(after));
-          MDC.put("stateDiff",   diff);
+          MDC.put("stateAfter", objectMapper.writeValueAsString(after));
+          MDC.put("stateDiff", diff);
+        }
+      } else {
+        applicationLogService.persistMethodLog(new MethodLogContext(
+            method,
+            resolveLogType(),
+            durationMs,
+            before.isEmpty() ? null : objectMapper.writeValueAsString(before),
+            after.isEmpty() ? null : objectMapper.writeValueAsString(after),
+            diff.isEmpty() ? null : diff));
       }
-
-      final long durationMs = (System.nanoTime() - start) / 1_000_000;
 
       // Exit log
       if (isLevelEnabled(level)) {
@@ -101,6 +121,14 @@ public class MethodLogger {
     } catch (Exception e) {
       LOG.error("Exception in method: {} with message: {}", method, e.getMessage());
       throw e;
+    }
+  }
+
+  private boolean isHttpContext() {
+    try {
+      return ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()) != null;
+    } catch (Exception e) {
+      return false;
     }
   }
 
@@ -128,7 +156,7 @@ public class MethodLogger {
   }
 
   private void logExit(Level level, String method, Object response, long durationMs) {
-    String truncatedResponse = truncateResponse(response);
+    String truncatedResponse = StringUtils.truncate(String.valueOf(response), MAX_RESPONSE_LENGTH);
     logAtLevel(level, EXIT_FORMAT, method, truncatedResponse, durationMs);
   }
 
@@ -142,13 +170,14 @@ public class MethodLogger {
     }
   }
 
-  private String truncateResponse(Object response) {
-    if (response == null) {
-      return "null";
-    }
-    String str = response.toString();
-    return str.length() > MAX_RESPONSE_LENGTH
-        ? str.substring(0, MAX_RESPONSE_LENGTH) + "... (truncated)"
-        : str;
+  private String resolveLogType() {
+    String threadName = Thread.currentThread().getName();
+    if (threadName.contains("scheduling"))
+      return LOG_TYPE_SCHEDULED_TASK;
+    if (threadName.contains("async"))
+      return LOG_TYPE_ASYNC_TASK;
+    if (threadName.contains("event"))
+      return LOG_TYPE_EVENT_TASK;
+    return LOG_TYPE_HTTP_REQUEST;
   }
 }

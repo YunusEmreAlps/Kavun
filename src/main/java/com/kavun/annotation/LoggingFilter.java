@@ -1,9 +1,12 @@
 package com.kavun.annotation;
 
+import com.kavun.backend.persistent.context.HttpLogContext;
 import com.kavun.backend.persistent.domain.siem.ApplicationLog;
 import com.kavun.backend.persistent.repository.ApplicationLogRepository;
 import com.kavun.backend.service.DeviceDetectionService;
+import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.shared.util.MaskPasswordUtils;
+import com.kavun.shared.util.core.NetworkUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.shared.util.core.StringUtils;
 
@@ -23,8 +26,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -53,10 +54,11 @@ public class LoggingFilter extends OncePerRequestFilter {
   private final EntityManager entityManager;
   private final ApplicationLogRepository applicationLogRepository;
   private final DeviceDetectionService deviceDetectionService;
+  private final ApplicationLogService applicationLogService;
 
   /** Cached server info (computed once at startup) */
-  private static final String CACHED_HOSTNAME = resolveHostname();
-  private static final String CACHED_IP = resolveIp();
+  private static final String CACHED_HOSTNAME = NetworkUtils.resolveHostname();
+  private static final String CACHED_IP = NetworkUtils.resolveIp();
 
   @Override
   protected void doFilterInternal(
@@ -170,7 +172,26 @@ public class LoggingFilter extends OncePerRequestFilter {
       // Get device ID from header if client provided it
       String deviceId = request.getHeader(DEVICE_ID_HEADER);
 
-      ApplicationLog applicationLog = ApplicationLog.builder()
+      applicationLogService.persistHttpLog(new HttpLogContext(
+          correlationId,
+          getClass().getName(),
+          buildLogMessage(request.getMethod(), request.getRequestURI(), duration),
+          extractUserIp(request),
+          extractUsername(),
+          extractUserPublicId(),
+          request.getRequestURL().toString(),
+          request.getMethod(),
+          request.getQueryString(),
+          requestBody,
+          duration,
+          response.getStatus(),
+          deviceId,
+          deviceInfo.getDeviceType(),
+          deviceInfo.getOperatingSystem(),
+          deviceInfo.getBrowser(),
+          userAgent));
+
+      /*ApplicationLog applicationLog = ApplicationLog.builder()
           .correlationId(correlationId)
           .logLevel(determineLogLevel(response.getStatus()))
           .threadName(Thread.currentThread().getName())
@@ -198,7 +219,7 @@ public class LoggingFilter extends OncePerRequestFilter {
           .stateDiff(MDC.get("stateDiff"))
           .build();
 
-      saveLogAsync(applicationLog);
+      saveLogAsync(applicationLog);*/
     } catch (Exception e) {
       LOG.warn("Failed to create application log: {}", e.getMessage());
     }
@@ -364,22 +385,6 @@ public class LoggingFilter extends OncePerRequestFilter {
     return String.format("%s %s completed in %d ms", action, path, duration);
   }
 
-  private static String resolveHostname() {
-    try {
-      return InetAddress.getLocalHost().getHostName();
-    } catch (UnknownHostException e) {
-      return UNKNOWN;
-    }
-  }
-
-  private static String resolveIp() {
-    try {
-      return InetAddress.getLocalHost().getHostAddress();
-    } catch (UnknownHostException e) {
-      return UNKNOWN;
-    }
-  }
-
   /**
    * Extracts user IP from request, handling proxies.
    */
@@ -428,5 +433,4 @@ public class LoggingFilter extends OncePerRequestFilter {
         && auth.isAuthenticated()
         && !"anonymousUser".equals(auth.getPrincipal());
   }
-
 }

@@ -1,3 +1,5 @@
+
+
 <!-- KAVUN -->
 
 ![Kavun Logo](docs/images/kavun.png)
@@ -63,7 +65,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [OpenApi3 Swagger](docs/SWAGGER.md)
 - [Form Validation](https://formvalidation.io/)
 - [Last Successful Login](docs/AUTHENTICATION.MD)
-- [Bruteforce Attack Prevention using Failed Login Attempts](docs/AUTHENTICATION.MD)
+- [Brute-force Attack Prevention using Failed Login Attempts](docs/AUTHENTICATION.MD)
 - [Unit and Integration Tests](docs/TESTS.md)
 - [API Login Controller](docs/API_LOGIN_CONTROLLER.MD)
 - [Advanced CORS Configuration](docs/CORS.md)

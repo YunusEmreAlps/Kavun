@@ -191,35 +191,6 @@ public class LoggingFilter extends OncePerRequestFilter {
           deviceInfo.getBrowser(),
           userAgent));
 
-      /*ApplicationLog applicationLog = ApplicationLog.builder()
-          .correlationId(correlationId)
-          .logLevel(determineLogLevel(response.getStatus()))
-          .threadName(Thread.currentThread().getName())
-          .loggerName(getClass().getName())
-          .logMessage(buildLogMessage(request.getMethod(), request.getRequestURI(), duration))
-          .hostname(CACHED_HOSTNAME)
-          .ip(CACHED_IP)
-          .logType(LOG_TYPE_HTTP_REQUEST)
-          .userIpAddress(extractUserIp(request))
-          .username(extractUsername())
-          .userId(extractUserPublicId())
-          .requestUrl(request.getRequestURL().toString())
-          .action(request.getMethod())
-          .requestParams(request.getQueryString())
-          .requestBody(requestBody)
-          .durationMs(duration)
-          .httpStatus(response.getStatus())
-          .deviceId(deviceId)
-          .deviceType(deviceInfo.getDeviceType())
-          .operatingSystem(deviceInfo.getOperatingSystem())
-          .browser(deviceInfo.getBrowser())
-          .userAgent(userAgent)
-          .stateBefore(MDC.get("stateBefore"))
-          .stateAfter(MDC.get("stateAfter"))
-          .stateDiff(MDC.get("stateDiff"))
-          .build();
-
-      saveLogAsync(applicationLog);*/
     } catch (Exception e) {
       LOG.warn("Failed to create application log: {}", e.getMessage());
     }
@@ -233,7 +204,6 @@ public class LoggingFilter extends OncePerRequestFilter {
       if (arg instanceof Long || arg instanceof Integer || arg instanceof java.util.UUID) {
         return arg;
       }
-      // Request DTO içindeki id'yi bul
       try {
         var field = arg.getClass().getDeclaredField("id");
         field.setAccessible(true);

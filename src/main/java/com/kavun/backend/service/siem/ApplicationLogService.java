@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,7 @@ public class ApplicationLogService extends
     }
 
 
+  @Async("taskExecutor")
   public void persistHttpLog(HttpLogContext ctx) {
     try {
       ApplicationLog log = ApplicationLog.builder()
@@ -88,6 +90,7 @@ public class ApplicationLogService extends
     }
   }
 
+  @Async("taskExecutor")
   public void persistMethodLog(MethodLogContext ctx) {
     try {
       ApplicationLog log = ApplicationLog.builder()

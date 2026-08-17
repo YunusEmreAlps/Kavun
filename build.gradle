@@ -77,6 +77,7 @@ dependencies {
   implementation 'org.hibernate.orm:hibernate-jcache'
   implementation 'org.ehcache:ehcache-transactions:3.10.8'
   implementation 'org.codehaus.janino:janino'
+  implementation 'com.github.ben-manes.caffeine:caffeine'
 
   // Utilities
   implementation 'org.jsoup:jsoup:1.18.3'

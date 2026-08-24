@@ -28,8 +28,8 @@ public interface PageRepository extends BaseRepository<WebPage> {
 
     WebPage findByUrlAndDeletedFalse(String url);
 
-    List<WebPage> findByParentIsNullAndDeletedFalseOrderByDisplayOrder();
-    List<WebPage> findByParentIdAndDeletedFalseOrderByDisplayOrder(Long parentId);
+    List<WebPage> findByParentIsNullAndDeletedFalseOrderByOrderIndex();
+    List<WebPage> findByParentIdAndDeletedFalseOrderByOrderIndex(Long parentId);
 
     @Query("SELECT p FROM WebPage p LEFT JOIN FETCH p.pageActions WHERE p.id = :id AND p.deleted = false")
     Optional<WebPage> findByIdWithPageActions(Long id);

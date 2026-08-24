@@ -1,3 +1,5 @@
+name: kavun
+
 services:
   postgres-db:
     image: postgres:16-alpine
@@ -68,7 +70,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-  
+
   # Kavun service
   # kavun:
   #   image: 23yea193/kavun

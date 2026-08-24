@@ -8,10 +8,16 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
 
-    <style type="text/css">
-      /* FONTS - Preconnect for better performance */
-      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap");
+    <!-- Web font: skipped by Outlook desktop (mso), which falls back to Helvetica/Arial instead -->
+    <!--[if !mso]><!-->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <!--<![endif]-->
 
+    <style type="text/css">
       /* CLIENT-SPECIFIC STYLES */
       body,
       table,
@@ -80,174 +86,234 @@
       div[style*="margin: 16px 0;"] {
         margin: 0 !important;
       }
-
-      /* Dark mode support */
-      @media (prefers-color-scheme: dark) {
-        .dark-mode-bg {
-          background-color: #1a1a1a !important;
-        }
-        .dark-mode-text {
-          color: #ffffff !important;
-        }
-        .dark-mode-secondary {
-          color: #cccccc !important;
-        }
-      }
     </style>
   </head>
-  <body style="background-color: #f3f5f7; margin: 0 !important; padding: 0 !important">
-      <!-- HIDDEN PREHEADER TEXT -->
-      <div
-        style="
-          display: none;
-          font-size: 1px;
-          color: #fefefe;
-          line-height: 1px;
-          font-family: &quot;Poppins&quot;, sans-serif;
-          max-height: 0;
-          max-width: 0;
-          opacity: 0;
-          overflow: hidden;
-        "
-        th:fragment="common-pre-header (text)"
-      >
-        <span th:text="${text}"></span>
-      </div>
+  <body
+    bgcolor="#f3f5f7"
+    style="background-color: #f3f5f7; margin: 0 !important; padding: 0 !important"
+  >
+    <!-- HIDDEN PREHEADER TEXT -->
+    <div
+      style="
+        display: none;
+        font-size: 1px;
+        color: #fefefe;
+        line-height: 1px;
+        font-family: &quot;Poppins&quot;, sans-serif;
+        max-height: 0;
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+      "
+      th:fragment="common-pre-header (text)"
+    >
+      <span th:text="${text}"></span>
+    </div>
 
-      <table
-        border="0"
-        cellpadding="0"
-        cellspacing="0"
-        th:style="'background:url(' + @{${urls.get('imageUrl')}} + ');'"
-        width="100%"
-      >
-        <!-- LOGO -->
-        <tr th:fragment="common-logo">
-          <td align="center">
-            <!--[if (gte mso 9)|(IE)]>
+    <table
+      bgcolor="#f3f5f7"
+      border="0"
+      cellpadding="0"
+      cellspacing="0"
+      role="presentation"
+      width="100%"
+    >
+      <!-- LOGO -->
+      <tr th:fragment="common-logo">
+        <td align="center">
+          <!--[if (gte mso 9)|(IE)]>
       <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
         <tr>
           <td align="center" valign="top" width="600">
       <![endif]-->
-            <table border="0" cellpadding="0" cellspacing="0" style="max-width: 600px" width="100%">
-              <tr>
-                <td align="center" style="padding: 40px 10px 40px 10px" valign="top">
-                  <a href="#" style="text-decoration: none" target="_blank">
+          <table
+            border="0"
+            cellpadding="0"
+            cellspacing="0"
+            role="presentation"
+            style="max-width: 600px"
+            width="100%"
+          >
+            <tr>
+              <td align="center" style="padding: 40px 10px 40px 10px" valign="top">
+                <a href="#" style="text-decoration: none" target="_blank">
+                  <img
+                    th:src="'cid:logo'"
+                    alt="Logo"
+                    width="64"
+                    height="64"
+                    border="0"
+                    style="display: block; max-width: 200px; height: auto"
+                  />
+                </a>
+              </td>
+            </tr>
+          </table>
+          <!--[if (gte mso 9)|(IE)]>
+      </td>
+      </tr>
+      </table>
+      <![endif]-->
+        </td>
+      </tr>
+
+      <!-- HERO -->
+      <tr th:fragment="common-hero (salutation)">
+        <td align="center" style="padding: 0px 10px 0px 10px">
+          <!--[if (gte mso 9)|(IE)]>
+      <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
+        <tr>
+          <td align="center" valign="top" width="600">
+      <![endif]-->
+          <table
+            border="0"
+            cellpadding="0"
+            cellspacing="0"
+            role="presentation"
+            style="max-width: 600px"
+            width="100%"
+          >
+            <tr>
+              <td
+                align="center"
+                bgcolor="#ffffff"
+                style="
+                  padding: 40px 20px 20px 20px;
+                  border-radius: 4px 4px 0px 0px;
+                  color: #111111;
+                  font-family: &quot;Poppins&quot;, sans-serif;
+                  font-size: 48px;
+                  font-weight: 400;
+                  letter-spacing: 2px;
+                  line-height: 48px;
+                "
+                valign="top"
+              >
+                <th:block th:if="${urls.get('username')}">
+                  <h1 style="font-size: 42px; font-weight: 400; margin: 0">
+                    <span th:text="${salutation}"></span>
                     <span
-                      border="0"
-                      style="
-                        display: block;
-                        font-family: &quot;Poppins&quot;, sans-serif;
-                         color: #ff8c42;
-                        font-size: 36px;
-                      "
-                      ><b>Kavun</b></span
-                    >
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <!--[if (gte mso 9)|(IE)]>
+                      style="text-transform: capitalize"
+                      th:text="${urls.get('username')}"
+                    ></span>
+                  </h1>
+                </th:block>
+                <th:block th:unless="${urls.get('username')}">
+                  <h1
+                    style="font-size: 42px; font-weight: 400; margin: 0"
+                    th:text="${salutation}"
+                  ></h1>
+                </th:block>
+              </td>
+            </tr>
+          </table>
+          <!--[if (gte mso 9)|(IE)]>
       </td>
       </tr>
       </table>
       <![endif]-->
-          </td>
-        </tr>
+        </td>
+      </tr>
 
-        <!-- HERO -->
-        <tr th:fragment="common-hero (salutation)">
-          <td align="center" style="padding: 0px 10px 0px 10px">
-            <!--[if (gte mso 9)|(IE)]>
+      <!-- SUPPORT CALLOUT -->
+      <tr th:fragment="common-support-callout">
+        <td align="center" style="padding: 10px 10px 0px 10px">
+          <!--[if (gte mso 9)|(IE)]>
       <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
         <tr>
           <td align="center" valign="top" width="600">
       <![endif]-->
-            <table border="0" cellpadding="0" cellspacing="0" style="max-width: 600px" width="100%">
-              <tr>
-                <td
-                  align="center"
-                  bgcolor="#ffffff"
-                  style="
-                    padding: 40px 20px 20px 20px;
-                    border-radius: 4px 4px 0px 0px;
-                    color: #111111;
-                    font-family: &quot;Poppins&quot;, sans-serif;
-                    font-size: 48px;
-                    font-weight: 400;
-                    letter-spacing: 2px;
-                    line-height: 48px;
-                  "
-                  valign="top"
-                >
-                  <th:block th:if="${urls.get('username')}">
-                    <h1 style="font-size: 42px; font-weight: 400; margin: 0">
-                      <span th:text="${salutation}"></span>
-                      <span
-                        style="text-transform: capitalize"
-                        th:text="${urls.get('username')}"
-                      ></span>
-                    </h1>
-                  </th:block>
-                  <th:block th:unless="${urls.get('username')}">
-                    <h1
-                      style="font-size: 42px; font-weight: 400; margin: 0"
-                      th:text="${salutation}"
-                    ></h1>
-                  </th:block>
-                </td>
-              </tr>
-            </table>
-            <!--[if (gte mso 9)|(IE)]>
+          <table
+            border="0"
+            cellpadding="0"
+            cellspacing="0"
+            role="presentation"
+            style="max-width: 600px"
+            width="100%"
+          >
+            <tr>
+              <td
+                align="center"
+                bgcolor="#ffffff"
+                style="
+                  padding: 0px 30px 30px 30px;
+                  color: #666666;
+                  font-family: &quot;Poppins&quot;, sans-serif;
+                  font-size: 14px;
+                  font-weight: 400;
+                  line-height: 20px;
+                  border-radius: 0px 0px 4px 4px;
+                "
+              >
+                <p style="margin: 0">
+                  Need help? Visit
+                  <a
+                    href="#"
+                    style="color: #ff8c42; text-decoration: underline"
+                    th:href="@{${urls.get('home')}}"
+                    >our homepage</a
+                  >
+                  or contact support.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <!--[if (gte mso 9)|(IE)]>
       </td>
       </tr>
       </table>
       <![endif]-->
-          </td>
-        </tr>
+        </td>
+      </tr>
 
-        <!-- FOOTER -->
-        <tr th:fragment="common-footer">
-          <td align="center" style="padding: 10px 10px 50px 10px">
-            <!--[if (gte mso 9)|(IE)]>
+      <!-- FOOTER -->
+      <tr th:fragment="common-footer">
+        <td align="center" style="padding: 10px 10px 50px 10px">
+          <!--[if (gte mso 9)|(IE)]>
       <table align="center" border="0" cellspacing="0" cellpadding="0" width="600">
         <tr>
           <td align="center" valign="top" width="600">
       <![endif]-->
-            <table border="0" cellpadding="0" cellspacing="0" style="max-width: 600px" width="100%">
-              <!-- COPYRIGHT -->
-              <tr>
-                <td
-                  align="center"
-                  style="
-                    padding: 30px 30px 5px 30px;
-                    color: #666666;
-                    font-family: &quot;Poppins&quot;, sans-serif;
-                    font-size: 12px;
-                    font-weight: 400;
-                    line-height: 18px;
-                  "
-                >
-                  <p style="margin: 0">
-                    &copy;
-                    <span th:text="${#temporals.year(T(java.time.LocalDate).now())}">2026</span>
-                    <span><b>Kavun</b></span>. All rights reserved.
-                  </p>
-                  <p style="margin: 0">
-                    This email was sent automatically. Please do not reply to this email.
-                  </p>
-                </td>
-              </tr>
-            </table>
-            <!--[if (gte mso 9)|(IE)]>
+          <table
+            border="0"
+            cellpadding="0"
+            cellspacing="0"
+            role="presentation"
+            style="max-width: 600px"
+            width="100%"
+          >
+            <!-- COPYRIGHT -->
+            <tr>
+              <td
+                align="center"
+                style="
+                  padding: 30px 30px 5px 30px;
+                  color: #666666;
+                  font-family: &quot;Poppins&quot;, sans-serif;
+                  font-size: 12px;
+                  font-weight: 400;
+                  line-height: 18px;
+                "
+              >
+                <p style="margin: 0">
+                  &copy;
+                  <span th:text="${#temporals.year(T(java.time.LocalDate).now())}">2026</span>
+                  <span><b>Kavun</b></span
+                  >. All rights reserved.
+                </p>
+                <p style="margin: 0">
+                  This email was sent automatically. Please do not reply to this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <!--[if (gte mso 9)|(IE)]>
       </td>
       </tr>
       </table>
       <![endif]-->
-          </td>
-        </tr>
-      </table>
-    </body>
-  </html>
-</b>
-
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

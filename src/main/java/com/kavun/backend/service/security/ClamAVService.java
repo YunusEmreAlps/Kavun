@@ -3,6 +3,7 @@ package com.kavun.backend.service.security;
 import com.kavun.config.properties.ClamAVProperties;
 import com.kavun.constant.ClamAVConstants;
 import com.kavun.exception.VirusDetectedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class ClamAVService {
      * @throws VirusDetectedException if virus is detected and action is REJECT
      * @throws IOException            if there's an error reading the file
      */
+    @CircuitBreaker(name = "clamav", fallbackMethod = "scanFileFallback")
     public ScanResult scanFile(MultipartFile file) throws IOException {
         if (!clamAVProperties.isEnabled()) {
             LOG.debug("ClamAV scanning is disabled. Skipping scan for file: {}", file.getOriginalFilename());
@@ -77,6 +79,21 @@ public class ClamAVService {
 
             return null;
         }
+    }
+
+    /**
+     * Circuit breaker fallback for {@link #scanFile(MultipartFile)}, invoked either when a call
+     * fails or when the {@code clamav} circuit is open. Mirrors the exception already thrown by
+     * {@code scanFile} on failure so callers see identical behavior either way.
+     *
+     * @param file the file that was being scanned
+     * @param t the cause (the triggering exception, or {@code CallNotPermittedException} when open)
+     * @return never returns
+     */
+    private ScanResult scanFileFallback(MultipartFile file, Throwable t) {
+        LOG.error("ClamAV scanFile circuit breaker fallback triggered: fileName={}, error={}",
+                file.getOriginalFilename(), t.getMessage(), t);
+        throw new RuntimeException(ClamAVConstants.VIRUS_SCANNER_NOT_AVAILABLE, t);
     }
 
     /**

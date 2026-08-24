@@ -38,7 +38,7 @@ import lombok.Setter;
     indexes = {
         @Index(name = "idx_page_parent", columnList = "parent_id"),
         @Index(name = "idx_page_code", columnList = "code"),
-        @Index(name = "idx_page_order", columnList = "display_order"),
+        @Index(name = "idx_page_order", columnList = "order_index"),
         @Index(name = "idx_page_deleted", columnList = "deleted")
     }
 )
@@ -62,12 +62,15 @@ public class WebPage extends BaseEntity<Long> implements Serializable {
     @Column(nullable = false, length = 100)
     private String icon;
 
-    @Column(name = "display_order", nullable = false)
-    private Integer displayOrder;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private WebPage parent;
+
+    @Column(nullable = false)
+    private boolean showInMenu = true;
+
+    @Column(nullable = false)
+    private boolean navigable = true;
 
     @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<WebPage> children = new ArrayList<>();

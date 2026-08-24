@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.envers.Audited;
 import org.hibernate.envers.NotAudited;
 
@@ -81,7 +82,8 @@ public class User extends BaseEntity<Long> implements Serializable {
 
   @NotAudited
   @ToString.Exclude
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+  @SQLRestriction("deleted = false")
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<UserRole> userRoles = new HashSet<>();
 
   @NotAudited
@@ -117,6 +119,11 @@ public class User extends BaseEntity<Long> implements Serializable {
    * @param role the role
    */
   public void addUserRole(final Role role) {
+    boolean alreadyAssigned = userRoles.stream()
+        .anyMatch(ur -> Objects.equals(ur.getRole().getId(), role.getId()));
+    if (alreadyAssigned) {
+      return;
+    }
     var userRole = new UserRole(this, role);
     userRoles.add(userRole);
     userRole.setUser(this);

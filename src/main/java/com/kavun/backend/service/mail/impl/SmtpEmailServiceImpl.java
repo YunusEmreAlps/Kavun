@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -61,6 +62,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
   private final SystemProperties systemProps;
   private final JavaMailSender mailSender;
+  private final MailDeliveryGateway mailDeliveryGateway;
   private final TemplateEngine templateEngine;
   private final EmailRepository emailRepository;
 
@@ -163,7 +165,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       configureSSLTrust();
 
       // Send email
-      mailSender.send(simpleMailMessage);
+      mailDeliveryGateway.send(simpleMailMessage);
 
       // Increment counters
       incrementRateLimit(recipient);
@@ -200,7 +202,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
       // Configure and send
       configureSSLTrust();
-      mailSender.send(simpleMailMessage);
+      mailDeliveryGateway.send(simpleMailMessage);
 
       // Save success
       saveMailStatusToDatabase(simpleMailMessage, requestId, "Email sent successfully", true);
@@ -241,7 +243,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
       // Prepare and send email
       MimeMessage mimeMessage = prepareMimeMessage(emailRequest);
-      mailSender.send(mimeMessage);
+      mailDeliveryGateway.send(mimeMessage);
 
       // Save success to database
       String htmlBody = getEmailBodySafely(mimeMessage);
@@ -276,7 +278,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
       // Prepare and send email
       MimeMessage mimeMessage = prepareMimeMessage(emailRequest);
-      mailSender.send(mimeMessage);
+      mailDeliveryGateway.send(mimeMessage);
 
       // Save success to database
       String htmlBody = getEmailBodySafely(mimeMessage);
@@ -475,8 +477,14 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
     var withAttachment = CollectionUtils.isNotEmpty(emailFormat.getAttachments());
 
+    // MULTIPART_MODE_RELATED is required so inline images (cid:logo) can be embedded;
+    // MIXED_RELATED additionally supports regular file attachments alongside the inline logo.
+    int multipartMode = withAttachment
+        ? MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED
+        : MimeMessageHelper.MULTIPART_MODE_RELATED;
+
     MimeMessage mimeMessage = mailSender.createMimeMessage();
-    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, withAttachment, StandardCharsets.UTF_8.name());
+    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, multipartMode, StandardCharsets.UTF_8.name());
 
     // Set recipients
     setRecipientsForMimeMessage(emailFormat, helper);
@@ -494,12 +502,33 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
     // Set sender information
     setFromAndReplyTo(emailFormat, helper);
 
+    // Embed the logo referenced as 'cid:logo' in the email templates
+    addLogoInline(helper);
+
     // Add attachments if present
     if (withAttachment) {
       addAttachments(emailFormat, helper);
     }
 
     return mimeMessage;
+  }
+
+  /**
+   * Embeds the logo image inline so it can be referenced as {@code cid:logo} in email templates.
+   * Missing logo asset is logged and skipped rather than failing the whole email.
+   */
+  private void addLogoInline(MimeMessageHelper helper) {
+    var logo = new ClassPathResource(EmailConstants.LOGO_CLASSPATH_LOCATION);
+    if (!logo.exists()) {
+      LOG.warn("Logo image not found on classpath at: {}", EmailConstants.LOGO_CLASSPATH_LOCATION);
+      return;
+    }
+
+    try {
+      helper.addInline(EmailConstants.LOGO_CONTENT_ID, logo);
+    } catch (MessagingException e) {
+      LOG.warn("Failed to embed inline logo image: {}", e.getMessage());
+    }
   }
 
   /**

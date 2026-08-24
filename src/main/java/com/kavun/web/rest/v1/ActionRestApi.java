@@ -1,5 +1,6 @@
 package com.kavun.web.rest.v1;
 
+import com.kavun.annotation.Loggable;
 import com.kavun.backend.persistent.domain.user.Action;
 import com.kavun.backend.service.user.ActionService;
 import com.kavun.shared.dto.ActionDto;
@@ -39,6 +40,7 @@ public class ActionRestApi {
      * @param pageable pagination parameters
      * @return page of action DTOs
      */
+    @Loggable
     @GetMapping
     @Operation(summary = "Get all actions", description = "Retrieve all actions with pagination and optional filters")
     @ApiResponses(value = {
@@ -62,6 +64,7 @@ public class ActionRestApi {
      * @param filters search filters (optional)
      * @return list of action DTOs
      */
+    @Loggable
     @GetMapping("/list")
     @Operation(summary = "Get all actions as list", description = "Retrieve all actions without pagination")
     public ResponseEntity<List<ActionDto>> getAllList(
@@ -81,6 +84,7 @@ public class ActionRestApi {
      * @param id action ID
      * @return action DTO
      */
+    @Loggable
     @GetMapping("/{id}")
     @Operation(summary = "Get action by ID", description = "Retrieve a specific action by its ID")
     @ApiResponses(value = {
@@ -101,6 +105,7 @@ public class ActionRestApi {
      * @param request action creation request
      * @return created action DTO
      */
+    @Loggable
     @PostMapping
     @Operation(summary = "Create action", description = "Create a new action")
     @ApiResponses(value = {
@@ -128,6 +133,7 @@ public class ActionRestApi {
         @ApiResponse(responseCode = "404", description = "Action not found"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
+    @Loggable(entityName = "Action", entityClass = Action.class, queryParamKey = "id")
     public ResponseEntity<ActionDto> update(
             @Parameter(description = "Action ID", required = true)
             @PathVariable Long id,
@@ -143,6 +149,7 @@ public class ActionRestApi {
      * @param id action ID
      * @return response entity with no content
      */
+    @Loggable
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete action", description = "Soft delete an action (marks as deleted)")
     @ApiResponses(value = {
@@ -164,6 +171,7 @@ public class ActionRestApi {
      * @param id action ID
      * @return restored action DTO
      */
+    @Loggable
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore action", description = "Restore a soft-deleted action")
     @ApiResponses(value = {
@@ -185,6 +193,7 @@ public class ActionRestApi {
      * @param id action ID
      * @return true if exists, false otherwise
      */
+    @Loggable
     @GetMapping("/{id}/exists")
     @Operation(summary = "Check if action exists", description = "Check if an action exists by ID")
     public ResponseEntity<Boolean> existsById(
@@ -201,6 +210,7 @@ public class ActionRestApi {
      * @param filters search filters (optional)
      * @return number of matching actions
      */
+    @Loggable
     @GetMapping("/count")
     @Operation(summary = "Count actions", description = "Count actions matching the given filters")
     public ResponseEntity<Long> count(
@@ -221,6 +231,7 @@ public class ActionRestApi {
      * @param pageable pagination parameters
      * @return page of matching actions
      */
+    @Loggable
     @PostMapping("/search")
     @Operation(summary = "Search actions", description = "Search actions with dynamic criteria")
     public ResponseEntity<Page<ActionDto>> search(

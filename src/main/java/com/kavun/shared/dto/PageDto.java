@@ -34,4 +34,6 @@ public class PageDto extends BaseDto {
   private String description;
   private String icon;
   private Long parentId;
+  private boolean navigable;
+  private boolean showInMenu;
 }

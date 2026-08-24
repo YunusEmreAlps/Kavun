@@ -1,13 +1,13 @@
 package com.kavun.backend.service.user;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.UserRepository;
+import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
@@ -20,7 +20,9 @@ import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.enums.RoleType;
 import com.kavun.enums.UserHistoryType;
+import com.kavun.exception.user.RoleNotFoundException;
 import com.kavun.exception.user.UserAlreadyExistsException;
+import com.kavun.exception.user.UserNotFoundException;
 import com.kavun.web.payload.request.UserRoleRequest;
 import com.kavun.web.payload.response.UserResponse;
 import java.time.Clock;
@@ -29,9 +31,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -63,19 +67,19 @@ public class UserService
   private final Clock clock;
   private final RoleService roleService;
   private final PasswordEncoder passwordEncoder;
-  private final EntityManager entityManager;
+  private final UserRoleRepository userRoleRepository;
 
   public UserService(UserMapper mapper, UserRepository repository, UserSpecification specification,
-      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, EntityManager entityManager) {
+      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository) {
     super(mapper, repository, specification);
     this.clock = clock;
     this.roleService = roleService;
     this.passwordEncoder = passwordEncoder;
-    this.entityManager = entityManager;
+    this.userRoleRepository = userRoleRepository;
   }
 
-  public Specification<User> search(Map<String, Object> paramaterMap) {
-    return specification.search(paramaterMap);
+  public Specification<User> search(Map<String, Object> parameterMap) {
+    return specification.search(parameterMap);
   }
 
   public Integer count() {
@@ -141,14 +145,10 @@ public class UserService
     return persistUser(userDto, roleTypes, UserHistoryType.CREATED, false, skipDefaultRole);
   }
 
+  @Transactional(readOnly = true)
   public Page<UserResponse> findAll(Pageable pageable) {
     Page<User> usersPage = repository.findAll(pageable);
     return usersPage.map(mapper::toUserResponse);
-  }
-
-  public Page<UserDto> findAll(Specification<User> spec, Pageable pageable) {
-    return repository.findAll(spec, pageable)
-        .map(mapper::toDto);
   }
 
   /**
@@ -163,11 +163,7 @@ public class UserService
   public UserDto findById(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
-    User storedUser = repository.findById(id).orElse(null);
-    if (Objects.isNull(storedUser)) {
-      return null;
-    }
-    return UserUtils.convertToUserDto(storedUser);
+    return repository.findById(id).map(UserUtils::convertToUserDto).orElse(null);
   }
 
   /**
@@ -183,11 +179,9 @@ public class UserService
   public UserDto findByUsername(final String username) {
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
 
-    var storedUser = repository.findByUsernameAndDeletedFalse(username);
-    if (Objects.isNull(storedUser)) {
-      return null;
-    }
-    return UserUtils.convertToUserDto(storedUser);
+    return Optional.ofNullable(repository.findByUsernameAndDeletedFalse(username))
+        .map(UserUtils::convertToUserDto)
+        .orElse(null);
   }
 
   // Returns a user for the given email or null if a user could not be found. Only
@@ -196,11 +190,9 @@ public class UserService
   public UserDto findByEmail(final String email) {
     Validate.notNull(email, UserConstants.BLANK_EMAIL);
 
-    User storedUser = repository.findByEmailAndDeletedFalse(email);
-    if (Objects.isNull(storedUser)) {
-      return null;
-    }
-    return UserUtils.convertToUserDto(storedUser);
+    return Optional.ofNullable(repository.findByEmailAndDeletedFalse(email))
+        .map(UserUtils::convertToUserDto)
+        .orElse(null);
   }
 
   // Returns a user for the given phone or null if a user could not be found. Only
@@ -209,11 +201,9 @@ public class UserService
   public UserDto findByPhone(final String phone) {
     Validate.notNull(phone, UserConstants.BLANK_PHONE);
 
-    User storedUser = repository.findByPhoneAndDeletedFalse(phone);
-    if (Objects.isNull(storedUser)) {
-      return null;
-    }
-    return UserUtils.convertToUserDto(storedUser);
+    return Optional.ofNullable(repository.findByPhoneAndDeletedFalse(phone))
+        .map(UserUtils::convertToUserDto)
+        .orElse(null);
   }
 
   // Find all users that failed to verify their email after a certain time.
@@ -236,7 +226,7 @@ public class UserService
   // Checks if the username already exists.
   public boolean existsByUsername(final String username) {
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
-    return repository.existsByUsernameOrderById(username);
+    return repository.existsByUsername(username);
   }
 
   // Checks if the username or email already exists and enabled.
@@ -244,7 +234,7 @@ public class UserService
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
     Validate.notNull(email, UserConstants.BLANK_EMAIL);
 
-    return repository.existsByUsernameAndEnabledTrueOrEmailAndEnabledTrueOrderById(username, email);
+    return repository.existsByUsernameAndEnabledTrueOrEmailAndEnabledTrue(username, email);
   }
 
   // Validates the username exists and the token belongs to the user with the
@@ -252,7 +242,7 @@ public class UserService
   public boolean isValidUsernameAndToken(final String username, final String token) {
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
 
-    return repository.existsByUsernameAndVerificationTokenOrderById(username, token);
+    return repository.existsByUsernameAndVerificationToken(username, token);
   }
 
   /**
@@ -262,10 +252,12 @@ public class UserService
    * @param id      the user id to update
    * @param request the user request with updated data
    * @return updated user DTO
-   * @throws IllegalArgumentException if user not found or validation fails
+   * @throws UserNotFoundException      if no user exists with the given id
+   * @throws UserAlreadyExistsException if the new username or email is already
+   *                                    taken
    */
   @Caching(evict = {
-      @CacheEvict(value = CacheConstants.USERS, key = "#id"),
+      @CacheEvict(value = CacheConstants.USERS, allEntries = true),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
   public UserDto updateUser(Long id, UserRequest request) {
@@ -274,18 +266,18 @@ public class UserService
 
     // Fetch user
     User existingUser = repository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
 
     // Validate uniqueness only if changed
     if (!existingUser.getUsername().equals(request.getUsername())) {
       if (repository.existsByUsernameAndIdNotAndDeletedFalse(request.getUsername(), id)) {
-        throw new IllegalArgumentException(UserConstants.EXIST_USERNAME);
+        throw new UserAlreadyExistsException(UserConstants.EXIST_USERNAME);
       }
     }
 
     if (!existingUser.getEmail().equals(request.getEmail())) {
       if (repository.existsByEmailAndIdNotAndDeletedFalse(request.getEmail(), id)) {
-        throw new IllegalArgumentException(UserConstants.EXIST_EMAIL);
+        throw new UserAlreadyExistsException(UserConstants.EXIST_EMAIL);
       }
     }
 
@@ -304,7 +296,6 @@ public class UserService
     existingUser.setAddress(request.getAddress());
     existingUser.setTitle(request.getTitle());
 
-
     var savedUser = repository.save(existingUser);
 
     // Update roles if provided
@@ -317,80 +308,65 @@ public class UserService
 
   // Enables the user by setting the enabled state to true.
   @Caching(evict = {
-      @CacheEvict(value = CacheConstants.USERS, key = "#id"),
+      @CacheEvict(value = CacheConstants.USERS, allEntries = true),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  public UserDto enableUser(final Long id) {
+  public void enableUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
-    User storedUser = repository.findById(id).orElse(null);
-    if (Objects.isNull(storedUser)) {
-      LOG.warn("User not found with id: {}", id);
-      return null;
-    }
+    User storedUser = repository.findById(id)
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
 
     LOG.debug("Enabling user {}", storedUser.getUsername());
     storedUser.setEnabled(true);
     repository.saveAndFlush(storedUser);
 
-    UserDto userDto = UserUtils.convertToUserDto(storedUser);
     LOG.info("User {} enabled successfully", storedUser.getUsername());
-    return userDto;
   }
 
   // Disables the user by setting the enabled state to false.
   @Caching(evict = {
-      @CacheEvict(value = CacheConstants.USERS, key = "#id"),
+      @CacheEvict(value = CacheConstants.USERS, allEntries = true),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  public UserDto disableUser(final Long id) {
+  public void disableUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
-    User storedUser = repository.findById(id).orElse(null);
-    if (Objects.isNull(storedUser)) {
-      LOG.warn("User not found with id: {}", id);
-      return null;
-    }
+    User storedUser = repository.findById(id)
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
 
     LOG.debug("Disabling user {}", storedUser.getUsername());
     storedUser.setEnabled(false);
     repository.saveAndFlush(storedUser);
 
-    UserDto userDto = UserUtils.convertToUserDto(storedUser);
     LOG.info("User {} disabled successfully", storedUser.getUsername());
-    return userDto;
   }
 
   // Soft delete the user with the user id given by setting deleted flag to true.
   @Caching(evict = {
-      @CacheEvict(value = CacheConstants.USERS, key = "#id"),
+      @CacheEvict(value = CacheConstants.USERS, allEntries = true),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
-  public boolean softDeleteUser(final Long id) {
+  public void softDeleteUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
-    User storedUser = repository.findById(id).orElse(null);
-    if (Objects.isNull(storedUser)) {
-      LOG.warn("User not found with id: {}", id);
-      return false;
-    }
+    User storedUser = repository.findById(id)
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
 
     var authenticatedUser = SecurityUtils.getAuthenticatedUserDetails();
+    storedUser.setDeleted(true);
+    storedUser.setDeletedAt(LocalDateTime.now(clock));
     if (authenticatedUser != null) {
       storedUser.setDeletedBy(authenticatedUser.getId());
     }
-    storedUser.setDeleted(true);
-    storedUser.setDeletedAt(LocalDateTime.now(clock));
-    storedUser.setDeletedBy(SecurityUtils.getAuthenticatedUserDetails().getId());
     repository.saveAndFlush(storedUser);
 
     LOG.info("Soft deleted user with id {}", id);
-    return true;
   }
 
   // Delete the user with the user id given (Hard Delete).
   @Caching(evict = {
-      @CacheEvict(value = CacheConstants.USERS, key = "#id"),
+      @CacheEvict(value = CacheConstants.USERS, allEntries = true),
       @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
   })
   public void deleteUser(final Long id) {
@@ -421,10 +397,9 @@ public class UserService
     Validate.notNull(oldPassword, UserConstants.BLANK_PASSWORD);
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
 
-    User storedUser = repository.findById(id).orElse(null);
-    if (Objects.isNull(storedUser)) {
-      throw new IllegalArgumentException(UserConstants.USER_NOT_FOUND);
-    }
+    User storedUser = repository.findById(id)
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+
 
     if (!passwordEncoder.matches(oldPassword, storedUser.getPassword())) {
       throw new IllegalArgumentException(UserConstants.PASSWORD_UPDATED_FAILED);
@@ -441,10 +416,9 @@ public class UserService
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
 
-    User storedUser = repository.findById(id).orElse(null);
-    if (storedUser == null) {
-      throw new IllegalArgumentException(UserConstants.USER_NOT_FOUND);
-    }
+    User storedUser = repository.findById(id)
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+
 
     storedUser.setPassword(passwordEncoder.encode(newPassword));
     repository.save(storedUser);
@@ -452,12 +426,7 @@ public class UserService
     return true;
   }
 
-  public List<UserResponse> findAllUsers() {
-    List<User> usersPage = repository.findAll();
-    return usersPage.stream().map(mapper::toUserResponse).toList();
-  }
-
-    /**
+  /**
    * Transfers user details to a user object then persist to a database.
    *
    * @param userDto     the userDto
@@ -474,7 +443,6 @@ public class UserService
     return persistUser(userDto, roleTypes, historyType, isUpdate, false);
   }
 
-
   /**
    * Transfers user details to a user object then persist to a database.
    *
@@ -489,8 +457,7 @@ public class UserService
       final Set<RoleType> roleTypes,
       final UserHistoryType historyType,
       final boolean isUpdate,
-      final boolean skipDefaultRole
-    ) {
+      final boolean skipDefaultRole) {
 
     // If no role types are specified, then set the default role type
     var localRoleTypes = new HashSet<>(roleTypes);
@@ -499,59 +466,80 @@ public class UserService
     }
 
     var user = UserUtils.convertToUser(userDto);
+    var roleNames = localRoleTypes.stream().map(RoleType::name).toList();
+    var rolesByName = roleService.findAllByNames(roleNames).stream()
+        .collect(Collectors.toMap(Role::getName, role -> role));
     for (RoleType roleType : localRoleTypes) {
-      var storedRole = roleService.findByName(roleType.name());
-      user.addUserRole(storedRole);
+      user.addUserRole(rolesByName.get(roleType.name()));
     }
     // user.addUserHistory(new UserHistory(user, historyType));
 
     return saveOrUpdate(user, isUpdate);
   }
 
-  public User getEntity(Long id) {
-    return repository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Kullanıcı bulunamadı"));
-  }
-
   /**
-   * Assigns multiple roles to a user. Replaces existing roles.
+   * Assigns multiple roles to a user using upsert/restore semantics:
+   * - roles no longer requested → soft-deleted (orphanRemoval + @SQLDelete)
+   * - roles previously removed → restored (deleted flag cleared)
+   * - roles not yet assigned → created
+   * - roles already active → untouched
    *
-   * @param userId the user id
-   * @param roleRequests the list of role requests containing role IDs
+   * @param userId       the user id
+   * @param roleRequests the desired set of role assignments
    */
   @Transactional
   public void assignRolesToUser(Long userId, List<UserRoleRequest> roleRequests) {
     User user = repository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
 
-    // Delete all existing roles using native query to avoid constraint issues
-    int deletedCount = entityManager.createNativeQuery(
-        "DELETE FROM user_role WHERE user_id = :userId")
-        .setParameter("userId", userId)
-        .executeUpdate();
+    Set<Long> requestedRoleIds = roleRequests == null ? Set.of()
+        : roleRequests.stream()
+            .map(UserRoleRequest::getRoleId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
 
-    LOG.debug("Deleted {} existing roles for user {}", deletedCount, userId);
+    // Validate all requested roles exist upfront, keeping them around for reuse below
+    Map<Long, Role> rolesById = roleService.findAllByIds(requestedRoleIds).stream()
+        .collect(Collectors.toMap(Role::getId, role -> role));
+    for (Long roleId : requestedRoleIds) {
+      if (!rolesById.containsKey(roleId)) {
+        throw new RoleNotFoundException("Role not found with id: " + roleId);
+      }
+    }
 
-    // Clear the collection to sync with database state
-    user.getUserRoles().clear();
-    entityManager.flush();
+    // Soft-delete active roles not in the request (orphanRemoval=true + @SQLDelete)
+    user.getUserRoles().removeIf(ur -> !requestedRoleIds.contains(ur.getRole().getId()));
 
-    // Add new roles
-    int addedCount = 0;
-    if (roleRequests != null && !roleRequests.isEmpty()) {
-      for (UserRoleRequest roleRequest : roleRequests) {
-        Role role = roleService.findRoleById(roleRequest.getRoleId());
-        if (role == null) {
-          LOG.warn("Role not found with id: {}", roleRequest.getRoleId());
-          continue;
-        }
-        user.addUserRole(role);
-        addedCount++;
+    // Current active role IDs after removal
+    Set<Long> currentActiveRoleIds = user.getUserRoles().stream()
+        .map(ur -> ur.getRole().getId())
+        .collect(Collectors.toSet());
+
+    // findAllByUserId bypasses @SQLRestriction to include soft-deleted records,
+    // fetched once here instead of once per requested role
+    Map<Long, UserRole> existingByRoleId = userRoleRepository.findAllByUserId(userId).stream()
+        .collect(Collectors.toMap(ur -> ur.getRole().getId(), ur -> ur));
+
+    // Restore soft-deleted or create new for each requested role
+    for (Long roleId : requestedRoleIds) {
+      if (currentActiveRoleIds.contains(roleId)) {
+        continue; // already active, no change needed
+      }
+      UserRole existing = existingByRoleId.get(roleId);
+      if (existing != null) {
+        // Restore previously removed assignment
+        existing.setDeleted(false);
+        existing.setDeletedAt(null);
+        existing.setDeletedBy(null);
+        userRoleRepository.save(existing);
+      } else {
+        // New assignment
+        user.addUserRole(rolesById.get(roleId));
       }
     }
 
     repository.save(user);
-    LOG.info("Updated roles for user {} - deleted: {}, added: {}", userId, deletedCount, addedCount);
+    LOG.info("Updated roles for user {} - requested: {}", userId, requestedRoleIds.size());
   }
 
   // Generates a secure temporary password.

@@ -51,12 +51,12 @@ public final class LoggingConstants {
     public static final String API_PATH_PREFIX = "/api/";
     public static final long SLOW_REQUEST_THRESHOLD_MS = 3000L;
     public static final String LOG_TYPE_HTTP_REQUEST = "HTTP_REQUEST";
-
+    public static final String LOG_TYPE_SCHEDULED_TASK = "SCHEDULED_TASK";
+    public static final String LOG_TYPE_ASYNC_TASK = "ASYNC_TASK";
+    public static final String LOG_TYPE_EVENT_TASK = "EVENT_TASK";
 
     public static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
-    public static final Set<String> SENSITIVE_PATHS = Set.of(
-            "/login", "/auth", "/password", "/token", "/refresh", "/register", "/signup"
-    );
+    public static final Set<String> SENSITIVE_PATHS = Set.of("/login", "/reset-password");
 
     public static final String LOG_LEVEL_ERROR = "ERROR";
     public static final String LOG_LEVEL_WARN = "WARN";

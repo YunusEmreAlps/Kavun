@@ -74,9 +74,10 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
           var userDetails = userDetailsService.loadUserByUsername(username);
           SecurityUtils.authenticateUser(request, userDetails);
         }
-      } catch (Exception e) {
-        // Log and continue - token might be a Keycloak JWT that shouldn't be decrypted
-        LOG.debug("Failed to process JWT token: {}", e.getMessage());
+      }
+      catch (Exception e) {
+        // Invalid or malformed token - log and continue without authentication
+        LOG.warn("Failed to decrypt or validate token: {}", e.getMessage());
       }
     }
     filterChain.doFilter(request, response);

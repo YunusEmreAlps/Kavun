@@ -14,4 +14,6 @@ public class PageRequest extends BaseRequest {
     private String icon;
     private Integer orderIndex;
     private Long parentId;
+    private boolean navigable;
+    private boolean showInMenu;
 }

@@ -44,6 +44,10 @@ public final class EmailConstants {
   public static final String ABOUT_US_LINK = "aboutUsLink";
   public static final String COPY_ABOUT_US = "/copy/about-us";
 
+  // Logo embedded inline via Content-ID in HTML emails (see common-logo fragment)
+  public static final String LOGO_CONTENT_ID = "logo";
+  public static final String LOGO_CLASSPATH_LOCATION = "static/images/logo.png";
+
   // Templates
   public static final String EMAIL_TEMPLATE = "email/template";
   public static final String EMAIL_FOOTER_TEMPLATE = "email/footer";

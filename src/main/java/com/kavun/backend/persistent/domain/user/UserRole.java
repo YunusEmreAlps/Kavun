@@ -86,7 +86,6 @@ public class UserRole extends BaseEntity<Long> implements Serializable {
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(),
         user != null ? user.getId() : null,
         role != null ? role.getId() : null);
   }

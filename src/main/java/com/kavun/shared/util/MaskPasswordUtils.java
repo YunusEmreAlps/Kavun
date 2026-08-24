@@ -30,7 +30,7 @@ public final class MaskPasswordUtils {
                     "apisecret", "api_secret", "accesstoken", "access_token", "refreshtoken", "refresh_token",
                     "bearertoken", "bearer_token", "privatekey", "private_key", "secretkey", "secret_key",
                     "creditcard", "credit_card", "cardnumber", "card_number", "cvv", "cvc", "pin", "ssn",
-                    "authorization", "auth", "credential", "otp", "totp", "mfa")));
+                    "authorization", "auth", "credential", "otp", "totp", "mfa", "tckimlik", "kimlikno", "nationalid", "iban")));
 
     // Precompiled regex patterns for better performance (thread-safe)
     private static final Map<String, Pattern> FIELD_PATTERNS = new ConcurrentHashMap<>();
@@ -55,8 +55,13 @@ public final class MaskPasswordUtils {
     }
 
     private static void compilePatternForField(String field) {
-        // Match both quoted and unquoted values, handle snake_case and camelCase
-        String regex = String.format("(\"%s\"\\s*:\\s*)(\"[^\"]*\"|[^,}\\]\\s]+)", Pattern.quote(field));
+        // Match any JSON key CONTAINING this field name (e.g. "tckimlik" also catches
+        // "tcKimlikNo", "userTcKimlikNo"), not just an exact key match - consistent with
+        // isSensitiveField()'s substring semantics used for the reflection-based POJO path
+        // below. An exact-only match here would silently fail to mask real-world field name
+        // variants (verified: "tcKimlikNo" was NOT masked before this fix, only a field
+        // literally named "tckimlik" would have been).
+        String regex = String.format("(\"[^\"]*%s[^\"]*\"\\s*:\\s*)(\"[^\"]*\"|[^,}\\]\\s]+)", Pattern.quote(field));
         FIELD_PATTERNS.put(field, Pattern.compile(regex, Pattern.CASE_INSENSITIVE));
     }
 

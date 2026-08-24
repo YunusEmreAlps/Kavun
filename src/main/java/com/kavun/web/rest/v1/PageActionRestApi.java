@@ -1,5 +1,6 @@
 package com.kavun.web.rest.v1;
 
+import com.kavun.annotation.Loggable;
 import com.kavun.backend.persistent.domain.user.PageAction;
 import com.kavun.backend.service.user.PageActionService;
 import com.kavun.shared.dto.PageActionDto;
@@ -39,6 +40,7 @@ public class PageActionRestApi {
      * @param pageable pagination parameters
      * @return page of page DTOs
      */
+    @Loggable
     @GetMapping
     @Operation(summary = "Get all page actions", description = "Retrieve all page actions with pagination and optional filters")
     @ApiResponses(value = {
@@ -62,6 +64,7 @@ public class PageActionRestApi {
      * @param filters search filters (optional)
      * @return list of page DTOs
      */
+    @Loggable
     @GetMapping("/list")
     @Operation(summary = "Get all page actions as list", description = "Retrieve all page actions without pagination")
     public ResponseEntity<List<PageActionDto>> getAllList(
@@ -81,6 +84,7 @@ public class PageActionRestApi {
      * @param id page ID
      * @return page DTO
      */
+    @Loggable
     @GetMapping("/{id}")
     @Operation(summary = "Get page action by ID", description = "Retrieve a specific page action by its ID")
     @ApiResponses(value = {
@@ -101,6 +105,7 @@ public class PageActionRestApi {
      * @param request page creation request
      * @return created page DTO
      */
+    @Loggable
     @PostMapping
     @Operation(summary = "Create page", description = "Create a new page")
     @ApiResponses(value = {
@@ -128,6 +133,7 @@ public class PageActionRestApi {
         @ApiResponse(responseCode = "404", description = "Page action not found"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
+    @Loggable(entityName = "PageAction", entityClass = PageAction.class, queryParamKey = "id")
     public ResponseEntity<PageActionDto> update(
             @Parameter(description = "Page action ID", required = true)
             @PathVariable Long id,
@@ -143,6 +149,7 @@ public class PageActionRestApi {
      * @param id page ID
      * @return response entity with no content
      */
+    @Loggable
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete page action", description = "Soft delete a page action (marks as deleted)")
     @ApiResponses(value = {
@@ -164,6 +171,7 @@ public class PageActionRestApi {
      * @param id page ID
      * @return restored page DTO
      */
+    @Loggable
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore page action", description = "Restore a soft-deleted page action")
     @ApiResponses(value = {
@@ -185,6 +193,7 @@ public class PageActionRestApi {
      * @param id page ID
      * @return true if exists, false otherwise
      */
+    @Loggable
     @GetMapping("/{id}/exists")
     @Operation(summary = "Check if page action exists", description = "Check if a page action exists by ID")
     public ResponseEntity<Boolean> existsById(
@@ -201,6 +210,7 @@ public class PageActionRestApi {
      * @param filters search filters (optional)
      * @return number of matching page actions
      */
+    @Loggable
     @GetMapping("/count")
     @Operation(summary = "Count page actions", description = "Count page actions matching the given filters")
     public ResponseEntity<Long> count(
@@ -221,6 +231,7 @@ public class PageActionRestApi {
      * @param pageable pagination parameters
      * @return page of matching page actions
      */
+    @Loggable
     @PostMapping("/search")
     @Operation(summary = "Search page actions", description = "Search page actions with dynamic criteria")
     public ResponseEntity<Page<PageActionDto>> search(

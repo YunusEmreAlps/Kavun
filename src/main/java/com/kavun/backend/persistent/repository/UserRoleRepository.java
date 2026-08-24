@@ -42,6 +42,14 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
 
     Optional<UserRole> findByUserIdAndRoleIdAndDeletedFalse(Long userId, Long roleId);
 
+    // Includes soft-deleted records — used for upsert/restore logic
+    @Query("SELECT ur FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.id = :roleId")
+    Optional<UserRole> findByUserIdAndRoleId(@Param("userId") Long userId, @Param("roleId") Long roleId);
+
+    // Includes soft-deleted records — used to batch-resolve upsert/restore logic without N+1 queries
+    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role WHERE ur.user.id = :userId")
+    List<UserRole> findAllByUserId(@Param("userId") Long userId);
+
     @Query("""
                 SELECT COUNT(ur) FROM UserRole ur
                 WHERE ur.user.id = :userId

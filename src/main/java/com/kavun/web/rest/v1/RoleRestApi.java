@@ -58,6 +58,7 @@ public class RoleRestApi {
      * @param pageable pagination parameters
      * @return page of page DTOs
      */
+    @Loggable
     @GetMapping
     @Operation(summary = "Get all roles", description = "Retrieve all roles with pagination and optional filters")
     @ApiResponses(value = {
@@ -81,6 +82,7 @@ public class RoleRestApi {
      * @param filters search filters (optional)
      * @return list of role DTOs
      */
+    @Loggable
     @GetMapping("/list")
     @Operation(summary = "Get all roles as list", description = "Retrieve all roles without pagination")
     public ResponseEntity<List<RoleDto>> getAllList(
@@ -100,6 +102,7 @@ public class RoleRestApi {
      * @param id role ID
      * @return role DTO
      */
+    @Loggable
     @GetMapping("/{id}")
     @Operation(summary = "Get role by ID", description = "Retrieve a specific role by its ID")
     @ApiResponses(value = {
@@ -120,6 +123,7 @@ public class RoleRestApi {
      * @param request role creation request
      * @return created role DTO
      */
+    @Loggable
     @PostMapping
     @Operation(summary = "Create role", description = "Create a new role")
     @ApiResponses(value = {
@@ -146,6 +150,7 @@ public class RoleRestApi {
         @ApiResponse(responseCode = "404", description = "Role not found"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
+    @Loggable(entityName = "Role", entityClass = Role.class, queryParamKey = "id")
     public ResponseEntity<RoleDto> update(
             @Parameter(description = "Role ID", required = true)
             @PathVariable Long id,
@@ -161,6 +166,7 @@ public class RoleRestApi {
      * @param id role ID
      * @return response entity with no content
      */
+    @Loggable
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete role", description = "Soft delete a role (marks as deleted)")
     @ApiResponses(value = {
@@ -182,6 +188,7 @@ public class RoleRestApi {
      * @param id role ID
      * @return restored role DTO
      */
+    @Loggable
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore role", description = "Restore a soft-deleted role")
     @ApiResponses(value = {
@@ -203,6 +210,7 @@ public class RoleRestApi {
      * @param id role ID
      * @return true if exists, false otherwise
      */
+    @Loggable
     @GetMapping("/{id}/exists")
     @Operation(summary = "Check if role exists", description = "Check if a role exists by ID")
     public ResponseEntity<Boolean> existsById(
@@ -219,6 +227,7 @@ public class RoleRestApi {
      * @param filters search filters (optional)
      * @return number of matching roles
      */
+    @Loggable
     @GetMapping("/count")
     @Operation(summary = "Count roles", description = "Count roles matching the given filters")
     public ResponseEntity<Long> count(

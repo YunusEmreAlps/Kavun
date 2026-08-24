@@ -1,6 +1,7 @@
 package com.kavun.backend.serializer;
 
 import com.kavun.backend.persistent.repository.UserRepository;
+import com.kavun.shared.util.SpringContextHolder;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,10 +20,22 @@ import java.io.IOException;
 @Component
 public class UserInfoObjectSerializer extends JsonSerializer<Long> {
 
-    private final UserRepository userRepository;
+    private UserRepository userRepository;
+
+    // Default constructor
+    public UserInfoObjectSerializer() {}
+
 
     public UserInfoObjectSerializer(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    private UserRepository getUserRepository() {
+        if (userRepository == null) {
+            // Lazy initialization using Spring context when Jackson instantiates this
+            userRepository = SpringContextHolder.getBean(UserRepository.class);
+        }
+        return userRepository;
     }
 
     @Override
@@ -34,7 +47,7 @@ public class UserInfoObjectSerializer extends JsonSerializer<Long> {
 
         try {
             // Get user info from database
-            var userInfo = userRepository.findUserInfoById(userId);
+            var userInfo = getUserRepository().findUserInfoById(userId);
             LOG.info("Serializing userId {}: found userInfo {}", userId, userInfo);
             if (userInfo.isPresent()) {
                 gen.writeStartObject();

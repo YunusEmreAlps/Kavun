@@ -68,6 +68,9 @@ public class ApplicationLog extends BaseEntity<Long> implements Serializable {
     @Column(name = "username", length = 255)
     private String username;
 
+    @Column(name = "user_id", length = 36)
+    private String userId;
+
     @Column(name = "request_url", length = 2048)
     private String requestUrl;
 
@@ -82,6 +85,9 @@ public class ApplicationLog extends BaseEntity<Long> implements Serializable {
 
     @Column(name = "state_after", columnDefinition = "text")
     private String stateAfter;
+
+    @Column(name = "state_diff", columnDefinition = "text")
+    private String stateDiff;
 
     @Column(name = "duration_ms")
     private Long durationMs;

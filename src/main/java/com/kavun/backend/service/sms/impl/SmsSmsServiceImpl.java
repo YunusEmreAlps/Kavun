@@ -3,6 +3,8 @@ package com.kavun.backend.service.sms.impl;
 import com.kavun.backend.service.sms.SmsService;
 import com.kavun.constant.EnvConstants;
 import com.kavun.exception.user.SmsServiceException;
+import jakarta.annotation.PostConstruct;
+import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,6 +44,11 @@ public class SmsSmsServiceImpl implements SmsService {
   // Turkish phone number pattern: +90XXXXXXXXXX or 05XXXXXXXXX
   private static final Pattern PHONE_PATTERN = Pattern.compile("^(\\+90|0)?[5][0-9]{9}$");
 
+  // None of these providers have a real integration wired up yet (see the
+  // commented-out sendVia*() methods below) - until one is implemented,
+  // sendSms() must fail loudly instead of silently "succeeding".
+  private static final Set<String> UNIMPLEMENTED_PROVIDERS = Set.of("twilio", "aws-sns", "netgsm");
+
   @Value("${sms.api.key:}")
   private String apiKey;
 
@@ -53,6 +60,21 @@ public class SmsSmsServiceImpl implements SmsService {
 
   @Value("${sms.provider:mock}")
   private String provider;
+
+  /**
+   * Warn loudly at startup if this bean is active (production/docker) without a real
+   * SMS provider wired up, so the gap is visible in logs before any OTP is ever sent -
+   * not discovered by a user who never received their code.
+   */
+  @PostConstruct
+  private void warnIfNoProviderConfigured() {
+    if (!UNIMPLEMENTED_PROVIDERS.contains(provider.toLowerCase())) {
+      LOG.warn("SmsSmsServiceImpl is active but 'sms.provider={}' has no real integration implemented. "
+          + "Any call to sendSms()/sendOtpSms() will throw SmsServiceException until a provider "
+          + "(twilio, aws-sns, netgsm) is implemented and configured. "
+          + "Do not enable login.otp.enabled with SMS delivery until this is resolved.", provider);
+    }
+  }
 
   @Override
   public void sendSms(String phoneNumber, String message) {
@@ -72,33 +94,31 @@ public class SmsSmsServiceImpl implements SmsService {
     // Normalize phone number to E.164 format (+90XXXXXXXXXX)
     String normalizedPhone = normalizePhoneNumber(phoneNumber);
 
-    try {
-      // TODO: Integrate with actual SMS provider
-      // Choose and implement one of the following:
-
-      switch (provider.toLowerCase()) {
-        case "twilio":
-          // sendViaTwilio(normalizedPhone, message);
-          LOG.warn("Twilio SMS integration not implemented yet");
-          break;
-        case "aws-sns":
-          // sendViaAwsSns(normalizedPhone, message);
-          LOG.warn("AWS SNS SMS integration not implemented yet");
-          break;
-        case "netgsm":
-          // sendViaNetGsm(normalizedPhone, message);
-          LOG.warn("NetGSM SMS integration not implemented yet");
-          break;
-        default:
-          LOG.warn("No SMS provider configured. Message would be sent to: {}", normalizedPhone);
-          LOG.warn("Message: {}", message);
-      }
-
-      LOG.info("SMS sent successfully to: {}", normalizedPhone);
-
-    } catch (Exception e) {
-      LOG.error("Failed to send SMS to {}: {}", normalizedPhone, e.getMessage(), e);
-      throw new SmsServiceException("Failed to send SMS: " + e.getMessage(), e);
+    // Fail fast: none of the supported providers are actually integrated yet
+    // (see the commented-out sendVia*() methods below). Returning normally here
+    // without sending anything would make the caller (and the end user waiting
+    // on an OTP) believe delivery succeeded when it silently did not.
+    switch (provider.toLowerCase()) {
+      case "twilio":
+        // sendViaTwilio(normalizedPhone, message);
+        throw new SmsServiceException(
+            "SMS provider 'twilio' is not yet integrated. Implement sendViaTwilio() in "
+                + "SmsSmsServiceImpl before sending to " + normalizedPhone + ".");
+      case "aws-sns":
+        // sendViaAwsSns(normalizedPhone, message);
+        throw new SmsServiceException(
+            "SMS provider 'aws-sns' is not yet integrated. Implement sendViaAwsSns() in "
+                + "SmsSmsServiceImpl before sending to " + normalizedPhone + ".");
+      case "netgsm":
+        // sendViaNetGsm(normalizedPhone, message);
+        throw new SmsServiceException(
+            "SMS provider 'netgsm' is not yet integrated. Implement sendViaNetGsm() in "
+                + "SmsSmsServiceImpl before sending to " + normalizedPhone + ".");
+      default:
+        throw new SmsServiceException(
+            "No SMS provider configured (sms.provider=" + provider + "). Set 'sms.provider' to a "
+                + "supported value and implement the corresponding integration before sending to "
+                + normalizedPhone + ".");
     }
   }
 

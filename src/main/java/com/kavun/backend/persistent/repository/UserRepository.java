@@ -78,7 +78,7 @@ public interface UserRepository extends BaseRepository<User> {
      * @param username username to check if user exists.
      * @return True if user exists or false otherwise.
      */
-    Boolean existsByUsernameOrderById(String username);
+    Boolean existsByUsername(String username);
 
     /**
      * Check if user exists by username or email.
@@ -88,7 +88,7 @@ public interface UserRepository extends BaseRepository<User> {
      * @return True if user exists or false otherwise.
      */
     @RestResource(exported = false)
-    Boolean existsByUsernameAndEnabledTrueOrEmailAndEnabledTrueOrderById(
+    Boolean existsByUsernameAndEnabledTrueOrEmailAndEnabledTrue(
             String username, String email);
 
     // Check if username exists for a different user (for update validations).
@@ -104,9 +104,9 @@ public interface UserRepository extends BaseRepository<User> {
      * @param verificationToken the verification token
      * @return if user exists with the given verification token
      */
-    Boolean existsByUsernameAndVerificationTokenOrderById(String username, String verificationToken);
+    Boolean existsByUsernameAndVerificationToken(String username, String verificationToken);
 
-    Boolean existsByUsernameAndFailedLoginAttemptsGreaterThanOrderById(String username, int attempts);
+    Boolean existsByUsernameAndFailedLoginAttemptsGreaterThan(String username, int attempts);
 
     /**\n     * Find all users that failed to verify their email after a certain time.
      *

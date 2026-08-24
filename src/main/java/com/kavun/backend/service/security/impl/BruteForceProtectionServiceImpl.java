@@ -102,7 +102,7 @@ public class BruteForceProtectionServiceImpl implements BruteForceProtectionServ
   public boolean isBruteForceAttack(final String username) {
     ValidationUtils.validateInputs(username, UserConstants.BLANK_USERNAME);
 
-    if (userRepository.existsByUsernameAndFailedLoginAttemptsGreaterThanOrderById(
+    if (userRepository.existsByUsernameAndFailedLoginAttemptsGreaterThan(
         username, maxFailedLogins)) {
 
       LOG.debug(

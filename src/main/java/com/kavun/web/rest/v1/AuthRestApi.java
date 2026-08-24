@@ -20,6 +20,7 @@ import com.kavun.enums.TokenType;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.CaptchaGenerator;
 import com.kavun.shared.util.CaptchaStore;
+import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.backend.persistent.domain.user.Captcha;
 import com.kavun.backend.persistent.domain.user.UserSession;
@@ -42,7 +43,6 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,12 +62,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import com.kavun.web.payload.response.CaptchaResponse;
-
 
 /**
  * This class attempt to authenticate with AuthenticationManager bean, add an
@@ -100,6 +100,15 @@ public class AuthRestApi {
   @Value("${login.captcha.enabled:false}")
   private boolean isCaptchaEnabled;
 
+  // Reused as the cap for the per-IP+username failed-login throttle below, so a
+  // single
+  // config knob governs "how many bad passwords before this combination is cut
+  // off" in
+  // both the persistent account lock (BruteForceProtectionService) and this
+  // transient one.
+  @Value("${security.failedLoginAttempts}")
+  private int maxFailedLoginAttempts;
+
   private final OtpService otpService;
   private final JwtService jwtService;
   private final UserService userService;
@@ -113,11 +122,37 @@ public class AuthRestApi {
 
   private final CaptchaRepository captchaRepository;
 
-  // Rate limiting caches
-  private final ConcurrentHashMap<String, Bucket> captchaRateLimitCache = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<String, Bucket> loginRateLimitCache = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<String, Bucket> forgotPasswordIpCache = new ConcurrentHashMap<>();
-  private final ConcurrentHashMap<String, Bucket> forgotPasswordUserCache = new ConcurrentHashMap<>();
+  // Rate limiting caches. Backed by Caffeine (bounded size + expire-after-access)
+  // rather
+  // than a plain ConcurrentHashMap, so entries for IPs/users that stop showing up
+  // are
+  // evicted automatically instead of accumulating for the lifetime of the
+  // process.
+  //
+  // These are per-pod/per-JVM only - there is no cross-instance coordination
+  // (e.g. Redis).
+  // Behind a load balancer with more than one replica, each pod enforces these
+  // limits
+  // independently, so the effective limit is roughly (configured limit x pod
+  // count) unless
+  // the same client is consistently routed to the same pod. On OpenShift, set the
+  // Route to
+  // source-IP affinity so this holds: `haproxy.router.openshift.io/balance:
+  // source`. The
+  // persistent, DB-backed account lock in BruteForceProtectionService is
+  // unaffected by this -
+  // it's the real security backstop; these caches are a cheap, self-healing
+  // complement to it.
+  private final Cache<String, Bucket> captchaRateLimitCache = Caffeine.newBuilder()
+      .expireAfterAccess(Duration.ofMinutes(10)).maximumSize(50_000).build();
+  private final Cache<String, Bucket> loginRateLimitCache = Caffeine.newBuilder()
+      .expireAfterAccess(Duration.ofMinutes(10)).maximumSize(50_000).build();
+  private final Cache<String, Bucket> ipUsernameFailureCache = Caffeine.newBuilder()
+      .expireAfterAccess(Duration.ofMinutes(15)).maximumSize(100_000).build();
+  private final Cache<String, Bucket> forgotPasswordIpCache = Caffeine.newBuilder()
+      .expireAfterAccess(Duration.ofHours(2)).maximumSize(50_000).build();
+  private final Cache<String, Bucket> forgotPasswordUserCache = Caffeine.newBuilder()
+      .expireAfterAccess(Duration.ofMinutes(30)).maximumSize(50_000).build();
 
   /**
    * Generates a new CAPTCHA image and unique ID.
@@ -182,7 +217,7 @@ public class AuthRestApi {
    */
   private Bucket resolveCaptchaBucket(HttpServletRequest request) {
     String ip = request.getRemoteAddr();
-    return captchaRateLimitCache.computeIfAbsent(ip, k -> {
+    return captchaRateLimitCache.get(ip, k -> {
       // 5 captcha requests per minute per IP
       Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5,
           Duration.ofMinutes(1)));
@@ -210,17 +245,20 @@ public class AuthRestApi {
 
     var username = loginRequest.getUsername();
 
-    if (isCaptchaEnabled) {
-      // Step 1: Rate limiting for login attempts (5 per minute per IP)
-      Bucket loginBucket = resolveLoginBucket(request);
-      if (!loginBucket.tryConsume(1)) {
-        LOG.warn("Login rate limit exceeded for IP: {}, Username: {}",
-            request.getRemoteAddr(), username);
-        return ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS,
-            AuthConstants.TOO_MANY_LOGIN_ATTEMPTS, SecurityConstants.LOGIN);
-      }
+    // Rate limiting for login attempts (5 per minute per IP).
+    // Always enforced, independent of whether CAPTCHA is enabled, so that
+    // disabling CAPTCHA doesn't also disable the only defense against
+    // credential-stuffing/brute-force on this endpoint.
+    Bucket loginBucket = resolveLoginBucket(request);
+    if (!loginBucket.tryConsume(1)) {
+      LOG.warn("Login rate limit exceeded for IP: {}, Username: {}",
+          request.getRemoteAddr(), username);
+      return ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS,
+          AuthConstants.TOO_MANY_LOGIN_ATTEMPTS, SecurityConstants.LOGIN);
+    }
 
-      // Step 2: Validate CAPTCHA
+    if (isCaptchaEnabled) {
+      // Validate CAPTCHA
       Captcha captcha = captchaRepository.findValidCaptcha(
           loginRequest.getCaptchaId(),
           loginRequest.getCaptchaText(),
@@ -234,7 +272,7 @@ public class AuthRestApi {
             AuthConstants.INVALID_CAPTCHA, SecurityConstants.LOGIN);
       }
 
-      // Step 3: Mark CAPTCHA as used to prevent reuse
+      // Mark CAPTCHA as used to prevent reuse
       captcha.setUsed(true);
       captcha.setUsedAt(LocalDateTime.now());
       captchaRepository.save(captcha);
@@ -246,6 +284,25 @@ public class AuthRestApi {
           UserConstants.USER_NOT_FOUND, SecurityConstants.LOGIN);
     }
 
+    // Per-IP+username failed-attempt throttle. Independent of - and much cheaper to
+    // trip
+    // than - the persistent account lock in BruteForceProtectionService: it
+    // self-expires
+    // instead of requiring a manual/admin unlock, and it's scoped to this specific
+    // IP, so a
+    // single remote attacker can no longer trivially and permanently lock a
+    // legitimate user
+    // out of their account by racing the shared per-username failure counter. Only
+    // consumed
+    // on an actual failed attempt below, never on success.
+    Bucket ipUsernameBucket = resolveIpUsernameFailureBucket(request, username);
+    if (ipUsernameBucket.getAvailableTokens() <= 0) {
+      LOG.warn("Too many failed login attempts from IP: {} against username: {}",
+          request.getRemoteAddr(), username);
+      return ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS,
+          AuthConstants.TOO_MANY_LOGIN_ATTEMPTS, SecurityConstants.LOGIN);
+    }
+
     try {
       // Authentication will fail if the credentials are invalid
       SecurityUtils.authenticateUser(authenticationManager, username,
@@ -253,6 +310,7 @@ public class AuthRestApi {
       LOG.info("User {} authenticated successfully from IP: {}", username, request.getRemoteAddr());
       registerDeviceId(user.getId(), request);
     } catch (Exception e) {
+      ipUsernameBucket.tryConsume(1);
       LOG.warn("Authentication failed for user: {}", username);
       return ApiResponse.error(HttpStatus.UNAUTHORIZED, AuthConstants.INVALID_CREDENTIALS, SecurityConstants.LOGIN);
     }
@@ -334,10 +392,28 @@ public class AuthRestApi {
    */
   private Bucket resolveLoginBucket(HttpServletRequest request) {
     String ip = request.getRemoteAddr();
-    return loginRateLimitCache.computeIfAbsent(ip, k -> {
+    return loginRateLimitCache.get(ip, k -> {
       // 5 login attempts per minute per IP
       Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5,
           Duration.ofMinutes(1)));
+      return Bucket.builder().addLimit(limit).build();
+    });
+  }
+
+  /**
+   * Failed-login throttle scoped to a single (IP, username) pair - self-expiring
+   * and
+   * independent of the persistent, username-only account lock in
+   * {@code BruteForceProtectionService}. Allows the same number of attempts as
+   * {@code security.failedLoginAttempts} before this specific IP is cut off from
+   * trying
+   * this specific username again, within a rolling 15-minute window.
+   */
+  private Bucket resolveIpUsernameFailureBucket(HttpServletRequest request, String username) {
+    String key = request.getRemoteAddr() + '|' + username.toLowerCase();
+    return ipUsernameFailureCache.get(key, k -> {
+      Bandwidth limit = Bandwidth.classic(maxFailedLoginAttempts,
+          Refill.intervally(maxFailedLoginAttempts, Duration.ofMinutes(15)));
       return Bucket.builder().addLimit(limit).build();
     });
   }
@@ -452,7 +528,8 @@ public class AuthRestApi {
       // Validate and normalize target (email or phone)
       if (request.getTarget() == null || request.getTarget().trim().isEmpty()) {
         return ResponseEntity.badRequest().body(
-            ApiResponse.error(HttpStatus.BAD_REQUEST, "Target (email or phone) is required", SecurityConstants.VERIFY_OTP));
+            ApiResponse.error(HttpStatus.BAD_REQUEST, "Target (email or phone) is required",
+                SecurityConstants.VERIFY_OTP));
       }
 
       String target = request.getTarget().trim();
@@ -465,18 +542,7 @@ public class AuthRestApi {
             ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP, SecurityConstants.VERIFY_OTP));
       }
 
-      // Find user by target (phone, email, or username)
-      UserDto user = userService.findByPhone(target);
-      if (user == null) {
-        LOG.debug("User not found by phone: {}. Attempting to find by email.", target);
-        user = userService.findByEmail(target);
-      }
-      if (user == null) {
-        LOG.debug("User not found by email: {}. Attempting to find by username.", target);
-        user = userService.findByUsername(target);
-      }
-
-      LOG.debug("Final user lookup result: {}", user != null ? user.getUsername() : "null");
+      UserDto user = target.contains("@") ? userService.findByEmail(target) : userService.findByPhone(target);
 
       if (user == null) {
         LOG.warn("User not found for target: {} after successful OTP validation", target);
@@ -576,10 +642,21 @@ public class AuthRestApi {
     // Process async for security (prevent timing attacks)
     CompletableFuture.runAsync(() -> processForgotPassword(request));
 
-    return ApiResponse.success(UserConstants.PASSWORD_RESET_EMAIL_SENT_SUCCESSFULLY, SecurityConstants.FORGOT_PASSWORD);
+    return ApiResponse.success(
+        UserConstants.PASSWORD_RESET_LINK_SENT_YOUR_EMAIL_SUCCESSFULLY, SecurityConstants.FORGOT_PASSWORD);
   }
 
   // Process forgot password request asynchronously.
+  //
+  // Generates a verification token and emails a reset link - the same mechanism
+  // PasswordController already uses for the web flow - instead of generating a
+  // new
+  // password directly. sendPasswordResetEmail() builds a link to the
+  // password-reset
+  // web page carrying the (encrypted+encoded) token, so the raw token/JWT is
+  // never
+  // exposed in the URL. The account password is left untouched until the user
+  // actually completes the reset with a valid token via resetPassword() below.
   private void processForgotPassword(ForgotPasswordRequest request) {
     try {
       UserDto user = findUserByEmailOrUsername(request);
@@ -589,18 +666,15 @@ public class AuthRestApi {
         return;
       }
 
-      String newPassword = userService.generateSecureTemporaryPassword();
-      Boolean passwordUpdated = userService.updatePasswordDirectly(user.getId(), newPassword);
+      String token = jwtService.generateJwtToken(user.getUsername());
+      user.setVerificationToken(token);
+      userService.saveOrUpdate(UserUtils.convertToUser(user), false);
 
-      if (!passwordUpdated) {
-        LOG.error("Failed to update password for user: {}", user.getEmail());
-        return;
-      }
+      String encryptedToken = encryptionService.encrypt(token);
+      String encodedToken = encryptionService.encode(encryptedToken);
+      emailService.sendPasswordResetEmail(user, encodedToken);
 
-      // Send new password via email
-      emailService.sendPasswordResetEmail(user, newPassword);
-
-      LOG.info("Password reset completed for user: {}", user.getEmail());
+      LOG.info("Password reset link sent for user: {}", user.getEmail());
     } catch (Exception e) {
       LOG.error("Error processing forgot password request", e);
     }
@@ -609,7 +683,7 @@ public class AuthRestApi {
   // LAYER 1: IP-based (prevents DDoS/mass attacks)
   private Bucket resolveForgotPasswordIpBucket(HttpServletRequest request) {
     String ip = request.getRemoteAddr();
-    return forgotPasswordIpCache.computeIfAbsent(ip, k -> {
+    return forgotPasswordIpCache.get(ip, k -> {
       // 3 requests per HOUR per IP
       Bandwidth limit = Bandwidth.classic(3, Refill.intervally(3,
           Duration.ofHours(1)));
@@ -620,7 +694,7 @@ public class AuthRestApi {
   // LAYER 2: User-based (prevents account enumeration)
 
   private Bucket resolveForgotPasswordUserBucket(String identifier) {
-    return forgotPasswordUserCache.computeIfAbsent(identifier.toLowerCase(), k -> {
+    return forgotPasswordUserCache.get(identifier.toLowerCase(), k -> {
       // 3 requests per 15 MINUTES per email/username
       Bandwidth limit = Bandwidth.classic(3, Refill.intervally(3,
           Duration.ofMinutes(15)));
@@ -652,16 +726,25 @@ public class AuthRestApi {
   /**
    * Endpoint to handle password reset requests.
    *
+   * <p>
+   * Accepts the same encrypted+encoded token that {@link #processForgotPassword}
+   * emailed
+   * (identical to the one carried in the web password-reset link), decrypts it
+   * server-side, and
+   * resolves the user by the resulting raw verification token.
+   *
    * @param request the reset password request
    * @return response entity
    */
   @Loggable
   @SecurityRequirements
   @PostMapping(SecurityConstants.RESET_PASSWORD)
-  public ResponseEntity<String> resetPassword(
+  public ApiResponse<Object> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
-    return ResponseEntity.ok(
-        userService.resetPassword(request.getToken(), request.getNewPassword()));
+    String decodedToken = encryptionService.decode(request.getToken());
+    String decryptedToken = encryptionService.decrypt(decodedToken);
+    String message = userService.resetPassword(decryptedToken, request.getNewPassword());
+    return ApiResponse.success(message, SecurityConstants.RESET_PASSWORD);
   }
 
   /**

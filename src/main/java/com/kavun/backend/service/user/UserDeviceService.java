@@ -77,8 +77,8 @@ public class UserDeviceService extends
         }
     }
 
-    public Specification<UserDevice> search(Map<String, Object> paramaterMap) {
-        return specification.search(paramaterMap);
+    public Specification<UserDevice> search(Map<String, Object> parameterMap) {
+        return specification.search(parameterMap);
     }
 
     public Map<String, Long> getDeviceUsageAnalytics() {

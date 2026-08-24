@@ -46,10 +46,13 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-        // Skip StringHttpMessageConverter to avoid casting issues with wrapped ApiResponse
-        // We want JSON converters to handle all responses after wrapping
-        // return !converterType.getName().contains("StringHttpMessageConverter");
-        return true;
+        // Skip StringHttpMessageConverter: for a String/ResponseEntity<String> return type,
+        // Spring selects StringHttpMessageConverter based on the DECLARED return type, then
+        // calls write() on whatever beforeBodyWrite() below returns. If we wrap that String
+        // into an ApiResponse object, StringHttpMessageConverter tries to cast it back to
+        // String and throws a ClassCastException. JSON-returning endpoints are unaffected -
+        // they're written by a Jackson converter, which this advice still supports.
+        return !converterType.getName().contains("StringHttpMessageConverter");
     }
 
     @Override

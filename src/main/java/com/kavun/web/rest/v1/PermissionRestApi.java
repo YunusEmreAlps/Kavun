@@ -1,5 +1,6 @@
 package com.kavun.web.rest.v1;
 
+import com.kavun.annotation.Loggable;
 import com.kavun.backend.persistent.domain.user.Permission;
 import com.kavun.backend.service.user.PermissionService;
 import com.kavun.shared.dto.PermissionDto;
@@ -39,6 +40,7 @@ public class PermissionRestApi {
      * @param pageable pagination parameters
      * @return page of page DTOs
      */
+    @Loggable
     @GetMapping
     @Operation(summary = "Get all permissions", description = "Retrieve all permissions with pagination and optional filters")
     @ApiResponses(value = {
@@ -62,6 +64,7 @@ public class PermissionRestApi {
      * @param filters search filters (optional)
      * @return list of page DTOs
      */
+    @Loggable
     @GetMapping("/list")
     @Operation(summary = "Get all permissions as list", description = "Retrieve all permissions without pagination")
     public ResponseEntity<List<PermissionDto>> getAllList(
@@ -81,6 +84,7 @@ public class PermissionRestApi {
      * @param id page ID
      * @return page DTO
      */
+    @Loggable
     @GetMapping("/{id}")
     @Operation(summary = "Get permission by ID", description = "Retrieve a specific permission by its ID")
     @ApiResponses(value = {
@@ -101,6 +105,7 @@ public class PermissionRestApi {
      * @param request page creation request
      * @return created page DTO
      */
+    @Loggable
     @PostMapping
     @Operation(summary = "Create permission", description = "Create a new permission")
     @ApiResponses(value = {
@@ -127,6 +132,7 @@ public class PermissionRestApi {
         @ApiResponse(responseCode = "404", description = "Permission not found"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
+    @Loggable(entityName = "Permission", entityClass = Permission.class, queryParamKey = "id")
     public ResponseEntity<PermissionDto> update(
             @Parameter(description = "Permission ID", required = true)
             @PathVariable Long id,
@@ -142,6 +148,7 @@ public class PermissionRestApi {
      * @param id page ID
      * @return response entity with no content
      */
+    @Loggable
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete permission", description = "Soft delete a permission (marks as deleted)")
     @ApiResponses(value = {
@@ -163,6 +170,7 @@ public class PermissionRestApi {
      * @param id page ID
      * @return restored page DTO
      */
+    @Loggable
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore permission", description = "Restore a soft-deleted permission")
     @ApiResponses(value = {
@@ -184,6 +192,7 @@ public class PermissionRestApi {
      * @param id page ID
      * @return true if exists, false otherwise
      */
+    @Loggable
     @GetMapping("/{id}/exists")
     @Operation(summary = "Check if page action exists", description = "Check if a page action exists by ID")
     public ResponseEntity<Boolean> existsById(
@@ -200,6 +209,7 @@ public class PermissionRestApi {
      * @param filters search filters (optional)
      * @return number of matching permissions
      */
+    @Loggable
     @GetMapping("/count")
     @Operation(summary = "Count permissions", description = "Count permissions matching the given filters")
     public ResponseEntity<Long> count(
@@ -220,6 +230,7 @@ public class PermissionRestApi {
      * @param pageable pagination parameters
      * @return page of matching page actions
      */
+    @Loggable
     @PostMapping("/search")
     @Operation(summary = "Search permissions", description = "Search permissions with dynamic criteria")
     public ResponseEntity<Page<PermissionDto>> search(

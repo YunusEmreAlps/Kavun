@@ -12,6 +12,8 @@ import com.kavun.constant.AdminConstants;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
+import com.kavun.exception.user.UserAlreadyExistsException;
+import com.kavun.exception.user.UserNotFoundException;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserMapper;
 import com.kavun.shared.request.UserRequest;
@@ -80,6 +82,7 @@ public class UserRestApi {
    * @param pageable     pagination parameters
    * @return page of matching users
    */
+  @Loggable
   @PostMapping("/search")
   @Operation(summary = "Search users", description = "Search users with dynamic criteria")
   public ResponseEntity<Page<UserResponse>> search(
@@ -103,7 +106,7 @@ public class UserRestApi {
   public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
     UserDto userDto = userService.findById(id);
     if (userDto == null) {
-      return ResponseEntity.notFound().build();
+      throw new UserNotFoundException(UserConstants.USER_NOT_FOUND);
     }
     return ResponseEntity.ok(userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
   }
@@ -118,13 +121,7 @@ public class UserRestApi {
   @RequirePermission(autoDetect = true)
   @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> softDeleteUser(@PathVariable Long id) {
-    boolean result = userService.softDeleteUser(id);
-
-    if (!result) {
-      LOG.warn("Failed to soft delete user with id: {}", id);
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(OperationStatus.FAILURE);
-    }
-
+    userService.softDeleteUser(id);
     LOG.info("User with id {} soft deleted successfully", id);
     return ResponseEntity.ok(OperationStatus.SUCCESS);
   }
@@ -152,12 +149,12 @@ public class UserRestApi {
 
     if (existingByUsername != null) {
       LOG.warn("Username already exists: {}", request.getUsername());
-      return ApiResponse.error(HttpStatus.CONFLICT, UserConstants.EXIST_USERNAME, "");
+      throw new UserAlreadyExistsException(UserConstants.EXIST_USERNAME);
     }
 
     if (existingByEmail != null) {
       LOG.warn("Email already exists: {}", request.getEmail());
-      return ApiResponse.error(HttpStatus.CONFLICT, UserConstants.EXIST_EMAIL, "");
+      throw new UserAlreadyExistsException(UserConstants.EXIST_EMAIL);
     }
 
     var userDto = UserUtils.convertToUserDto(request);
@@ -186,12 +183,7 @@ public class UserRestApi {
 
       // Generate new password for existing user
       String newPassword = userService.generateSecureTemporaryPassword();
-      Boolean passwordUpdated = userService.updatePasswordDirectly(savedUserDto.getId(), newPassword);
-
-      if (!passwordUpdated) {
-        LOG.error("Failed to update password for user: {}", savedUserDto.getEmail());
-        return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update password", "");
-      }
+      userService.updatePasswordDirectly(savedUserDto.getId(), newPassword);
       /*
        * emailService.sendWelcomeEmail(savedUserDto,
        * request.getPassword().length() > 0 ? request.getPassword() : newPassword);
@@ -208,31 +200,16 @@ public class UserRestApi {
    * @param request the user details for updating
    * @return the updated user details
    */
-  @Loggable
+  @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   @RequirePermission(autoDetect = true)
   public ApiResponse<?> updateUser(
       @PathVariable Long id,
       @Valid @RequestBody UserRequest request) {
 
-    try {
-      UserDto updatedUser = userService.updateUser(id, request);
-      LOG.info("User with id {} updated successfully", id);
-      return ApiResponse.success("", UserConstants.USER_UPDATED_SUCCESSFULLY, "");
-    } catch (IllegalArgumentException e) {
-      LOG.warn("Update failed for user {}: {}", id, e.getMessage());
-
-      if (e.getMessage().equals(UserConstants.USER_NOT_FOUND)) {
-        return ApiResponse.error(HttpStatus.NOT_FOUND, e.getMessage(), "");
-      } else if (e.getMessage().equals(UserConstants.EXIST_USERNAME) ||
-          e.getMessage().equals(UserConstants.EXIST_EMAIL)) {
-        return ApiResponse.error(HttpStatus.CONFLICT, e.getMessage(), "");
-      }
-      return ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage(), "");
-    } catch (Exception e) {
-      LOG.error("Failed to update user with id: {}", id, e);
-      return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, UserConstants.USER_UPDATE_FAILED, "");
-    }
+    userService.updateUser(id, request);
+    LOG.info("User with id {} updated successfully", id);
+    return ApiResponse.success("", UserConstants.USER_UPDATED_SUCCESSFULLY, "");
   }
 
   // Update the user password for the currently authenticated user.
@@ -259,12 +236,11 @@ public class UserRestApi {
    * @param id the user Long
    * @return if the operation is success
    */
-  @Loggable
+  @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = UserConstants.ENABLE_USER_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> enableUser(@PathVariable Long id) {
-    var userDto = userService.enableUser(id);
-
-    return ResponseEntity.ok(userDto == null ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
+    userService.enableUser(id);
+    return ResponseEntity.ok(OperationStatus.SUCCESS);
   }
 
   /**
@@ -273,12 +249,11 @@ public class UserRestApi {
    * @param id the user Long
    * @return if the operation is success
    */
-  @Loggable
+  @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = UserConstants.DISABLE_USER_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> disableUser(@PathVariable Long id) {
-    var userDto = userService.disableUser(id);
-
-    return ResponseEntity.ok(userDto == null ? OperationStatus.FAILURE : OperationStatus.SUCCESS);
+    userService.disableUser(id);
+    return ResponseEntity.ok(OperationStatus.SUCCESS);
   }
 
 }

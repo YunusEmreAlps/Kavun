@@ -52,6 +52,7 @@ ext {
   set('keycloakVersion', '26.0.7')
   set('clamavClientVersion', '2.1.2')
   set('bucket4jVersion', '8.1.0')
+  set('resilience4jVersion', '2.3.0')
 }
 
 dependencies {
@@ -82,6 +83,7 @@ dependencies {
   implementation 'org.hibernate.orm:hibernate-jcache'
   implementation 'org.ehcache:ehcache-transactions:3.10.8'
   implementation 'org.codehaus.janino:janino'
+  implementation 'com.github.ben-manes.caffeine:caffeine'
 
   // Utilities
   implementation 'org.jsoup:jsoup:1.18.3'
@@ -117,6 +119,10 @@ dependencies {
 
   // Rate Limiting
   implementation "com.bucket4j:bucket4j-core:${bucket4jVersion}"
+
+  // Circuit Breaker / Resilience
+  implementation 'org.springframework.boot:spring-boot-starter-aop'
+  implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
 
   // Webjars
   implementation 'org.webjars:jquery:3.7.1'

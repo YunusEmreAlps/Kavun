@@ -7,7 +7,6 @@ import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
  * @version 2.0
  * @since 1.0
  */
-@Repository
 @RepositoryRestResource(exported = false)
 public interface OtpRepository extends DataTablesRepository<Otp, Long> {
 
@@ -95,11 +93,11 @@ public interface OtpRepository extends DataTablesRepository<Otp, Long> {
   /**
    * Cleanup old OTP records (expired or inactive).
    *
-   * @param threshold the threshold instant before which to delete records
+   * @param threshold the threshold datetime before which to delete records
    * @return the number of deleted records
    */
   @Modifying
   @Transactional
-  @Query("DELETE FROM Otp o WHERE o.expiresAt < :threshold OR (o.active = false AND o.createdAt < :threshold)")
-  int cleanupOldOtps(Instant threshold);
+  @Query("DELETE FROM Otp o WHERE o.expiresAt < :expiresAtThreshold OR (o.active = false AND o.createdAt < :createdAtThreshold)")
+  int cleanupOldOtps(Instant expiresAtThreshold, Instant createdAtThreshold);
 }

@@ -4,8 +4,10 @@ import com.kavun.config.properties.AwsProperties;
 import com.kavun.constant.EnvConstants;
 import com.kavun.constant.StorageConstants;
 import com.kavun.exception.InvalidFileFormatException;
+import com.kavun.exception.StorageException;
 import com.kavun.shared.util.core.FileUtils;
 import com.kavun.shared.util.core.ValidationUtils;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,6 +45,7 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
   private final AwsProperties properties;
 
   @Override
+  @CircuitBreaker(name = "s3Storage", fallbackMethod = "storeFileFallback")
   public String storeFile(MultipartFile file, String path, String fileName)
       throws IOException, InterruptedException {
     ValidationUtils.validateInputs(file, path, fileName);
@@ -64,6 +67,7 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
   }
 
   @Override
+  @CircuitBreaker(name = "s3Storage", fallbackMethod = "getFilesFallback")
   public List<String> getFiles(String path) {
     Objects.requireNonNull(path, StorageConstants.PATH_CANNOT_BE_NULL);
 
@@ -78,6 +82,7 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
   }
 
   @Override
+  @CircuitBreaker(name = "s3Storage", fallbackMethod = "getFileFallback")
   public InputStream getFile(String path) throws IOException {
     Objects.requireNonNull(path, StorageConstants.PATH_CANNOT_BE_NULL);
 
@@ -88,6 +93,7 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
   }
 
   @Override
+  @CircuitBreaker(name = "s3Storage", fallbackMethod = "generatePreSignedUrlFallback")
   public String generatePreSignedUrl(String key) {
     GetObjectRequest getObjectRequest =
         GetObjectRequest.builder().bucket(properties.getS3BucketName()).key(key).build();
@@ -102,6 +108,7 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
   }
 
   @Override
+  @CircuitBreaker(name = "s3Storage", fallbackMethod = "renameFileFallback")
   public String renameFile(String currentKey, String newKey) {
     ValidationUtils.validateInputs(currentKey, newKey);
 
@@ -123,6 +130,7 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
   }
 
   @Override
+  @CircuitBreaker(name = "s3Storage", fallbackMethod = "deleteFallback")
   public void delete(String key) {
     ValidationUtils.validateInputs(key);
 
@@ -131,5 +139,39 @@ public class AmazonS3ServiceImpl extends AbstractAmazonS3Service {
     s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
 
     LOG.debug("Object successfully deleted from bucket {} and key {}", bucketName, key);
+  }
+
+  // =========================================================================
+  // CIRCUIT BREAKER FALLBACKS
+  // =========================================================================
+
+  private String storeFileFallback(MultipartFile file, String path, String fileName, Throwable t) {
+    LOG.error("S3 storeFile circuit breaker fallback triggered for path {}: {}", path, t.getMessage(), t);
+    throw new StorageException("S3 storage is currently unavailable. Please try again later.", t);
+  }
+
+  private List<String> getFilesFallback(String path, Throwable t) {
+    LOG.error("S3 getFiles circuit breaker fallback triggered for path {}: {}", path, t.getMessage(), t);
+    throw new StorageException("S3 storage is currently unavailable. Please try again later.", t);
+  }
+
+  private InputStream getFileFallback(String path, Throwable t) {
+    LOG.error("S3 getFile circuit breaker fallback triggered for path {}: {}", path, t.getMessage(), t);
+    throw new StorageException("S3 storage is currently unavailable. Please try again later.", t);
+  }
+
+  private String generatePreSignedUrlFallback(String key, Throwable t) {
+    LOG.error("S3 generatePreSignedUrl circuit breaker fallback triggered for key {}: {}", key, t.getMessage(), t);
+    throw new StorageException("S3 storage is currently unavailable. Please try again later.", t);
+  }
+
+  private String renameFileFallback(String currentKey, String newKey, Throwable t) {
+    LOG.error("S3 renameFile circuit breaker fallback triggered for key {}: {}", currentKey, t.getMessage(), t);
+    throw new StorageException("S3 storage is currently unavailable. Please try again later.", t);
+  }
+
+  private void deleteFallback(String key, Throwable t) {
+    LOG.error("S3 delete circuit breaker fallback triggered for key {}: {}", key, t.getMessage(), t);
+    throw new StorageException("S3 storage is currently unavailable. Please try again later.", t);
   }
 }

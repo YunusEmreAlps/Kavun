@@ -2,6 +2,7 @@ package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
+import java.util.Collection;
 import java.util.Optional;
 
 import java.util.List;
@@ -23,6 +24,8 @@ import org.springframework.stereotype.Repository;
 public interface RoleRepository extends BaseRepository<Role> {
 
   Optional<Role> findByName(final String name);
+
+  List<Role> findByNameIn(final Collection<String> names);
 
   boolean existsById(final Long id);
 

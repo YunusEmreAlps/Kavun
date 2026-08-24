@@ -18,6 +18,7 @@ import com.kavun.web.payload.response.UserRoleResponse;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,8 +59,16 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     return repository.findByName(name).orElse(null);
   }
 
+  public List<Role> findAllByNames(final Collection<String> names) {
+    return repository.findByNameIn(names);
+  }
+
   public Role findRoleById(final Long id) {
     return repository.findById(id).orElse(null);
+  }
+
+  public List<Role> findAllByIds(final Set<Long> ids) {
+    return repository.findAllById(ids);
   }
 
   public List<Role> findAll() {

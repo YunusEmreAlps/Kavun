@@ -62,6 +62,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
   private final SystemProperties systemProps;
   private final JavaMailSender mailSender;
+  private final MailDeliveryGateway mailDeliveryGateway;
   private final TemplateEngine templateEngine;
   private final EmailRepository emailRepository;
 
@@ -164,7 +165,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
       configureSSLTrust();
 
       // Send email
-      mailSender.send(simpleMailMessage);
+      mailDeliveryGateway.send(simpleMailMessage);
 
       // Increment counters
       incrementRateLimit(recipient);
@@ -201,7 +202,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
       // Configure and send
       configureSSLTrust();
-      mailSender.send(simpleMailMessage);
+      mailDeliveryGateway.send(simpleMailMessage);
 
       // Save success
       saveMailStatusToDatabase(simpleMailMessage, requestId, "Email sent successfully", true);
@@ -242,7 +243,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
       // Prepare and send email
       MimeMessage mimeMessage = prepareMimeMessage(emailRequest);
-      mailSender.send(mimeMessage);
+      mailDeliveryGateway.send(mimeMessage);
 
       // Save success to database
       String htmlBody = getEmailBodySafely(mimeMessage);
@@ -277,7 +278,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
       // Prepare and send email
       MimeMessage mimeMessage = prepareMimeMessage(emailRequest);
-      mailSender.send(mimeMessage);
+      mailDeliveryGateway.send(mimeMessage);
 
       // Save success to database
       String htmlBody = getEmailBodySafely(mimeMessage);

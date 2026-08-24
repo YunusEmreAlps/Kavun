@@ -51,6 +51,7 @@ ext {
   set('awsSdkS3Version', '2.30.15')
   set('clamavClientVersion', '2.1.2')
   set('bucket4jVersion', '8.1.0')
+  set('resilience4jVersion', '2.3.0')
 }
 
 dependencies {
@@ -113,6 +114,10 @@ dependencies {
 
   // Rate Limiting
   implementation "com.bucket4j:bucket4j-core:${bucket4jVersion}"
+
+  // Circuit Breaker / Resilience
+  implementation 'org.springframework.boot:spring-boot-starter-aop'
+  implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
 
   // Webjars
   implementation 'org.webjars:jquery:3.7.1'

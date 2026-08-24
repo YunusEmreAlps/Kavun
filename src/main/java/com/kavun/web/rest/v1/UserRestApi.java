@@ -30,8 +30,6 @@ import jakarta.validation.Valid;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springdoc.core.converters.models.PageableAsQueryParam;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -52,20 +50,18 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * This class handles all rest calls for users.
  *
- * <p><b>Note:</b> This controller is only active when {@code keycloak.enabled=false}.
- * When Keycloak is enabled, use {@link KeycloakUserRestApi} instead.</p>
+ * <p>Operates on local {@code User} rows and is identity-provider agnostic - it serves both
+ * local-JWT and Keycloak-authenticated (JIT-provisioned) requests alike.</p>
  *
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
- * @see KeycloakUserRestApi
  */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(AdminConstants.API_V1_USERS_ROOT_URL)
-@Tag(name = "02. User Management", description = "User management APIs (Local mode)")
-@ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
+@Tag(name = "02. User Management", description = "User management APIs")
 public class UserRestApi {
 
   private final UserService userService;

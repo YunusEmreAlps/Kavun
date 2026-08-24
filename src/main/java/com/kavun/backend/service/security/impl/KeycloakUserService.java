@@ -1,18 +1,18 @@
 package com.kavun.backend.service.security.impl;
 
 import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.backend.persistent.domain.user.UserHistory;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.service.user.RoleService;
 import com.kavun.config.security.keycloak.KeycloakProperties;
+import com.kavun.config.security.keycloak.KeycloakRoleClaims;
 import com.kavun.enums.RoleType;
 import com.kavun.enums.UserHistoryType;
-import com.kavun.backend.persistent.domain.user.UserHistory;
-import com.nimbusds.jose.JWSObject;
+import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.util.UserUtils;
 import jakarta.ws.rs.core.Response;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,10 +34,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for managing users in Keycloak and synchronizing with local database.
+ * Service for just-in-time provisioning/synchronization of Keycloak-authenticated users into the
+ * local database, plus Keycloak admin-client operations for managing accounts directly in
+ * Keycloak.
+ *
+ * <p>JIT sync keeps a local {@code User} row (with the matching {@code ROLE_ADMIN}/{@code
+ * ROLE_USER} local {@code Role}) in step with the Keycloak identity, so the existing
+ * page/action-based {@code Permission} system keeps working unmodified regardless of which
+ * identity provider authenticated the request.
  *
  * @author Yunus Emre Alpu
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @Slf4j
@@ -52,122 +59,62 @@ public class KeycloakUserService {
   private final RoleService roleService;
 
   /**
-   * Synchronizes user from Keycloak JWT to local database.
-   * Creates user if not exists, updates if exists.
+   * Synchronizes a user from a Bearer JWT (API path) to the local database.
    *
    * @param jwt the Keycloak JWT token
    * @return the synchronized user
    */
   @Transactional
   public User syncUserFromKeycloak(Jwt jwt) {
-    String keycloakId = jwt.getSubject();
-    String username = jwt.getClaimAsString("preferred_username");
-    String email = jwt.getClaimAsString("email");
-    String firstName = jwt.getClaimAsString("given_name");
-    String lastName = jwt.getClaimAsString("family_name");
-
-    LOG.debug("Syncing user from Keycloak: keycloakId={}, username={}", keycloakId, username);
-
-    // Try to find existing user by keycloak ID or username
-    User user = userRepository.findByUsername(username);
-
-    if (user == null) {
-      // Create new user in local database
-      user = createLocalUser(keycloakId, username, email, firstName, lastName);
-      LOG.info("Created new local user from Keycloak: {}", username);
-    } else {
-      // Update existing user
-      updateLocalUser(user, email, firstName, lastName);
-      LOG.debug("Updated local user from Keycloak: {}", username);
-    }
-
-    // Sync roles from JWT
-    syncRolesFromJwt(user, jwt);
-
-    return userRepository.save(user);
+    return syncUserFromClaims(jwt.getClaims());
   }
 
   /**
-   * Synchronizes user from raw JWT access token string to local database.
-   * Creates user if not exists, updates if exists.
+   * Synchronizes a user from a generic claims map (ID token/userinfo claims for the web-login
+   * path, or JWT claims for the API path) to the local database. Creates the user if not present,
+   * otherwise only persists a change if something actually changed.
    *
-   * @param accessToken the raw JWT access token string
+   * @param claims the token/userinfo claims
    * @return the synchronized user
    */
   @Transactional
-  @SuppressWarnings("unchecked")
-  public User syncUserFromToken(String accessToken) {
-    try {
-      // Parse the JWT token
-      JWSObject jwsObject = JWSObject.parse(accessToken);
-      Map<String, Object> claims = jwsObject.getPayload().toJSONObject();
+  public User syncUserFromClaims(Map<String, Object> claims) {
+    String keycloakId = (String) claims.get("sub");
+    String username = (String) claims.get("preferred_username");
+    String email = (String) claims.get("email");
+    String firstName = (String) claims.get("given_name");
+    String lastName = (String) claims.get("family_name");
 
-      String keycloakId = (String) claims.get("sub");
-      String username = (String) claims.get("preferred_username");
-      String email = (String) claims.get("email");
-      String firstName = (String) claims.get("given_name");
-      String lastName = (String) claims.get("family_name");
+    LOG.debug("Syncing user from Keycloak claims: keycloakId={}, username={}", keycloakId, username);
 
-      LOG.debug("Syncing user from token: keycloakId={}, username={}", keycloakId, username);
+    User user = userRepository.findByUsername(username);
+    boolean isNew = user == null;
 
-      // Try to find existing user by username
-      User user = userRepository.findByUsername(username);
-
-      if (user == null) {
-        // Create new user in local database
-        user = createLocalUser(keycloakId, username, email, firstName, lastName);
-        LOG.info("Created new local user from Keycloak token: {}", username);
-      } else {
-        // Update existing user
-        updateLocalUser(user, email, firstName, lastName);
-        LOG.debug("Updated local user from Keycloak token: {}", username);
-      }
-
-      // Sync roles from token claims
-      syncRolesFromClaims(user, claims);
-
-      return userRepository.save(user);
-    } catch (ParseException e) {
-      LOG.error("Failed to parse JWT token: {}", e.getMessage());
-      throw new RuntimeException("Failed to parse JWT token", e);
+    if (isNew) {
+      user = createLocalUser(keycloakId, username, email, firstName, lastName);
     }
+
+    boolean fieldsChanged = !isNew && updateLocalUser(user, email, firstName, lastName);
+    boolean rolesChanged = syncRolesFromClaims(user, claims);
+
+    if (isNew || fieldsChanged || rolesChanged) {
+      user = userRepository.save(user);
+      LOG.info("{} local user from Keycloak: {}", isNew ? "Created" : "Updated", username);
+    }
+
+    return user;
   }
 
   /**
-   * Extracts roles from a raw JWT access token string.
+   * Synchronizes a user from claims and returns it as a {@link UserDto}, for use by the
+   * permission bridge that resolves the acting user for {@code @RequirePermission} checks.
    *
-   * @param accessToken the raw JWT access token string
-   * @return set of role names
+   * @param claims the token/userinfo claims
+   * @return the synchronized user as a DTO
    */
-  @SuppressWarnings("unchecked")
-  public Set<String> extractRolesFromToken(String accessToken) {
-    Set<String> roles = new HashSet<>();
-    try {
-      JWSObject jwsObject = JWSObject.parse(accessToken);
-      Map<String, Object> claims = jwsObject.getPayload().toJSONObject();
-
-      // Extract realm roles
-      Map<String, Object> realmAccess = (Map<String, Object>) claims.get("realm_access");
-      if (realmAccess != null && realmAccess.get("roles") instanceof List) {
-        List<String> realmRoles = (List<String>) realmAccess.get("roles");
-        roles.addAll(realmRoles);
-      }
-
-      // Extract client roles
-      Map<String, Object> resourceAccess = (Map<String, Object>) claims.get("resource_access");
-      if (resourceAccess != null) {
-        Map<String, Object> clientAccess = (Map<String, Object>) resourceAccess.get(keycloakProperties.getClientId());
-        if (clientAccess != null && clientAccess.get("roles") instanceof List) {
-          List<String> clientRoles = (List<String>) clientAccess.get("roles");
-          roles.addAll(clientRoles);
-        }
-      }
-
-      LOG.debug("Extracted roles from token: {}", roles);
-    } catch (ParseException e) {
-      LOG.error("Failed to parse JWT token for role extraction: {}", e.getMessage());
-    }
-    return roles;
+  @Transactional
+  public UserDto resolveOrProvisionUserDto(Map<String, Object> claims) {
+    return UserUtils.convertToUserDto(syncUserFromClaims(claims));
   }
 
   /**
@@ -411,45 +358,45 @@ public class KeycloakUserService {
     return user;
   }
 
-  private void updateLocalUser(User user, String email, String firstName, String lastName) {
-    if (email != null) {
+  /**
+   * Updates a local user's profile fields from Keycloak claims.
+   *
+   * @return true if any field actually changed
+   */
+  private boolean updateLocalUser(User user, String email, String firstName, String lastName) {
+    boolean changed = false;
+    if (email != null && !email.equals(user.getEmail())) {
       user.setEmail(email);
+      changed = true;
     }
-    if (firstName != null) {
+    if (firstName != null && !firstName.equals(user.getFirstName())) {
       user.setFirstName(firstName);
+      changed = true;
     }
-    if (lastName != null) {
+    if (lastName != null && !lastName.equals(user.getLastName())) {
       user.setLastName(lastName);
+      changed = true;
     }
+    return changed;
   }
 
-  @SuppressWarnings("unchecked")
-  private void syncRolesFromJwt(User user, Jwt jwt) {
-    // Extract roles from JWT
-    var realmAccess = jwt.getClaimAsMap("realm_access");
-    if (realmAccess != null && realmAccess.get("roles") instanceof List) {
-      List<String> jwtRoles = (List<String>) realmAccess.get("roles");
-
-      for (String roleName : jwtRoles) {
-        addRoleToUser(user, roleName);
-      }
+  /**
+   * Syncs realm/client roles from claims onto the local user.
+   *
+   * @return true if any role was newly added
+   */
+  private boolean syncRolesFromClaims(User user, Map<String, Object> claims) {
+    boolean changed = false;
+    for (String roleName : KeycloakRoleClaims.extractRoleNames(claims, keycloakProperties.getClientId())) {
+      changed |= addRoleToUser(user, roleName);
     }
+    return changed;
   }
 
-  @SuppressWarnings("unchecked")
-  private void syncRolesFromClaims(User user, Map<String, Object> claims) {
-    // Extract realm roles
-    Map<String, Object> realmAccess = (Map<String, Object>) claims.get("realm_access");
-    if (realmAccess != null && realmAccess.get("roles") instanceof List) {
-      List<String> jwtRoles = (List<String>) realmAccess.get("roles");
-
-      for (String roleName : jwtRoles) {
-        addRoleToUser(user, roleName);
-      }
-    }
-  }
-
-  private void addRoleToUser(User user, String roleName) {
+  /**
+   * @return true if the role was a known application role and was newly added to the user
+   */
+  private boolean addRoleToUser(User user, String roleName) {
     String normalizedRoleName = roleName.toUpperCase();
     if (!normalizedRoleName.startsWith("ROLE_")) {
       normalizedRoleName = "ROLE_" + normalizedRoleName;
@@ -465,12 +412,14 @@ public class KeycloakUserService {
         if (!hasRole) {
           user.addUserRole(role);
           LOG.debug("Added role {} to user {}", role.getName(), user.getUsername());
+          return true;
         }
       }
     } catch (IllegalArgumentException e) {
       // Role doesn't exist in our enum, skip it
       LOG.debug("Skipping unknown role from Keycloak: {}", roleName);
     }
+    return false;
   }
 
   private String extractUserId(Response response) {

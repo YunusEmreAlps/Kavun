@@ -5,6 +5,7 @@ import com.kavun.backend.persistent.domain.user.PageAction;
 import com.kavun.backend.persistent.domain.user.WebPage;
 import com.kavun.backend.persistent.repository.PageActionRepository;
 import com.kavun.backend.persistent.repository.PageRepository;
+import com.kavun.backend.service.security.CurrentUserResolver;
 import com.kavun.backend.service.user.PermissionCheckService;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
@@ -43,6 +44,7 @@ public class PermissionAspect {
     private final PageRepository pageRepository;
     private final PermissionCheckService permissionCheckService;
     private final PageActionRepository pageActionRepository;
+    private final CurrentUserResolver currentUserResolver;
 
     @Value("${security.permission.admin-bypass-enabled:true}")
     private boolean adminBypassEnabled;
@@ -50,17 +52,19 @@ public class PermissionAspect {
     public PermissionAspect(
             PermissionCheckService permissionCheckService,
             PageActionRepository pageActionRepository,
-            PageRepository pageRepository) {
+            PageRepository pageRepository,
+            CurrentUserResolver currentUserResolver) {
         this.permissionCheckService = permissionCheckService;
         this.pageActionRepository = pageActionRepository;
         this.pageRepository = pageRepository;
+        this.currentUserResolver = currentUserResolver;
     }
 
     @Before("@annotation(requirePermission)")
     public void checkPermission(JoinPoint joinPoint, RequirePermission requirePermission) {
         try {
-            // Get current user
-            UserDto userDto = SecurityUtils.getAuthorizedUserDto();
+            // Get current user (local UserDetailsBuilder, Keycloak Bearer Jwt, or Keycloak OidcUser)
+            UserDto userDto = currentUserResolver.resolve();
             if (userDto == null) {
                 throw new AccessDeniedException("User not authenticated");
             }

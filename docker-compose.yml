@@ -32,7 +32,7 @@ services:
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: keycloak
     volumes:
-      - keycloak-postgres-data:/var/lib/postgresql/data
+      - kavun-keycloak-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "keycloak"]
       interval: 10s

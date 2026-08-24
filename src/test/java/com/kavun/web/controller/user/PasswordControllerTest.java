@@ -14,7 +14,7 @@ import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.security.impl.EncryptionServiceImpl;
 import com.kavun.backend.service.security.impl.JwtServiceImpl;
-import com.kavun.backend.service.user.impl.UserServiceImpl;
+import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.user.PasswordConstants;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.UserUtils;
@@ -41,7 +41,7 @@ class PasswordControllerTest {
 
   @Mock private PasswordEncoder passwordEncoder;
 
-  @Mock private UserServiceImpl userService;
+  @Mock private UserService userService;
 
   @Mock private MockEmailServiceImpl emailService;
 

@@ -28,7 +28,7 @@ class BaseEntityTest {
     Assertions.assertAll(
         () -> {
           Assertions.assertEquals(testInfo.getDisplayName(), baseEntity.getId());
-          Assertions.assertEquals(0L, baseEntity.getVersion());
+          Assertions.assertNull(baseEntity.getVersion());
         });
   }
 
@@ -55,7 +55,7 @@ class BaseEntityTest {
   private <T extends Serializable> BaseEntity<T> createBaseEntity(T id) {
     var baseEntity = new TestableBaseEntity<T>();
     baseEntity.setId(id);
-    baseEntity.setCreatedBy("system");
+    baseEntity.setCreatedBy(1L);
     baseEntity.setUpdatedBy(baseEntity.getCreatedBy());
     baseEntity.setPublicId(UUID.randomUUID().toString());
     baseEntity.setCreatedAt(LocalDateTime.now(Clock.systemUTC()));

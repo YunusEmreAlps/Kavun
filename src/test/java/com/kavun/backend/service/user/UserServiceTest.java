@@ -3,9 +3,10 @@ package com.kavun.backend.service.user;
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.repository.UserRepository;
-import com.kavun.backend.service.user.impl.UserServiceImpl;
+import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.dto.mapper.UserMapper;
 import com.kavun.shared.util.UserUtils;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,11 +27,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
-  @InjectMocks private transient UserServiceImpl userService;
+  @InjectMocks private transient UserService userService;
 
-  @Mock private transient RoleService roleService;
+  @Mock private transient UserMapper userMapper;
 
   @Mock private transient UserRepository userRepository;
+
+  @Mock private transient UserSpecification userSpecification;
+
+  @Mock private transient RoleService roleService;
 
   @Mock private transient PasswordEncoder passwordEncoder;
 
@@ -49,7 +54,7 @@ class UserServiceTest {
   void createUserNotExistingWithDefaultRoleAsClient() {
 
     var role = new Role(RoleType.ROLE_USER);
-    Mockito.when(roleService.findByName(ArgumentMatchers.anyString())).thenReturn(role);
+    Mockito.when(roleService.findAllByNames(ArgumentMatchers.anyCollection())).thenReturn(List.of(role));
     Mockito.when(userRepository.findByEmail(userDto.getEmail())).thenReturn(null);
     Mockito.when(userRepository.save(ArgumentMatchers.any(User.class))).thenReturn(user);
     Mockito.when(passwordEncoder.encode(userDto.getPassword())).thenReturn(userDto.getPassword());
@@ -67,7 +72,8 @@ class UserServiceTest {
 
   @Test
   void createUserWithNullsShouldThrowNullPointerException() {
-    Assertions.assertThrows(NullPointerException.class, () -> userService.createUser(null, null));
+    Assertions.assertThrows(
+        NullPointerException.class, () -> userService.createUser(null, null, false));
   }
 
   @Test
@@ -107,11 +113,6 @@ class UserServiceTest {
   @Test
   void testGetUserByEmailThrowsExceptionOnNullInput() {
     Assertions.assertThrows(NullPointerException.class, () -> userService.findByEmail(null));
-  }
-
-  @Test
-  void testGetUserByPublicIdThrowsExceptionOnNullInput() {
-    Assertions.assertThrows(NullPointerException.class, () -> userService.findByPublicId(null));
   }
 
   @Test

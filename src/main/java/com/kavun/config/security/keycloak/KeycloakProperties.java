@@ -21,7 +21,7 @@ public class KeycloakProperties {
   /**
    * Enable or disable Keycloak integration.
    */
-  private boolean enabled = true;
+  private boolean enabled = false;
 
   /**
    * Keycloak server URL.

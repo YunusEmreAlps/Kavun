@@ -22,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -192,6 +193,8 @@ public final class SecurityUtils {
       return userDetails.getUsername();
     } else if (principal instanceof Jwt jwt) {
       return jwt.getClaimAsString("preferred_username");
+    } else if (principal instanceof OidcUser oidcUser) {
+      return oidcUser.getClaimAsString("preferred_username");
     } else if (principal instanceof String) {
       return (String) principal;
     }
@@ -213,6 +216,8 @@ public final class SecurityUtils {
       return userDetails.getPublicId();
     } else if (principal instanceof Jwt jwt) {
       return jwt.getSubject(); // Keycloak user ID
+    } else if (principal instanceof OidcUser oidcUser) {
+      return oidcUser.getSubject(); // Keycloak user ID
     }
     return null;
   }
@@ -232,6 +237,8 @@ public final class SecurityUtils {
       return userDetails.getEmail();
     } else if (principal instanceof Jwt jwt) {
       return jwt.getClaimAsString("email");
+    } else if (principal instanceof OidcUser oidcUser) {
+      return oidcUser.getClaimAsString("email");
     }
     return null;
   }

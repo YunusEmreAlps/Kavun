@@ -13,7 +13,6 @@ import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.exception.user.UserAlreadyExistsException;
-import com.kavun.exception.user.UserNotFoundException;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserMapper;
 import com.kavun.shared.request.UserRequest;
@@ -25,6 +24,7 @@ import org.springframework.data.domain.Sort;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
 import java.util.Map;
@@ -99,7 +99,7 @@ public class UserRestApi {
   public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
     UserDto userDto = userService.findById(id);
     if (userDto == null) {
-      throw new UserNotFoundException(UserConstants.USER_NOT_FOUND);
+      throw new EntityNotFoundException(UserConstants.USER_NOT_FOUND);
     }
     return ResponseEntity.ok(userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
   }

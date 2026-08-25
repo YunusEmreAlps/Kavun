@@ -1,7 +1,5 @@
 package com.kavun.constant;
 
-import com.kavun.constant.user.PasswordConstants;
-import com.kavun.constant.user.SignUpConstants;
 import java.util.List;
 import org.springframework.http.HttpMethod;
 
@@ -76,8 +74,6 @@ public final class SecurityConstants {
     "/swagger-ui.html",
     ROOT_PATH,
     String.join("/", SecurityConstants.LOGIN, "**"),
-    String.join("/", SignUpConstants.SIGN_UP_MAPPING, "**"),
-    String.join("/", PasswordConstants.PASSWORD_RESET_ROOT_MAPPING, "**"),
   };
 
   private SecurityConstants() {

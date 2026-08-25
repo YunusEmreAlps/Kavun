@@ -65,11 +65,6 @@
           <li class="nav-item">
             <a class="nav-link" target="_blank" href="/swagger-ui">Swagger UI</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link mx-2" th:href="@{/users}">
-              <i class="fas fa-user-circle pe-2"></i> <span>Users</span>
-            </a>
-          </li>
         </ul>
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item">
@@ -107,11 +102,6 @@
               <span sec:authentication="name"></span>
             </a>
             <ul aria-labelledby="navbarDropdown" class="dropdown-menu">
-              <li>
-                <a class="dropdown-item" th:href="@{/profile}">
-                  <i class="ti-user"></i> <span th:text="#{navbar.user.profile.text}"></span
-                ></a>
-              </li>
               <li>
                 <a
                   class="dropdown-item"

@@ -6,6 +6,8 @@ import com.kavun.backend.persistent.repository.PageActionRepository;
 import com.kavun.shared.dto.PermissionDto;
 import com.kavun.shared.request.PermissionRequest;
 
+import jakarta.persistence.EntityNotFoundException;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -37,7 +39,7 @@ public abstract class PermissionMapper implements BaseMapper<PermissionRequest, 
             throw new IllegalArgumentException("PageAction ID cannot be null");
         }
         return pageActionRepository.findById(pageActionId)
-            .orElseThrow(() -> new IllegalArgumentException(
+            .orElseThrow(() -> new EntityNotFoundException(
                 "PageAction not found with ID: " + pageActionId));
     }
 }

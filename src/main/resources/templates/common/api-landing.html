@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head th:fragment="head(title)">
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <link rel="icon" th:href="@{/images/logo.png}" type="image/png" />
+    <title th:text="${title}">KAVUN</title>
+    <style>
+      :root {
+        --tt-primary: #0d6efd;
+        --tt-primary-dark: #0b5ed7;
+        --tt-ink: #1f2937;
+        --tt-muted: #6b7280;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body.tt-landing {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%);
+      }
+
+      .tt-card {
+        width: 100%;
+        max-width: 400px;
+        background: #fff;
+        border-radius: 1rem;
+        box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.18);
+        padding: 2.5rem 2rem;
+        text-align: center;
+        animation: tt-fade-in 0.35s ease-out;
+      }
+
+      .tt-logo {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 1.25rem;
+        display: block;
+      }
+
+      .tt-card h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--tt-ink);
+      }
+
+      .tt-card p.tt-subtitle {
+        margin: 0 0 1.75rem;
+        color: var(--tt-muted);
+        font-size: 0.9rem;
+      }
+
+      .tt-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .tt-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.65rem 1rem;
+        border-radius: 0.6rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease,
+          background-color 0.15s ease;
+      }
+
+      .tt-btn svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      .tt-btn-primary {
+        background: var(--tt-primary);
+        color: #fff;
+        box-shadow: 0 8px 16px -6px rgba(13, 110, 253, 0.45);
+      }
+
+      .tt-btn-primary:hover {
+        background: var(--tt-primary-dark);
+        transform: translateY(-1px);
+      }
+
+      .tt-btn-secondary {
+        background: transparent;
+        color: var(--tt-ink);
+        border: 1px solid #d1d5db;
+      }
+
+      .tt-btn-secondary:hover {
+        background: #f9fafb;
+        transform: translateY(-1px);
+      }
+
+      @keyframes tt-fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="tt-card" th:fragment="card(showHomeLink)">
+      <img alt="KAVUN" class="tt-logo" th:src="@{/images/logo.png}" />
+      <h1>KAVUN</h1>
+      <p class="tt-subtitle">Modern, Opinionated, and Production-Ready Starter</p>
+      <div class="tt-actions">
+        <a class="tt-btn tt-btn-primary" href="/swagger-ui" rel="noopener" target="_blank">
+          <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" x2="21" y1="14" y2="3" />
+          </svg>
+          Swagger UI
+        </a>
+        <a class="tt-btn tt-btn-secondary" href="/" th:if="${showHomeLink}">
+          <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          Home
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

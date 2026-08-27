@@ -3,7 +3,6 @@ package com.kavun.config.security;
 import com.kavun.config.properties.CorsConfigProperties;
 import com.kavun.constant.SecurityConstants;
 import java.time.Duration;
-import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.tomcat.util.http.Rfc6265CookieProcessor;
@@ -13,8 +12,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -38,20 +35,6 @@ public class SecurityBean {
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder(SecurityConstants.SECURITY_STRENGTH);
-  }
-
-  /**
-   * Making use of a persistent option instead of in-memory for maximum security.
-   *
-   * @param dataSource DataSource
-   * @return persistentTokenRepository
-   */
-  @Bean
-  public PersistentTokenRepository persistentRepository(DataSource dataSource) {
-    var jdbcTokenRepository = new JdbcTokenRepositoryImpl();
-    jdbcTokenRepository.setDataSource(dataSource);
-
-    return jdbcTokenRepository;
   }
 
   /**

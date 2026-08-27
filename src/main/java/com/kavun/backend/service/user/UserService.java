@@ -20,11 +20,12 @@ import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.enums.RoleType;
 import com.kavun.enums.UserHistoryType;
-import com.kavun.exception.user.RoleNotFoundException;
 import com.kavun.exception.user.UserAlreadyExistsException;
-import com.kavun.exception.user.UserNotFoundException;
 import com.kavun.web.payload.request.UserRoleRequest;
 import com.kavun.web.payload.response.UserResponse;
+
+import jakarta.persistence.EntityNotFoundException;
+
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -252,9 +253,9 @@ public class UserService
    * @param id      the user id to update
    * @param request the user request with updated data
    * @return updated user DTO
-   * @throws UserNotFoundException      if no user exists with the given id
-   * @throws UserAlreadyExistsException if the new username or email is already
-   *                                    taken
+   * @throws jakarta.persistence.EntityNotFoundException if no user exists with the given id
+   * @throws UserAlreadyExistsException                  if the new username or email is already
+   *                                                       taken
    */
   @Caching(evict = {
       @CacheEvict(value = CacheConstants.USERS, allEntries = true),
@@ -266,7 +267,7 @@ public class UserService
 
     // Fetch user
     User existingUser = repository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
     // Validate uniqueness only if changed
     if (!existingUser.getUsername().equals(request.getUsername())) {
@@ -315,7 +316,7 @@ public class UserService
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
     User storedUser = repository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
     LOG.debug("Enabling user {}", storedUser.getUsername());
     storedUser.setEnabled(true);
@@ -333,7 +334,7 @@ public class UserService
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
     User storedUser = repository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
     LOG.debug("Disabling user {}", storedUser.getUsername());
     storedUser.setEnabled(false);
@@ -351,7 +352,7 @@ public class UserService
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
     User storedUser = repository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
     var authenticatedUser = SecurityUtils.getAuthenticatedUserDetails();
     storedUser.setDeleted(true);
@@ -398,7 +399,7 @@ public class UserService
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
 
     User storedUser = repository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
 
     if (!passwordEncoder.matches(oldPassword, storedUser.getPassword())) {
@@ -417,7 +418,7 @@ public class UserService
     Validate.notNull(newPassword, UserConstants.BLANK_PASSWORD);
 
     User storedUser = repository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
 
     storedUser.setPassword(passwordEncoder.encode(newPassword));
@@ -490,7 +491,7 @@ public class UserService
   @Transactional
   public void assignRolesToUser(Long userId, List<UserRoleRequest> roleRequests) {
     User user = repository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException(UserConstants.USER_NOT_FOUND));
+        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
     Set<Long> requestedRoleIds = roleRequests == null ? Set.of()
         : roleRequests.stream()
@@ -503,7 +504,7 @@ public class UserService
         .collect(Collectors.toMap(Role::getId, role -> role));
     for (Long roleId : requestedRoleIds) {
       if (!rolesById.containsKey(roleId)) {
-        throw new RoleNotFoundException("Role not found with id: " + roleId);
+        throw new EntityNotFoundException("Role not found with id: " + roleId);
       }
     }
 

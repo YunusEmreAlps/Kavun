@@ -1,9 +1,7 @@
 package com.kavun.web.advice;
 
 import com.kavun.constant.base.BaseConstants;
-import com.kavun.exception.user.RoleNotFoundException;
 import com.kavun.exception.user.UserAlreadyExistsException;
-import com.kavun.exception.user.UserNotFoundException;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.ResponseCode;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -71,24 +69,6 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
     // ==================== User Domain Exceptions ====================
 
     /**
-     * Handles user-not-found errors raised anywhere in the user domain (service layer),
-     * so controllers don't need to catch and re-check exception messages themselves.
-     */
-    @ExceptionHandler(UserNotFoundException.class)
-    protected ResponseEntity<ApiResponse<Object>> handleUserNotFoundException(
-            UserNotFoundException ex, HttpServletRequest request) {
-
-        String path = request.getRequestURI();
-        LOG.warn("User not found at {}: {}", path, ex.getMessage());
-
-        ApiResponse<Object> response = ApiResponse.error(
-                ResponseCode.NOT_FOUND,
-                ex.getMessage(),
-                path);
-        return response.toResponseEntity();
-    }
-
-    /**
      * Handles duplicate username/email errors raised anywhere in the user domain (service layer),
      * so controllers don't need to catch and re-check exception messages themselves.
      */
@@ -101,24 +81,6 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.CONFLICT,
-                ex.getMessage(),
-                path);
-        return response.toResponseEntity();
-    }
-
-    /**
-     * Handles role-not-found errors raised anywhere in the user domain (service layer),
-     * so controllers don't need to catch and re-check exception messages themselves.
-     */
-    @ExceptionHandler(RoleNotFoundException.class)
-    protected ResponseEntity<ApiResponse<Object>> handleRoleNotFoundException(
-            RoleNotFoundException ex, HttpServletRequest request) {
-
-        String path = request.getRequestURI();
-        LOG.warn("Role not found at {}: {}", path, ex.getMessage());
-
-        ApiResponse<Object> response = ApiResponse.error(
-                ResponseCode.NOT_FOUND,
                 ex.getMessage(),
                 path);
         return response.toResponseEntity();

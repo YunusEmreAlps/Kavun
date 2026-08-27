@@ -1,7 +1,5 @@
 package com.kavun.constant;
 
-import com.kavun.constant.user.PasswordConstants;
-import com.kavun.constant.user.SignUpConstants;
 import java.util.List;
 import org.springframework.http.HttpMethod;
 
@@ -22,13 +20,9 @@ public final class SecurityConstants {
   public static final String BEARER_PREFIX = "Bearer ";
   public static final String X_XSRF_TOKEN = "x-xsrf-token";
   public static final String H2_CONSOLE_URL_MAPPING = "/console/*";
-  public static final String JSESSIONID = "JSESSIONID";
-  public static final String LOGIN_LOGOUT = "/login?logout";
   public static final String LOGOUT = "/logout";
   public static final String LOGIN = "/login";
-  public static final String LOGIN_FAILURE_URL = "/login?error";
   public static final String REFRESH_TOKEN = "/refresh-token";
-  public static final String REMEMBER_ME = "remember-me";
   public static final String FORGOT_PASSWORD = "/forgot-password";
   public static final String RESET_PASSWORD = "/reset-password";
   public static final String ROOT_PATH = "/";
@@ -36,8 +30,6 @@ public final class SecurityConstants {
   public static final String OTP = "/otp";
   public static final String GENERATE_OTP = "/generate-otp";
   public static final String VERIFY_OTP = "/verify-otp";
-
-  public static final String LOGIN_VIEW_NAME = "user/login";
 
   public static final int OTP_LENGTH = 6;
   public static final int OTP_MAX_ATTEMPTS = 3;
@@ -76,8 +68,6 @@ public final class SecurityConstants {
     "/swagger-ui.html",
     ROOT_PATH,
     String.join("/", SecurityConstants.LOGIN, "**"),
-    String.join("/", SignUpConstants.SIGN_UP_MAPPING, "**"),
-    String.join("/", PasswordConstants.PASSWORD_RESET_ROOT_MAPPING, "**"),
   };
 
   private SecurityConstants() {

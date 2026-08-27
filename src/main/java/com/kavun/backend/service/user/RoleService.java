@@ -15,6 +15,7 @@ import com.kavun.shared.dto.mapper.RoleMapper;
 import com.kavun.shared.request.RoleRequest;
 import com.kavun.web.payload.response.UserRoleResponse;
 
+import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -81,10 +82,10 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
 
   public void assignRoleToUser(final Long roleId, final Long userId) {
     Role role = repository.findById(roleId)
-        .orElseThrow(() -> new IllegalArgumentException("Role not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Role not found with id: " + roleId));
 
     User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
 
     // Active check via @SQLRestriction-filtered collection
     boolean alreadyActive = user.getUserRoles().stream()
@@ -113,13 +114,13 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     }
 
     Role role = repository.findById(roleId)
-        .orElseThrow(() -> new IllegalArgumentException("Role not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Role not found with id: " + roleId));
 
     // Batch load all users at once - single DB query instead of N queries
     List<User> users = userRepository.findAllById(userIds);
 
     if (users.size() != userIds.size()) {
-      throw new IllegalArgumentException("Some users not found");
+      throw new EntityNotFoundException("Some users not found");
     }
 
     // Get user IDs that already have this role (active only via @SQLRestriction)

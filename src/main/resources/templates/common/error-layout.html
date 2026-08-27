@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head th:fragment="head(title)">
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <link rel="icon" th:href="@{/images/logo.png}" type="image/png" />
+    <title th:text="${title}">KAVUN</title>
+    <style>
+      :root {
+        --tt-primary: #0d6efd;
+        --tt-ink: #1f2937;
+        --tt-muted: #6b7280;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body.tt-error {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%);
+      }
+
+      .tt-card {
+        width: 100%;
+        max-width: 460px;
+        background: #fff;
+        border-radius: 1rem;
+        box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.18);
+        padding: 2.5rem 2rem;
+        text-align: center;
+      }
+
+      .tt-card h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--tt-ink);
+      }
+
+      .tt-card p.tt-subtitle {
+        margin: 0 0 0.25rem;
+        color: var(--tt-muted);
+        font-size: 0.95rem;
+      }
+
+      .tt-card p.tt-description {
+        margin: 0 0 1rem;
+        color: var(--tt-muted);
+        font-size: 0.85rem;
+      }
+
+      .tt-details {
+        text-align: left;
+        font-size: 0.8rem;
+        color: var(--tt-muted);
+        background: #f9fafb;
+        border-radius: 0.6rem;
+        padding: 0.85rem 1.1rem;
+        margin-top: 1rem;
+      }
+
+      .tt-details div + div {
+        margin-top: 0.35rem;
+      }
+
+      .tt-details b {
+        color: var(--tt-ink);
+      }
+
+      .tt-btn {
+        display: inline-flex;
+        margin-top: 1.5rem;
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.6rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        background: var(--tt-primary);
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body class="tt-error">
+    <main class="tt-card" th:fragment="card(heading, description)">
+      <h1 th:text="${status}">Error</h1>
+      <p class="tt-subtitle" th:text="${heading}">Something went wrong</p>
+      <p class="tt-description" th:if="${description}" th:text="${description}"></p>
+      <div class="tt-details">
+        <div><b>Page:</b> <span th:text="${path}"></span></div>
+        <div><b>Time:</b> <span th:text="${timestamp}"></span></div>
+        <div th:if="${status}">
+          <b>Status:</b> <span th:text="${status}"></span>
+          <span th:if="${message}" th:text="'(' + ${message} + ')'"></span>
+        </div>
+      </div>
+      <a class="tt-btn" href="/">Home</a>
+    </main>
+  </body>
+</html>

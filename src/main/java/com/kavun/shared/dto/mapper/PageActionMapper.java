@@ -8,6 +8,8 @@ import com.kavun.backend.persistent.repository.PageRepository;
 import com.kavun.shared.dto.PageActionDto;
 import com.kavun.shared.request.PageActionRequest;
 
+import jakarta.persistence.EntityNotFoundException;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -44,7 +46,7 @@ public abstract class PageActionMapper implements BaseMapper<PageActionRequest, 
             throw new IllegalArgumentException("Page ID cannot be null");
         }
         return pageRepository.findById(pageId)
-            .orElseThrow(() -> new IllegalArgumentException(
+            .orElseThrow(() -> new EntityNotFoundException(
                 "WebPage not found with ID: " + pageId));
     }
 
@@ -53,7 +55,7 @@ public abstract class PageActionMapper implements BaseMapper<PageActionRequest, 
             throw new IllegalArgumentException("Action ID cannot be null");
         }
         return actionRepository.findById(actionId)
-            .orElseThrow(() -> new IllegalArgumentException(
+            .orElseThrow(() -> new EntityNotFoundException(
                 "Action not found with ID: " + actionId));
     }
 }

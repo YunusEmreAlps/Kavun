@@ -648,15 +648,11 @@ public class AuthRestApi {
 
   // Process forgot password request asynchronously.
   //
-  // Generates a verification token and emails a reset link - the same mechanism
-  // PasswordController already uses for the web flow - instead of generating a
-  // new
-  // password directly. sendPasswordResetEmail() builds a link to the
-  // password-reset
-  // web page carrying the (encrypted+encoded) token, so the raw token/JWT is
-  // never
-  // exposed in the URL. The account password is left untouched until the user
-  // actually completes the reset with a valid token via resetPassword() below.
+  // Generates a verification token and emails a reset link instead of generating
+  // a new password directly. sendPasswordResetEmail() builds a link carrying the
+  // (encrypted+encoded) token, so the raw token/JWT is never exposed in the URL.
+  // The account password is left untouched until the user actually completes the
+  // reset with a valid token via resetPassword() below.
   private void processForgotPassword(ForgotPasswordRequest request) {
     try {
       UserDto user = findUserByEmailOrUsername(request);

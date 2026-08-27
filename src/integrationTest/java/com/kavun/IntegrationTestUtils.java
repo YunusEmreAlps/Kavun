@@ -18,7 +18,6 @@ import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.SignUpUtils;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.task.UserPruningScheduler;
-import com.kavun.web.controller.user.PasswordController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.icegreen.greenmail.util.GreenMail;
 import java.nio.charset.StandardCharsets;
@@ -64,8 +63,6 @@ public abstract class IntegrationTestUtils {
   @Autowired protected EmailService emailService;
   @Autowired protected GreenMail greenMail;
   @Autowired protected UserRepository userRepository;
-
-  @Autowired protected PasswordController passwordController;
 
   @Mock protected MockMultipartFile multipartFile;
 

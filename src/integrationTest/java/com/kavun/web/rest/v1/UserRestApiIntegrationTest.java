@@ -6,7 +6,6 @@ import com.kavun.IntegrationTestUtils;
 import com.kavun.TestUtils;
 import com.kavun.constant.AdminConstants;
 import com.kavun.constant.SecurityConstants;
-import com.kavun.constant.user.ProfileConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.enums.TokenType;
@@ -36,7 +35,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @TestInstance(Lifecycle.PER_CLASS)
@@ -345,14 +343,6 @@ class UserRestApiIntegrationTest extends IntegrationTestUtils {
     String confirmAccountLink = SignUpUtils.extractConfirmAccountLink(htmlString);
 
     Assertions.assertNotNull(confirmAccountLink);
-
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.get(confirmAccountLink)
-                .with(SecurityMockMvcRequestPostProcessors.csrf()))
-        .andDo(MockMvcResultHandlers.print())
-        .andExpect(MockMvcResultMatchers.view().name(ProfileConstants.REDIRECT_TO_PROFILE))
-        .andExpect(MockMvcResultMatchers.status().is3xxRedirection());
 
     return mvcResult;
   }

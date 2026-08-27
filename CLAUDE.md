@@ -60,7 +60,7 @@ Layered, package-by-concern structure under `src/main/java/com/kavun/`:
 - `web/payload/{request,response,pojo}` — API request/response shapes, separate from JPA entities and from `shared/dto`.
 - `web/advice/RestResponseEntityExceptionHandler` — global `@ExceptionHandler`; do not catch-and-wrap exceptions locally in controllers, add a handler method here instead (see `docs/API_RESPONSE_STANDARDS.md`).
 - `annotation/` + `annotation/impl` — custom annotations backed by AOP aspects, notably `@RequirePermission` (`impl/PermissionAspect`) for endpoint authorization and `@Loggable` (`impl/MethodLogger`) for method-level logging.
-- `config/security` — `SecurityConfig`/`ApiWebSecurityConfig`/`FormLoginSecurityConfig` (form-login for the web UI, stateless JWT for the REST API) plus `config/security/jwt` (`JwtAuthTokenFilter`, `JwtAuthenticationEntryPoint`).
+- `config/security` — `SecurityConfig`/`ApiWebSecurityConfig` (stateless JWT for the REST API) plus `WebSecurityConfig`, which only permits the handful of public non-API routes (home, login redirect, error pages, actuator/swagger, static assets) and denies everything else — there is no HTML login form or session-authenticated page. Plus `config/security/jwt` (`JwtAuthTokenFilter`, `JwtAuthenticationEntryPoint`).
 - `config/properties` — typed `@ConfigurationProperties` classes backing the environment variables documented in `README.md`.
 - `enums`, `constant`, `exception` — shared vocabulary; keep magic strings/status codes out of business code.
 - `task/` — scheduled jobs (`@Scheduled`).

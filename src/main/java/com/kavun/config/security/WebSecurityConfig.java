@@ -3,7 +3,6 @@ package com.kavun.config.security;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 import com.kavun.constant.EnvConstants;
-import com.kavun.constant.HomeConstants;
 import com.kavun.constant.SecurityConstants;
 import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
@@ -15,14 +14,14 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 /**
- * This configuration handles form login requests with session. This configuration is considered
- * before ApiWebSecurityConfigurationAdapter since it has an @Order value after 1 (no @Order
- * defaults to last).
+ * This configuration handles the small set of non-API routes served without authentication (home,
+ * login redirect, error pages, actuator/swagger, static assets). There is no HTML login form or
+ * session-authenticated page in the application anymore, so every other non-API request is
+ * denied. This configuration is considered before ApiWebSecurityConfigurationAdapter since it has
+ * an @Order value after 1 (no @Order defaults to last).
  *
  * DEPRECATED: This configuration is disabled when Keycloak is enabled.
  * Use KeycloakFormLoginConfig instead.
@@ -35,12 +34,9 @@ import org.springframework.security.web.authentication.rememberme.PersistentToke
 @Deprecated
 @Configuration
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
-public class FormLoginSecurityConfig {
+public class WebSecurityConfig {
 
   private final Environment environment;
-  private final UserDetailsService userDetailsService;
-  private final PersistentTokenRepository persistentRepository;
 
   /**
    * Configure the {@link HttpSecurity}. Typically, subclasses should not call supper as it may
@@ -50,8 +46,7 @@ public class FormLoginSecurityConfig {
    * @throws Exception thrown when error happens during authentication.
    */
   @Bean
-  public SecurityFilterChain formLoginFilterChain(HttpSecurity http)
-      throws Exception {
+  public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
 
     // if we are running with dev profile, disable csrf and frame options to enable h2 to work.
     if (Arrays.asList(environment.getActiveProfiles()).contains(EnvConstants.DEVELOPMENT)) {
@@ -75,22 +70,7 @@ public class FormLoginSecurityConfig {
                     .requestMatchers(SecurityConstants.getPublicMatchers())
                     .permitAll()
                     .anyRequest()
-                    .authenticated())
-        .userDetailsService(userDetailsService)
-        .formLogin(
-            (form) ->
-                form.loginPage(SecurityConstants.LOGIN)
-                    .failureUrl(SecurityConstants.LOGIN_FAILURE_URL)
-                    .defaultSuccessUrl(HomeConstants.INDEX_URL_MAPPING))
-        .logout(
-            (logout) ->
-                logout
-                    .logoutUrl(SecurityConstants.LOGOUT)
-                    .logoutSuccessUrl(SecurityConstants.LOGIN_LOGOUT)
-                    .invalidateHttpSession(true)
-                    .deleteCookies(SecurityConstants.JSESSIONID, SecurityConstants.REMEMBER_ME)
-                    .permitAll())
-        .rememberMe((rememberMe) -> rememberMe.tokenRepository(persistentRepository));
+                    .denyAll());
 
     return http.build();
   }

@@ -113,6 +113,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     MDC.put(MDC_USER_IP, extractUserIp(request));
     MDC.put(MDC_USER, extractUsername());
     MDC.put(MDC_URL, request.getRequestURL().toString());
+    MDC.put(MDC_URI_STEM, request.getRequestURI());
     MDC.put(MDC_ACTION, request.getMethod());
     MDC.put(MDC_QUERY_PARAMS, StringUtils.nullSafe(request.getQueryString()));
 

@@ -149,6 +149,8 @@ public class ApiResponse<T> {
             case FORBIDDEN -> ResponseCode.FORBIDDEN;
             case NOT_FOUND -> ResponseCode.NOT_FOUND;
             case CONFLICT -> ResponseCode.CONFLICT;
+            case METHOD_NOT_ALLOWED -> ResponseCode.METHOD_NOT_ALLOWED;
+            case UNSUPPORTED_MEDIA_TYPE -> ResponseCode.UNSUPPORTED_MEDIA_TYPE;
             case INTERNAL_SERVER_ERROR -> ResponseCode.INTERNAL_ERROR;
             case SERVICE_UNAVAILABLE -> ResponseCode.SERVICE_UNAVAILABLE;
             default -> ResponseCode.INTERNAL_ERROR;

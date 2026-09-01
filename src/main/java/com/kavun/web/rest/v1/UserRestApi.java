@@ -163,6 +163,10 @@ public class UserRestApi {
     LOG.debug("Encrypted JWT token: {}", encryptedToken);
     var encodedToken = encryptionService.encode(encryptedToken);
 
+    // Tracks whether role assignment below succeeded, so the response never claims full success
+    // while silently omitting that part of the operation.
+    boolean rolesAssigned = true;
+
     if (savedUserDto.getId() != null) {
       // Assign roles if provided
       if (request.getRoles() != null && !request.getRoles().isEmpty()) {
@@ -171,6 +175,7 @@ public class UserRestApi {
           LOG.info("Assigned {} roles to user {}", request.getRoles().size(), savedUserDto.getId());
         } catch (Exception e) {
           LOG.error("Failed to assign roles to user: {}", savedUserDto.getEmail(), e);
+          rolesAssigned = false;
         }
       }
 
@@ -182,7 +187,11 @@ public class UserRestApi {
        * request.getPassword().length() > 0 ? request.getPassword() : newPassword);
        */
     }
-    return ApiResponse.success("", UserConstants.USER_CREATED_SUCCESS_MESSAGE, null);
+
+    String message = rolesAssigned
+        ? UserConstants.USER_CREATED_SUCCESS_MESSAGE
+        : UserConstants.USER_CREATED_SUCCESS_MESSAGE + " Warning: role assignment failed, please assign roles manually.";
+    return ApiResponse.success("", message, null);
   }
 
   /**

@@ -29,6 +29,7 @@ public final class LoggingConstants {
     public static final String MDC_USER_IP = "userIp";
     public static final String MDC_USER = "user";
     public static final String MDC_URL = "url";
+    public static final String MDC_URI_STEM = "uriStem";
     public static final String MDC_ACTION = "action";
     public static final String MDC_QUERY_PARAMS = "queryParams";
     public static final String MDC_BODY = "body";

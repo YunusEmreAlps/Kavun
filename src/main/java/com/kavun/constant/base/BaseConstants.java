@@ -21,6 +21,8 @@ public final class BaseConstants {
     public static final String AUTHENTICATION_REQUIRED = "Authentication required";
     public static final String ACCESS_DENIED = "Access denied";
     public static final String RESOURCE_CONFLICT = "Resource conflict detected";
+    public static final String METHOD_NOT_ALLOWED = "The HTTP method is not supported for this endpoint";
+    public static final String UNSUPPORTED_MEDIA_TYPE = "The request's media type is not supported";
     public static final String VALIDATION_FAILED = "Validation failed";
     public static final String RESOURCE_ALREADY_EXISTS = "Resource already exists";
     public static final String INTERNAL_SERVER_ERROR = "Internal server error";

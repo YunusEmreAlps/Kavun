@@ -1,11 +1,26 @@
 package com.kavun.web.advice;
 
 import com.kavun.constant.base.BaseConstants;
+import com.kavun.exception.EncryptionException;
+import com.kavun.exception.InvalidFileFormatException;
+import com.kavun.exception.InvalidServiceRequestException;
+import com.kavun.exception.ResourceUnavailableException;
+import com.kavun.exception.StorageException;
+import com.kavun.exception.UnAuthorizedActionException;
+import com.kavun.exception.VirusDetectedException;
+import com.kavun.exception.user.CaptchaGenerationException;
+import com.kavun.exception.user.CaptchaValidationException;
+import com.kavun.exception.user.EmailServiceException;
+import com.kavun.exception.user.OtpGenerationException;
+import com.kavun.exception.user.OtpValidationException;
+import com.kavun.exception.user.SmsServiceException;
 import com.kavun.exception.user.UserAlreadyExistsException;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.ResponseCode;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -20,7 +35,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.ServletWebRequest;
@@ -86,6 +104,101 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         return response.toResponseEntity();
     }
 
+    // ==================== Domain / Business Exceptions ====================
+    //
+    // These exceptions carry a @ResponseStatus annotation on the exception class itself, but that
+    // annotation is only consulted by ResponseStatusExceptionResolver, which never runs because
+    // ExceptionHandlerExceptionResolver (this class) resolves every exception first via the
+    // catch-all handleGeneralException() below. Each domain exception therefore needs an explicit
+    // handler here to actually reach the status/message its own annotation declares - without one
+    // it silently falls through to a generic 500.
+
+    /**
+     * Handles domain exceptions caused by bad client input (invalid OTP/CAPTCHA, unsupported or
+     * infected file upload) rather than a server-side fault.
+     */
+    @ExceptionHandler(value = {
+            OtpValidationException.class,
+            CaptchaValidationException.class,
+            InvalidFileFormatException.class,
+            VirusDetectedException.class
+    })
+    protected ResponseEntity<ApiResponse<Object>> handleClientInputException(
+            RuntimeException ex, HttpServletRequest request) {
+
+        String path = request.getRequestURI();
+        LOG.warn("{} at {}: {}", ex.getClass().getSimpleName(), path, ex.getMessage());
+
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.BAD_REQUEST, ex.getMessage(), path);
+        return response.toResponseEntity();
+    }
+
+    /**
+     * Handles unauthorized business actions (distinct from authentication failures, which are
+     * handled separately below).
+     */
+    @ExceptionHandler(UnAuthorizedActionException.class)
+    protected ResponseEntity<ApiResponse<Object>> handleUnAuthorizedActionException(
+            UnAuthorizedActionException ex, HttpServletRequest request) {
+
+        String path = request.getRequestURI();
+        LOG.warn("Unauthorized action at {}: {}", path, ex.getMessage());
+
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.UNAUTHORIZED, ex.getMessage(), path);
+        return response.toResponseEntity();
+    }
+
+    /**
+     * Handles resources that the business layer could not locate.
+     */
+    @ExceptionHandler(ResourceUnavailableException.class)
+    protected ResponseEntity<ApiResponse<Object>> handleResourceUnavailableException(
+            ResourceUnavailableException ex, HttpServletRequest request) {
+
+        String path = request.getRequestURI();
+        LOG.warn("Resource unavailable at {}: {}", path, ex.getMessage());
+
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.NOT_FOUND, ex.getMessage(), path);
+        return response.toResponseEntity();
+    }
+
+    /**
+     * Handles S3 storage unavailability (thrown from circuit breaker fallbacks), mirroring the
+     * CallNotPermittedException handling below.
+     */
+    @ExceptionHandler(StorageException.class)
+    protected ResponseEntity<ApiResponse<Object>> handleStorageException(
+            StorageException ex, HttpServletRequest request) {
+
+        String path = request.getRequestURI();
+        LOG.error("Storage error at {}: {}", path, ex.getMessage(), ex);
+
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.SERVICE_UNAVAILABLE, ex.getMessage(), path);
+        return response.toResponseEntity();
+    }
+
+    /**
+     * Handles internal service failures (email/SMS delivery, encryption, OTP/CAPTCHA generation) -
+     * server-side faults rather than bad client input.
+     */
+    @ExceptionHandler(value = {
+            EmailServiceException.class,
+            SmsServiceException.class,
+            CaptchaGenerationException.class,
+            OtpGenerationException.class,
+            EncryptionException.class,
+            InvalidServiceRequestException.class
+    })
+    protected ResponseEntity<ApiResponse<Object>> handleServiceFailureException(
+            RuntimeException ex, HttpServletRequest request) {
+
+        String path = request.getRequestURI();
+        LOG.error("{} at {}: {}", ex.getClass().getSimpleName(), path, ex.getMessage(), ex);
+
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.INTERNAL_ERROR, ex.getMessage(), path);
+        return response.toResponseEntity();
+    }
+
     /**
      * Handles validation errors from @Valid annotations.
      * Returns field-level error details in ApiResponse format.
@@ -111,6 +224,27 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
     }
 
     /**
+     * Handles validation errors from @Validated on @RequestParam/@PathVariable method arguments
+     * (bean validation outside a @RequestBody, e.g. @Min/@Pattern on a query param).
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    protected ResponseEntity<ApiResponse<Object>> handleConstraintViolationException(
+            ConstraintViolationException ex, HttpServletRequest request) {
+
+        Map<String, List<String>> errors = new HashMap<>();
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            String path = violation.getPropertyPath().toString();
+            String fieldName = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+            errors.computeIfAbsent(fieldName, k -> new java.util.ArrayList<>()).add(violation.getMessage());
+        }
+
+        String path = request.getRequestURI();
+        LOG.warn("Constraint violation at {}: {}", path, errors);
+        ApiResponse<Object> response = ApiResponse.validationError(errors, path);
+        return ResponseEntity.status(response.getStatus()).body(response);
+    }
+
+    /**
      * Handles malformed JSON requests.
      */
     @Override
@@ -127,6 +261,77 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
                 "Malformed JSON request. Please check your request body.",
                 path);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
+     * Handles requests made with an HTTP method the endpoint doesn't support (e.g. POST-only route
+     * called with GET). Without this override, the parent class's default handling returns a bare
+     * ProblemDetail instead of the app's ApiResponse envelope.
+     */
+    @Override
+    protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        String path = getRequestPath(request);
+        LOG.warn("Method not supported at {}: {}", path, ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.METHOD_NOT_ALLOWED, ex.getMessage(), path);
+        return ResponseEntity.status(response.getStatus()).body(response);
+    }
+
+    /**
+     * Handles requests with an unsupported Content-Type.
+     */
+    @Override
+    protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        String path = getRequestPath(request);
+        LOG.warn("Media type not supported at {}: {}", path, ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ResponseCode.UNSUPPORTED_MEDIA_TYPE, ex.getMessage(), path);
+        return ResponseEntity.status(response.getStatus()).body(response);
+    }
+
+    /**
+     * Handles a required request parameter that the client omitted.
+     */
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        String path = getRequestPath(request);
+        LOG.warn("Missing request parameter at {}: {}", path, ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.BAD_REQUEST, ex.getMessage(), path);
+        return ResponseEntity.status(response.getStatus()).body(response);
+    }
+
+    /**
+     * Handles a path variable or request parameter that could not be converted to the expected
+     * type (e.g. a non-numeric value for a Long path variable).
+     */
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(
+            org.springframework.beans.TypeMismatchException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        String path = getRequestPath(request);
+        LOG.warn("Type mismatch at {}: {}", path, ex.getMessage());
+        ApiResponse<Object> response = ApiResponse.error(
+                ResponseCode.BAD_REQUEST,
+                "Invalid value for parameter '" + ex.getPropertyName() + "'",
+                path);
+        return ResponseEntity.status(response.getStatus()).body(response);
     }
 
     // ==================== Static Resource Exceptions ====================

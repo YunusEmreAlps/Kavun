@@ -128,7 +128,7 @@ public class PermissionAspect {
             throw e;
         } catch (Exception e) {
             LOG.error("Error checking permission", e);
-            throw new AccessDeniedException("Error checking permission: " + e.getMessage());
+            throw new RuntimeException("Unexpected error while checking permission", e);
         }
     }
 

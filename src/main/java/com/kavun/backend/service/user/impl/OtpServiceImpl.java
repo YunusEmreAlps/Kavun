@@ -70,7 +70,7 @@ public class OtpServiceImpl implements OtpService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public Boolean validateOtp(Long id, String target, String code) {
         Otp otpEntity = otpRepository.findById(id)
                 .orElseThrow(() -> new OtpValidationException(AuthConstants.OTP_NOT_FOUND));

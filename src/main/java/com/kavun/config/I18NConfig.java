@@ -86,9 +86,9 @@ public class I18NConfig implements WebMvcConfigurer {
 
   @Bean
   public StringHttpMessageConverter stringHttpMessageConverter() {
-    StringHttpMessageConverter messageConverter = new StringHttpMessageConverter();
-    messageConverter.setSupportedMediaTypes(
-        List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_PLAIN, MediaType.ALL));
+    StringHttpMessageConverter messageConverter =
+        new StringHttpMessageConverter(StandardCharsets.UTF_8);
+    messageConverter.setSupportedMediaTypes(List.of(MediaType.TEXT_PLAIN));
     return messageConverter;
   }
 }

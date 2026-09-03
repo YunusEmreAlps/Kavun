@@ -27,6 +27,7 @@ import com.kavun.backend.persistent.domain.user.UserSession;
 import com.kavun.backend.persistent.repository.CaptchaRepository;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
+import com.kavun.web.payload.request.GenerateOtpRequest;
 import com.kavun.web.payload.request.LoginRequest;
 import com.kavun.web.payload.request.OtpVerificationRequest;
 import com.kavun.web.payload.request.ResetPasswordRequest;
@@ -457,14 +458,14 @@ public class AuthRestApi {
   /**
    * Endpoint to generate OTP for the user.
    *
-   * @param username the username
+   * @param request the generate OTP request
    * @return the response entity
    */
   @SecurityRequirements
   @Loggable(level = "warn")
   @PostMapping(SecurityConstants.GENERATE_OTP)
-  public ApiResponse<?> generateOtp(String username) {
-    UserDto user = userService.findByUsername(username);
+  public ApiResponse<?> generateOtp(@Valid @RequestBody GenerateOtpRequest request) {
+    UserDto user = userService.findByUsername(request.getUsername());
 
     if (user == null) {
       return ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.GENERATE_OTP);

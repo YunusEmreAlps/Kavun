@@ -18,6 +18,7 @@ import com.kavun.shared.dto.mapper.UserMapper;
 import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
+import com.kavun.web.payload.request.UpdatePasswordRequest;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.UserResponse;
 import org.springframework.data.domain.Sort;
@@ -44,7 +45,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -217,8 +217,7 @@ public class UserRestApi {
   // Update the user password for the currently authenticated user.
   @Loggable
   @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<String> updatePassword(
-      @RequestParam String oldPassword, @RequestParam String newPassword) {
+  public ResponseEntity<String> updatePassword(@Valid @RequestBody UpdatePasswordRequest request) {
 
     var userDetails = SecurityUtils.getAuthenticatedUserDetails();
     if (userDetails == null) {
@@ -227,7 +226,8 @@ public class UserRestApi {
     }
 
     // Update the password
-    String result = userService.updatePassword(userDetails.getId(), oldPassword, newPassword);
+    String result = userService.updatePassword(
+        userDetails.getId(), request.getOldPassword(), request.getNewPassword());
 
     return ResponseEntity.ok(result);
   }

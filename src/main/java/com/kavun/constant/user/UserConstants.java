@@ -27,8 +27,9 @@ public final class UserConstants {
   public static final int LASTNAME_MIN_SIZE = 2;
   public static final int LASTNAME_MAX_SIZE = 100;
   public static final int ROLE_NAME_MIN_SIZE = 3;
-  public static final int ROLE_NAME_MAX_SIZE = 255;
-  public static final int ROLE_DESCRIPTION_MAX_SIZE = 2000;
+  public static final int ROLE_NAME_MAX_SIZE = 100;
+  public static final int ROLE_LABEL_MAX_SIZE = 100;
+  public static final int ROLE_DESCRIPTION_MAX_SIZE = 500;
   public static final int PHONE_MIN_SIZE = 10;
   public static final int PHONE_MAX_SIZE = 15;
   public static final int PASSWORD_MIN_SIZE = 4;
@@ -50,8 +51,9 @@ public final class UserConstants {
   public static final String NAME_SIZE = "Name should be at least 2 and at most 100 characters";
   public static final String BLANK_FIRST_NAME = "First name cannot be blank";
   public static final String BLANK_LAST_NAME = "Last name cannot be blank";
-  public static final String ROLE_DESCRIPTION_SIZE_MESSAGE = "Description should be at most 2000 characters";
-  public static final String ROLE_NAME_SIZE_MESSAGE = "Role name should be at least 3 and at most 255 characters";
+  public static final String ROLE_DESCRIPTION_SIZE_MESSAGE = "Description should be at most 500 characters";
+  public static final String ROLE_NAME_SIZE_MESSAGE = "Role name should be at least 3 and at most 100 characters";
+  public static final String ROLE_LABEL_SIZE_MESSAGE = "Role label should be at most 100 characters";
   public static final String PAGEABLE_MUST_NOT_BE_NULL = "Pageable must not be null";
   public static final String PHONE_SIZE = "Telefon numarası en az 10 ve en fazla 15 karakter olmalıdır";
 

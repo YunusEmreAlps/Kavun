@@ -63,7 +63,10 @@ public class User extends BaseEntity<Long> implements Serializable {
   private String lastName;
   private String phone;
   private String profileImage;
+
+  @Column(length = 512)
   private String verificationToken;
+
   private String title;
 
   @Column(columnDefinition = "TEXT")

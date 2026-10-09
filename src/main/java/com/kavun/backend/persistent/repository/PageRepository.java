@@ -3,7 +3,6 @@ package com.kavun.backend.persistent.repository;
 import com.kavun.backend.persistent.domain.user.WebPage;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
@@ -20,17 +19,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RepositoryRestResource(exported = false)
 public interface PageRepository extends BaseRepository<WebPage> {
-    WebPage getReferenceById(Long id);
-
-    Optional<WebPage> findByCode(String code);
-
     WebPage findByCodeAndDeletedFalse(String code);
 
     WebPage findByUrlAndDeletedFalse(String url);
 
-    List<WebPage> findByParentIsNullAndDeletedFalseOrderByOrderIndex();
-    List<WebPage> findByParentIdAndDeletedFalseOrderByOrderIndex(Long parentId);
-
-    @Query("SELECT p FROM WebPage p LEFT JOIN FETCH p.pageActions WHERE p.id = :id AND p.deleted = false")
-    Optional<WebPage> findByIdWithPageActions(Long id);
+    @Query("SELECT p FROM WebPage p LEFT JOIN FETCH p.parent WHERE p.deleted = false ORDER BY p.orderIndex, p.id")
+    List<WebPage> findAllActiveWithParent();
 }

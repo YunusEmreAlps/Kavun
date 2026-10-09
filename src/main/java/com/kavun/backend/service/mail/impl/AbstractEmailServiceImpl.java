@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.thymeleaf.context.Context;
 
 /**
@@ -35,6 +36,8 @@ import org.thymeleaf.context.Context;
  */
 @Slf4j
 public abstract class AbstractEmailServiceImpl implements EmailService {
+
+  protected static final String EMAIL_TASK_EXECUTOR = "emailTaskExecutor";
 
   /**
    * Prepares a context with current content.
@@ -52,7 +55,6 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
     if (emailRequest.getUrls().containsKey(EmailConstants.EMAIL_LINK)) {
       context.setVariable(
           EmailConstants.EMAIL_LINK, emailRequest.getUrls().get(EmailConstants.EMAIL_LINK));
-      LOG.info(emailRequest.getUrls().get(EmailConstants.EMAIL_LINK));
     }
     emailRequest.setContext(context);
 
@@ -70,6 +72,7 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
   }
 
   @Override
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendAccountVerificationEmail(UserDto userDto, String token) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
 
@@ -85,6 +88,7 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
   }
 
   @Override
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendAccountConfirmationEmail(final UserDto userDto) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
 
@@ -100,6 +104,7 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
   }
 
   @Override
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendPasswordResetEmail(final UserDto userDto, final String token) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
 
@@ -115,6 +120,7 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
   }
 
   @Override
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendPasswordResetConfirmationEmail(final UserDto userDto) {
     Validate.notNull(userDto, UserConstants.USER_DTO_MUST_NOT_BE_NULL);
 
@@ -130,6 +136,7 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
   }
 
   @Override
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendOtpEmail(String email, String otpCode, String userName) {
     Validate.notBlank(email, "Email cannot be blank");
     Validate.notBlank(otpCode, "OTP code cannot be blank");
@@ -147,9 +154,7 @@ public abstract class AbstractEmailServiceImpl implements EmailService {
     emailRequest.setTemplate(EmailConstants.OTP_TEMPLATE);
     emailRequest.setContext(context);
 
-    // Send the email
     sendHtmlEmail(emailRequest);
-    LOG.info("OTP email sent to: {}", email);
   }
 
   /**

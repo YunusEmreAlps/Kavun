@@ -5,7 +5,6 @@ import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.mail.EmailService;
-import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.AdminConstants;
@@ -64,7 +63,6 @@ public class UserRestApi {
   private final UserService userService;
   private final JwtService jwtService;
   private final EmailService emailService;
-  private final EncryptionService encryptionService;
   private final UserSpecification userSpecification;
   private final UserMapper userMapper;
 
@@ -158,10 +156,6 @@ public class UserRestApi {
     // If roles are provided in request, skip default ROLE_USER assignment
     boolean hasRoles = request.getRoles() != null && !request.getRoles().isEmpty();
     var savedUserDto = userService.createUser(userDto, hasRoles);
-
-    var encryptedToken = encryptionService.encrypt(verificationToken);
-    LOG.debug("Encrypted JWT token: {}", encryptedToken);
-    var encodedToken = encryptionService.encode(encryptedToken);
 
     // Tracks whether role assignment below succeeded, so the response never claims full success
     // while silently omitting that part of the operation.

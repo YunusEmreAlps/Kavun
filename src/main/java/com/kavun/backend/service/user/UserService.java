@@ -440,23 +440,6 @@ public class UserService
       final UserDto userDto,
       final Set<RoleType> roleTypes,
       final UserHistoryType historyType,
-      final boolean isUpdate) {
-    return persistUser(userDto, roleTypes, historyType, isUpdate, false);
-  }
-
-  /**
-   * Transfers user details to a user object then persist to a database.
-   *
-   * @param userDto     the userDto
-   * @param roleTypes   the roleTypes
-   * @param historyType the user history type
-   * @param isUpdate    if the operation is an update
-   * @return the userDto
-   */
-  private UserDto persistUser(
-      final UserDto userDto,
-      final Set<RoleType> roleTypes,
-      final UserHistoryType historyType,
       final boolean isUpdate,
       final boolean skipDefaultRole) {
 

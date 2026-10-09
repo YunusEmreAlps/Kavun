@@ -112,7 +112,7 @@
 	</appender>
 
 	<!-- Appender for syslog, active under specified profiles -->
-	<springProfile name="development | test | production | docker">
+	<springProfile name="local | development | test | production | docker">
 		<appender name="SYSLOG_AUDIT" class="ch.qos.logback.classic.net.SyslogAppender">
 			<syslogHost>${SYSLOG_HOST}</syslogHost>
 			<port>${SYSLOG_PORT}</port>
@@ -150,7 +150,7 @@
 	</logger>
 
 	<!-- Root logger -->
-	<springProfile name="development | test">
+	<springProfile name="local | development | test">
 		<root level="INFO">
 			<appender-ref ref="CONSOLE" />
 			<appender-ref ref="ASYNC_APP_FILE" />

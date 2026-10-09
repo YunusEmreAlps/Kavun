@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -79,10 +80,25 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   private static final int MAX_EMAILS_PER_HOUR = 100;
   private static final long HOUR_IN_MILLIS = 3600000L;
 
+  private static final Pattern EMAIL_PATTERN =
+      Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
+  /** Inline logo referenced as {@code cid:logo} by the templates; null when the asset is missing. */
+  private ClassPathResource logo;
+
   @PostConstruct
   public void init() {
     LOG.info("Initializing SMTP Email Service with monitoring...");
     LOG.info("Rate limit: {} emails per hour per recipient", MAX_EMAILS_PER_HOUR);
+
+    configureMailSession();
+
+    var logoResource = new ClassPathResource(EmailConstants.LOGO_CLASSPATH_LOCATION);
+    if (logoResource.exists()) {
+      logo = logoResource;
+    } else {
+      LOG.warn("Logo image not found on classpath at: {}", EmailConstants.LOGO_CLASSPATH_LOCATION);
+    }
   }
 
   /**
@@ -99,12 +115,12 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   /**
-   * Scheduled task to clean up old rate limit entries
+   * Scheduled task to clean up rate limit counters of past hours
    */
   @Scheduled(fixedRate = 1800000) // Every 30 minutes
   public void cleanupRateLimitCache() {
-    long now = System.currentTimeMillis();
-    hourlyEmailCount.entrySet().removeIf(entry -> now - entry.getValue() > HOUR_IN_MILLIS);
+    long currentHour = currentHourBucket();
+    hourlyEmailCount.keySet().removeIf(key -> hourBucketOf(key) < currentHour);
     LOG.debug("Cleaned up rate limit cache. Remaining entries: {}", hourlyEmailCount.size());
   }
 
@@ -119,8 +135,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
    * Check if recipient has exceeded rate limit
    */
   private boolean isRateLimited(String recipient) {
-    String key = "rate_" + recipient + "_" + (System.currentTimeMillis() / HOUR_IN_MILLIS);
-    Long count = hourlyEmailCount.get(key);
+    Long count = hourlyEmailCount.get(rateLimitKey(recipient, currentHourBucket()));
     return count != null && count >= MAX_EMAILS_PER_HOUR;
   }
 
@@ -128,8 +143,19 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
    * Increment rate limit counter for recipient
    */
   private void incrementRateLimit(String recipient) {
-    String key = "rate_" + recipient + "_" + (System.currentTimeMillis() / HOUR_IN_MILLIS);
-    hourlyEmailCount.merge(key, 1L, Long::sum);
+    hourlyEmailCount.merge(rateLimitKey(recipient, currentHourBucket()), 1L, Long::sum);
+  }
+
+  private static long currentHourBucket() {
+    return System.currentTimeMillis() / HOUR_IN_MILLIS;
+  }
+
+  private static String rateLimitKey(String recipient, long hourBucket) {
+    return "rate_" + recipient + "_" + hourBucket;
+  }
+
+  private static long hourBucketOf(String rateLimitKey) {
+    return Long.parseLong(rateLimitKey.substring(rateLimitKey.lastIndexOf('_') + 1));
   }
 
   /**
@@ -137,7 +163,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
    * Enhanced with rate limiting, metrics tracking, and better error handling.
    */
   @Override
-  @Async("emailTaskExecutor")
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendMail(final SimpleMailMessage simpleMailMessage) {
     String requestId = generateRequestId();
     currentlyProcessing.incrementAndGet();
@@ -160,9 +186,6 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
         totalEmailsFailed.incrementAndGet();
         return;
       }
-
-      // Configure SSL trust for IP-based SMTP servers
-      configureSSLTrust();
 
       // Send email
       mailDeliveryGateway.send(simpleMailMessage);
@@ -188,7 +211,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   @Override
-  @Async("emailTaskExecutor")
+  @Async(EMAIL_TASK_EXECUTOR)
   public String sendSimpleEmail(final SimpleMailMessage simpleMailMessage) {
     String requestId = generateRequestId();
 
@@ -200,8 +223,6 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
         return error;
       }
 
-      // Configure and send
-      configureSSLTrust();
       mailDeliveryGateway.send(simpleMailMessage);
 
       // Save success
@@ -226,72 +247,55 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   @Override
-  @Async("emailTaskExecutor")
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendHtmlEmail(final HtmlEmailRequest emailRequest) {
-    String requestId = extractOrGenerateRequestId(emailRequest);
-
-    try {
-      // Validate input
-      if (!isValidHtmlEmailRequest(emailRequest)) {
-        LOG.warn("Invalid HTML email request provided. RequestId: {}", requestId);
-        saveFailedHtmlEmailToDatabase(emailRequest, requestId, "Invalid email request");
-        return; // Don't throw - just return to keep app working
-      }
-
-      configureSSLTrust();
-      // logEmail(emailRequest);
-
-      // Prepare and send email
-      MimeMessage mimeMessage = prepareMimeMessage(emailRequest);
-      mailDeliveryGateway.send(mimeMessage);
-
-      // Save success to database
-      String htmlBody = getEmailBodySafely(mimeMessage);
-      saveHtmlEmailToDatabase(emailRequest, requestId, htmlBody, "Email sent successfully", true);
-
-      LOG.info("HTML email sent successfully. RequestId: {}", requestId);
-
-    } catch (Exception e) {
-      String errorMessage = getDetailedErrorMessage(e);
-      LOG.error("Failed to send HTML email. RequestId: {}, Error: {}", requestId, errorMessage, e);
-
-      // Save failure to database
-      saveFailedHtmlEmailToDatabase(emailRequest, requestId, errorMessage);
-    }
+    deliverHtmlEmail(emailRequest, isValidHtmlEmailRequest(emailRequest),
+        "Invalid email request", "Email sent successfully");
   }
 
   @Override
-  @Async("emailTaskExecutor")
+  @Async(EMAIL_TASK_EXECUTOR)
   public void sendHtmlEmailWithAttachment(final HtmlEmailRequest emailRequest) {
+    deliverHtmlEmail(emailRequest, isValidHtmlEmailRequestWithAttachments(emailRequest),
+        "Invalid email request or attachments", "Email with attachments sent successfully");
+  }
+
+  /**
+   * Renders, sends and records an HTML email. Failures are logged and recorded rather than
+   * thrown, so that email problems never break the calling flow.
+   *
+   * @param emailRequest  the email request
+   * @param validRequest  whether the request passed validation
+   * @param invalidReason the result recorded when the request is invalid
+   * @param successResult the result recorded when the email is sent
+   */
+  private void deliverHtmlEmail(HtmlEmailRequest emailRequest, boolean validRequest,
+      String invalidReason, String successResult) {
     String requestId = extractOrGenerateRequestId(emailRequest);
 
+    if (!validRequest) {
+      LOG.warn("{}. RequestId: {}", invalidReason, requestId);
+      totalEmailsFailed.incrementAndGet();
+      saveFailedHtmlEmailToDatabase(emailRequest, requestId, invalidReason);
+      return; // Don't throw - just return to keep app working
+    }
+
+    currentlyProcessing.incrementAndGet();
     try {
-      // Validate input
-      if (!isValidHtmlEmailRequestWithAttachments(emailRequest)) {
-        LOG.warn("Invalid HTML email request with attachments. RequestId: {}", requestId);
-        saveFailedHtmlEmailToDatabase(emailRequest, requestId, "Invalid email request or attachments");
-        return; // Don't throw - just return to keep app working
-      }
+      String htmlBody = renderBody(emailRequest);
+      mailDeliveryGateway.send(prepareMimeMessage(emailRequest, htmlBody));
 
-      configureSSLTrust();
-      // logEmail(emailRequest);
-
-      // Prepare and send email
-      MimeMessage mimeMessage = prepareMimeMessage(emailRequest);
-      mailDeliveryGateway.send(mimeMessage);
-
-      // Save success to database
-      String htmlBody = getEmailBodySafely(mimeMessage);
-      saveHtmlEmailToDatabase(emailRequest, requestId, htmlBody, "Email with attachments sent successfully", true);
-
-      LOG.info("HTML email with attachments sent successfully. RequestId: {}", requestId);
+      totalEmailsSent.incrementAndGet();
+      saveHtmlEmailToDatabase(emailRequest, requestId, htmlBody, successResult, true);
+      LOG.info("HTML email sent successfully. RequestId: {}", requestId);
 
     } catch (Exception e) {
+      totalEmailsFailed.incrementAndGet();
       String errorMessage = getDetailedErrorMessage(e);
-      LOG.error("Failed to send HTML email with attachment. RequestId: {}, Error: {}", requestId, errorMessage, e);
-
-      // Save failure to database
+      LOG.error("Failed to send HTML email. RequestId: {}, Error: {}", requestId, errorMessage, e);
       saveFailedHtmlEmailToDatabase(emailRequest, requestId, errorMessage);
+    } finally {
+      currentlyProcessing.decrementAndGet();
     }
   }
 
@@ -387,57 +391,42 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   /**
-   * Safely extracts email body from MimeMessage
+   * Applies the SMTP session settings once at startup. The mail session is shared by all sends, so
+   * these must not be modified per message. Trusts the configured host's certificate (IP-based SMTP
+   * servers often use self-signed certificates); every other value keeps what is configured under
+   * {@code spring.mail.properties} and only falls back to a default when it is not set.
    */
-  private String getEmailBodySafely(MimeMessage mimeMessage) {
-    try {
-      Object content = mimeMessage.getContent();
-      return content != null ? content.toString() : "Email content could not be extracted";
-    } catch (Exception e) {
-      LOG.warn("Could not extract email body: {}", e.getMessage());
-      return "Email body extraction failed";
+  private void configureMailSession() {
+    if (!(mailSender instanceof JavaMailSenderImpl javaMailSender)
+        || StringUtils.isBlank(javaMailSender.getHost())) {
+      return;
     }
-  }
 
-  /**
-   * Configures SSL trust settings for IP-based SMTP servers.
-   * Enhanced with error handling.
-   */
-  private void configureSSLTrust() {
-    try {
-      if (mailSender instanceof JavaMailSenderImpl javaMailSender) {
-        var props = javaMailSender.getJavaMailProperties();
-        String host = javaMailSender.getHost();
+    var props = javaMailSender.getJavaMailProperties();
+    String host = javaMailSender.getHost();
 
-        if (StringUtils.isNotBlank(host)) {
-          // Configure SSL trust for the specific host
-          props.put("mail.smtp.ssl.trust", host);
-          props.put("mail.smtp.ssl.checkserveridentity", "false");
-          props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
+    props.put("mail.smtp.ssl.trust", host);
+    props.putIfAbsent("mail.smtp.ssl.checkserveridentity", "false");
+    props.putIfAbsent("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
 
-          // Enable STARTTLS for secure connections
-          props.put("mail.smtp.starttls.enable", "true");
+    // Enable STARTTLS for secure connections
+    props.putIfAbsent("mail.smtp.starttls.enable", "true");
 
-          // Connection timeouts
-          props.put("mail.smtp.connectiontimeout", "10000");
-          props.put("mail.smtp.timeout", "10000");
-          props.put("mail.smtp.writetimeout", "10000");
+    // Connection timeouts
+    props.putIfAbsent("mail.smtp.connectiontimeout", "10000");
+    props.putIfAbsent("mail.smtp.timeout", "10000");
+    props.putIfAbsent("mail.smtp.writetimeout", "10000");
 
-          LOG.debug("Configured SSL trust for SMTP host: {}", host);
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to configure SSL trust: {}", e.getMessage());
-      // Don't throw - this shouldn't break the app
-    }
+    LOG.debug("Configured SMTP session for host: {}", host);
   }
 
   /**
    * Enhanced error message handling
    */
   private String getDetailedErrorMessage(Exception e) {
+    String message = StringUtils.defaultString(e.getMessage());
+
     if (e instanceof MailSendException) {
-      String message = e.getMessage();
       if (message.contains("SSLHandshakeException")) {
         return "SSL Certificate validation failed - check SMTP SSL configuration";
       } else if (message.contains("Could not connect")) {
@@ -452,19 +441,16 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
     }
 
     if (e instanceof MessagingException) {
-      return "Email message formatting error: " + e.getMessage();
+      return "Email message formatting error: " + message;
     }
 
-    return StringUtils.defaultIfBlank(e.getMessage(), "Unknown email sending error");
+    return StringUtils.defaultIfBlank(message, "Unknown email sending error");
   }
 
   /**
-   * Prepares a MimeMessage with provided EmailFormat.
-   * Enhanced with better error handling.
+   * Renders the email template into its HTML body.
    */
-  private MimeMessage prepareMimeMessage(final HtmlEmailRequest emailFormat)
-      throws MessagingException, UnsupportedEncodingException, FileNotFoundException {
-
+  private String renderBody(final HtmlEmailRequest emailFormat) {
     // Ensure context is not null
     Context context = emailFormat.getContext();
     if (context == null) {
@@ -474,6 +460,15 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
     // Ensure URLs are in context
     ensureUrlsInContext(emailFormat, context);
+
+    return templateEngine.process(emailFormat.getTemplate(), context);
+  }
+
+  /**
+   * Prepares a MimeMessage with provided EmailFormat and its rendered body.
+   */
+  private MimeMessage prepareMimeMessage(final HtmlEmailRequest emailFormat, final String body)
+      throws MessagingException, UnsupportedEncodingException, FileNotFoundException {
 
     var withAttachment = CollectionUtils.isNotEmpty(emailFormat.getAttachments());
 
@@ -490,9 +485,6 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
     setRecipientsForMimeMessage(emailFormat, helper);
 
     helper.setSentDate(new Date());
-
-    // Process template
-    String body = templateEngine.process(emailFormat.getTemplate(), emailFormat.getContext());
     helper.setText(body, true);
 
     // Set subject with fallback
@@ -515,12 +507,10 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
 
   /**
    * Embeds the logo image inline so it can be referenced as {@code cid:logo} in email templates.
-   * Missing logo asset is logged and skipped rather than failing the whole email.
+   * Missing logo asset is skipped rather than failing the whole email.
    */
   private void addLogoInline(MimeMessageHelper helper) {
-    var logo = new ClassPathResource(EmailConstants.LOGO_CLASSPATH_LOCATION);
-    if (!logo.exists()) {
-      LOG.warn("Logo image not found on classpath at: {}", EmailConstants.LOGO_CLASSPATH_LOCATION);
+    if (logo == null) {
       return;
     }
 
@@ -671,12 +661,7 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   private boolean isValidEmailFormat(String email) {
-    if (!StringUtils.isNotBlank(email)) {
-      return false;
-    }
-
-    String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-    return email.matches(emailRegex);
+    return StringUtils.isNotBlank(email) && EMAIL_PATTERN.matcher(email).matches();
   }
 
   /**
@@ -701,7 +686,8 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
   }
 
   /**
-   * Sets the 'from' and 'reply-to' addresses for the email.
+   * Sets the 'from' and 'reply-to' addresses for the email, and adds the receiver's display name
+   * to the primary recipient when a receiver is given.
    *
    * @param emailFormat
    * @param helper
@@ -723,10 +709,11 @@ public class SmtpEmailServiceImpl extends AbstractEmailServiceImpl {
     helper.setFrom(String.valueOf(internetAddress));
     helper.setReplyTo(internetAddress);
 
+    // The primary recipient is already set by setRecipientsForMimeMessage; it must never be
+    // replaced by the sender address.
     if (Objects.nonNull(emailFormat.getReceiver())) {
-      internetAddress = new InternetAddress(emailFormat.getTo(), emailFormat.getReceiver().getFirstName());
-      helper.setTo(internetAddress);
+      String to = StringUtils.defaultIfBlank(emailFormat.getTo(), emailFormat.getReceiver().getEmail());
+      helper.setTo(new InternetAddress(to, emailFormat.getReceiver().getFirstName()));
     }
-    helper.setTo(internetAddress);
   }
 }

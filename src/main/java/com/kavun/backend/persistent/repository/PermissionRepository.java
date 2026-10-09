@@ -1,7 +1,7 @@
 package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Permission;
-import com.kavun.enums.EntityType;
+import com.kavun.shared.dto.PermissionGrantDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,12 +23,6 @@ import org.springframework.stereotype.Repository;
 @RepositoryRestResource(exported = false)
 public interface PermissionRepository extends BaseRepository<Permission> {
 
-    List<Permission> findByEntityTypeAndEntityIdAndDeletedFalse(EntityType entityType, Long entityId);
-
-    @Query("SELECT p FROM Permission p WHERE p.entityType = :entityType AND p.entityId = :entityId " +
-           "AND p.pageAction.id = :pageActionId AND p.deleted = false")
-    List<Permission> findByEntityAndPageAction(EntityType entityType, Long entityId, Long pageActionId);
-
     @Query("SELECT p FROM Permission p WHERE p.pageAction.id = :pageActionId " +
            "AND p.entityType = 'USER' AND p.entityId = :userId " +
            "AND p.deleted = false")
@@ -41,6 +35,13 @@ public interface PermissionRepository extends BaseRepository<Permission> {
 
     @Query("SELECT ur.role.id FROM UserRole ur WHERE ur.user.id = :userId AND ur.deleted = false")
     List<Long> findRoleIdsByUserId(Long userId);
+
+    @Query("SELECT new com.kavun.shared.dto.PermissionGrantDto(p.pageAction.id, p.entityType, p.granted, p.expiresAt) " +
+           "FROM Permission p WHERE p.deleted = false AND (" +
+           "(p.entityType = 'USER' AND p.entityId = :userId) OR " +
+           "(p.entityType = 'ROLE' AND p.entityId IN " +
+           "(SELECT ur.role.id FROM UserRole ur WHERE ur.user.id = :userId AND ur.deleted = false)))")
+    List<PermissionGrantDto> findPermissionGrantsByUserId(Long userId);
 
     @Modifying
     @Query("UPDATE Permission p SET p.granted = false WHERE p.expiresAt IS NOT NULL " +

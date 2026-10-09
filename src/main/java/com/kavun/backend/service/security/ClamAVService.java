@@ -97,24 +97,6 @@ public class ClamAVService {
     }
 
     /**
-     * Check if a file contains viruses.
-     *
-     * @param file The file to check
-     * @return true if virus is detected, false otherwise
-     */
-    public boolean isVirusDetected(MultipartFile file) {
-        try {
-            ScanResult result = scanFile(file);
-            return result instanceof ScanResult.VirusFound;
-        } catch (VirusDetectedException e) {
-            return true;
-        } catch (Exception e) {
-            LOG.error("Error checking virus status: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-
-    /**
      * Check if ClamAV service is available and responding.
      *
      * @return true if ClamAV is available, false otherwise

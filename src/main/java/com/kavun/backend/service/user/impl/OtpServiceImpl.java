@@ -155,7 +155,7 @@ public class OtpServiceImpl implements OtpService {
             try {
                 // Send OTP via Email Service
                 emailService.sendOtpEmail(email, otp.getCode(), null);
-                LOG.info("OTP email sent successfully to: {}", email);
+                LOG.info("OTP email queued for: {}", email);
 
             } catch (Exception e) {
                 LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);

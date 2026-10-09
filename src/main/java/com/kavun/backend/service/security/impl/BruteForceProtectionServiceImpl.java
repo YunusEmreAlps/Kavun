@@ -6,12 +6,7 @@ import com.kavun.constant.CacheConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.shared.util.core.ValidationUtils;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
@@ -34,16 +29,10 @@ public class BruteForceProtectionServiceImpl implements BruteForceProtectionServ
   @Value("${security.failedLoginAttempts}")
   private int maxFailedLogins;
 
-  @Value("${brute.force.cache.maxSize}")
-  private int cacheMaxLimit;
-
   private final UserRepository userRepository;
-
-  private Map<String, FailedLogin> cache;
 
   public BruteForceProtectionServiceImpl(UserRepository userRepository) {
     this.userRepository = userRepository;
-    this.cache = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -112,39 +101,5 @@ public class BruteForceProtectionServiceImpl implements BruteForceProtectionServ
       return true;
     }
     return false;
-  }
-
-  protected FailedLogin getFailedLogin(final String username) {
-    var failedLogin = cache.get(username.toLowerCase(Locale.getDefault()));
-
-    if (Objects.isNull(failedLogin)) {
-      // setup the initial data
-      failedLogin = new FailedLogin(0, LocalDateTime.now());
-      cache.put(username.toLowerCase(Locale.getDefault()), failedLogin);
-      if (cache.size() > cacheMaxLimit) {
-        // remove the oldest entry based on localDateTime
-        cache.entrySet().stream()
-            .min(Map.Entry.comparingByValue(Comparator.comparing(FailedLogin::getDate)))
-            .ifPresent(entry -> cache.remove(entry.getKey()));
-      }
-    }
-    return failedLogin;
-  }
-
-  @Data
-  public static class FailedLogin {
-
-    private int count;
-    private LocalDateTime date;
-
-    public FailedLogin() {
-      this.count = 0;
-      this.date = LocalDateTime.now();
-    }
-
-    public FailedLogin(int count, LocalDateTime date) {
-      this.count = count;
-      this.date = date;
-    }
   }
 }

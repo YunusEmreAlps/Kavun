@@ -197,6 +197,7 @@ spring.mail.protocol=smtp
 
 - The profiles defined in the application are **development**, **docker**, **test**, and **production**.
 - By default, the application runs with the **development** profile.
+- **local** is not a standalone profile, it is an overlay for machine-specific overrides (devtools, your own datasource). Activate it *after* a real profile so its values win: `SPRING_PROFILES_ACTIVE=development,local ./gradlew bootRun`.
 
 ### 5. Accessing the Application
 

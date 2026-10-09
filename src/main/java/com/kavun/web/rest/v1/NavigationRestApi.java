@@ -1,10 +1,7 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
-import com.kavun.backend.persistent.domain.user.User;
-import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.service.user.NavigationService;
-import com.kavun.constant.user.UserConstants;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.response.NavigationResponse;
@@ -14,10 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import jakarta.persistence.EntityNotFoundException;
-
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
  * @version 1.0
  * @since 1.0
  */
-@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/navigation")
@@ -37,7 +30,6 @@ import org.springframework.web.bind.annotation.*;
 public class NavigationRestApi {
 
   private final NavigationService navigationService;
-  private final UserRepository userRepository;
 
   /**
    * Get navigation tree for the current authenticated user.
@@ -45,15 +37,13 @@ public class NavigationRestApi {
    *
    * @return navigation response with accessible pages and actions
    */
-  @Loggable
+  @Loggable(ignoreResponseData = true)
   @GetMapping
   @Operation(summary = "Get user navigation", description = "Returns the navigation tree for the authenticated user with permission-based filtering")
   public ResponseEntity<NavigationResponse> getNavigation() {
     UserDto userDto = SecurityUtils.getAuthorizedUserDto();
-    User user = userRepository.findById(userDto.getId())
-        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
-    NavigationResponse navigation = navigationService.buildNavigation(user);
+    NavigationResponse navigation = navigationService.buildNavigation(userDto.getId());
     return ResponseEntity.ok(navigation);
   }
 
@@ -70,10 +60,8 @@ public class NavigationRestApi {
   public ResponseEntity<PageActionsResponse> getPageActions(
       @Parameter(description = "Page ID", required = true) @PathVariable Long pageId) {
     UserDto userDto = SecurityUtils.getAuthorizedUserDto();
-    User user = userRepository.findById(userDto.getId())
-        .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
-    PageActionsResponse actions = navigationService.getPageActions(pageId, user);
+    PageActionsResponse actions = navigationService.getPageActions(pageId, userDto.getId());
     return ResponseEntity.ok(actions);
   }
 }

@@ -1,8 +1,6 @@
 package com.kavun.annotation;
 
 import com.kavun.backend.persistent.context.HttpLogContext;
-import com.kavun.backend.persistent.domain.siem.ApplicationLog;
-import com.kavun.backend.persistent.repository.ApplicationLogRepository;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.shared.util.MaskPasswordUtils;
@@ -52,7 +50,6 @@ import jakarta.persistence.Transient;
 public class LoggingFilter extends OncePerRequestFilter {
 
   private final EntityManager entityManager;
-  private final ApplicationLogRepository applicationLogRepository;
   private final DeviceDetectionService deviceDetectionService;
   private final ApplicationLogService applicationLogService;
 
@@ -270,28 +267,6 @@ public class LoggingFilter extends OncePerRequestFilter {
             StringUtils.capitalize(e.getKey()),
             e.getValue()))
         .collect(Collectors.joining(", "));
-  }
-
-  /**
-   * Saves log to database with error handling.
-   */
-  private void saveLogAsync(ApplicationLog applicationLog) {
-    try {
-      applicationLogRepository.save(applicationLog);
-    } catch (Exception e) {
-      LOG.warn("Failed to persist application log: {}", e.getMessage());
-    }
-  }
-
-  /**
-   * Determines log level based on HTTP status code.
-   */
-  private String determineLogLevel(int status) {
-    if (status >= 500)
-      return LOG_LEVEL_ERROR;
-    if (status >= 400)
-      return LOG_LEVEL_WARN;
-    return LOG_LEVEL_INFO;
   }
 
   /**

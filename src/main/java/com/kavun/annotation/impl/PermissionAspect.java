@@ -80,7 +80,7 @@ public class PermissionAspect {
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder
                     .currentRequestAttributes()).getRequest();
 
-            String httpMethod = getHttpMethod(joinPoint, requirePermission, request);
+            String httpMethod = getHttpMethod(joinPoint, request);
             String requestUri = request.getRequestURI();
             String pageCodeHeader = request.getHeader("Page-Code");
             String pageUrl = request.getHeader("Page-Url");
@@ -220,40 +220,6 @@ public class PermissionAspect {
     }
 
     /**
-     * Normalize request path for database URL matching.
-     * Removes /api/v1 prefix and query parameters.
-     * Example: /api/v1/users/list?page=1 -> /users/list
-     * /api/v1/admin -> /admin
-     */
-    private String normalizeRequestPath(String requestUri) {
-        try {
-            // Remove query parameters
-            String path = requestUri.split("\\?")[0];
-
-            // Remove /api/v1 or /api/vX prefix
-            if (path.startsWith("/api/v")) {
-                // Find the third slash to remove /api/vX
-                int firstSlash = path.indexOf('/');
-                int secondSlash = path.indexOf('/', firstSlash + 1);
-                int thirdSlash = path.indexOf('/', secondSlash + 1);
-
-                if (thirdSlash > 0) {
-                    path = path.substring(thirdSlash);
-                } else {
-                    // If no path after version, return root
-                    path = "/";
-                }
-            }
-
-            LOG.debug("Normalized path: {} -> {}", requestUri, path);
-            return path;
-        } catch (Exception e) {
-            LOG.error("Error normalizing request path: {}", requestUri, e);
-            return requestUri;
-        }
-    }
-
-    /**
      * Map HTTP method to standard action codes.
      */
     private String mapHttpMethodToAction(String httpMethod) {
@@ -313,8 +279,7 @@ public class PermissionAspect {
     /**
      * Determine HTTP method from annotation, method, or request
      */
-    private String getHttpMethod(JoinPoint joinPoint, RequirePermission requirePermission,
-            HttpServletRequest request) {
+    private String getHttpMethod(JoinPoint joinPoint, HttpServletRequest request) {
         // Check method annotations
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();

@@ -4,7 +4,6 @@ import com.kavun.backend.persistent.domain.user.UserDevice;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,8 +17,6 @@ import java.util.UUID;
  */
 @Component
 public class UserDeviceSpecification extends BaseSpecification<UserDevice> {
-
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     /**
      * Builds a dynamic specification based on search parameters.

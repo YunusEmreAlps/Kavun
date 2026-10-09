@@ -44,7 +44,7 @@ SPRING_PROFILES_ACTIVE=integration-test-ci ./gradlew clean build
 ./gradlew build --refresh-dependencies
 ```
 
-`docker-compose up -d` starts Postgres/supporting services before running the app locally. Active Spring profiles are `development` (default), `docker`, `test`, `production`, plus the two integration-test profiles above.
+`docker-compose up -d` starts Postgres/supporting services before running the app locally. Active Spring profiles are `development` (default), `docker`, `test`, `production`, plus the two integration-test profiles above. `application-local.properties` is not a profile of its own - it is an overlay of machine-specific overrides (devtools, personal datasource) and must be activated last, e.g. `SPRING_PROFILES_ACTIVE=development,local`; nothing in the code or in `logback-spring.xml` is bound to the `local` profile name.
 
 Local URLs once running: app at `:8080`, H2 console at `:8080/console`, Swagger UI at `:8080/swagger-ui/index.html`, Actuator health at `:8080/actuator/health`.
 

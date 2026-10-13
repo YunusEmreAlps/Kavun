@@ -6,5 +6,6 @@ public record HttpLogContext(
     String requestUrl, String action, String requestParams,
     String requestBody, long durationMs, int httpStatus,
     String deviceId, String deviceType, String operatingSystem,
-    String browser, String userAgent) {
+    String browser, String userAgent,
+    String stateBefore, String stateAfter, String stateDiff) {
 }

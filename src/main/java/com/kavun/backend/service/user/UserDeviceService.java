@@ -46,7 +46,7 @@ public class UserDeviceService extends
 
     public void createDevice(Long userId, String deviceId, HttpServletRequest request) {
         String userAgent = request.getHeader(LoggingConstants.USER_AGENT_HEADER);
-        DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
+        DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.detect(request);
 
         // Check if device already exists
         Optional<UserDevice> existingDevice = repository.findByDeviceId(deviceId);

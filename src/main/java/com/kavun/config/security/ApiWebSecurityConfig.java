@@ -2,6 +2,7 @@ package com.kavun.config.security;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+import com.kavun.annotation.LoggingFilter;
 import com.kavun.config.security.jwt.JwtAuthTokenFilter;
 import com.kavun.config.security.jwt.JwtAuthenticationEntryPoint;
 import com.kavun.constant.AdminConstants;
@@ -16,6 +17,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.ExceptionTranslationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
@@ -30,6 +32,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class ApiWebSecurityConfig {
 
   private final JwtAuthTokenFilter jwtAuthTokenFilter;
+  private final LoggingFilter loggingFilter;
   private final JwtAuthenticationEntryPoint unauthorizedHandler;
   private final UserDetailsService userDetailsService;
 
@@ -78,7 +81,8 @@ public class ApiWebSecurityConfig {
         // and CSRF isn't possible.
         .csrf(AbstractHttpConfigurer::disable)
         .userDetailsService(userDetailsService)
-        .addFilterBefore(jwtAuthTokenFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthTokenFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(loggingFilter, ExceptionTranslationFilter.class);
 
     return http.build();
   }

@@ -27,6 +27,10 @@ public final class BaseConstants {
     public static final String RESOURCE_ALREADY_EXISTS = "Resource already exists";
     public static final String INTERNAL_SERVER_ERROR = "Internal server error";
     public static final String SERVICE_UNAVAILABLE = "Service temporarily unavailable";
+    public static final String NOT_ACCEPTABLE = "The requested response format is not supported";
+    public static final String TOO_MANY_REQUESTS = "Too many requests were sent. Please try again later.";
+    public static final String RESOURCE_CANNOT_BE_DELETED = "This resource cannot be deleted because it is referenced by other resources";
+    public static final String PAYLOAD_TOO_LARGE = "The submitted content is too large";
 
     public static final String DATA_INTEGRITY_VIOLATION = "Data integrity violation. Please check your request data.";
     public static final String INVALID_JSON_REQUEST = "Invalid JSON request. Please check your request body.";

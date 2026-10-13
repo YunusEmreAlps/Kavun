@@ -65,7 +65,7 @@ public class UserSessionService extends
         String deviceId = request.getHeader(LoggingConstants.DEVICE_ID_HEADER);
         String ipAddress = extractIpAddress(request);
 
-        DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
+        DeviceInfo deviceInfo = deviceDetectionService.detect(request);
 
         // Check if session already exists for this device
         Optional<UserSession> existingSession = repository

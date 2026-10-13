@@ -1,6 +1,5 @@
 package com.kavun.task;
 
-import com.kavun.annotation.Loggable;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +41,6 @@ public class CacheEvictionScheduler {
    *
    * fixedRate = 300000 in milliseconds (5 minutes)
    */
-  @Loggable(level = "trace")
   @Scheduled(fixedRate = EVICT_ALL_CACHE_INTERVAL)
   public void evictAllCaches() {
     cacheManager

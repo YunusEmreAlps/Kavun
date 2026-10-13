@@ -71,30 +71,28 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
     // ClassCastException, so those wrappers are serialized here by hand.
     boolean stringConverter = StringHttpMessageConverter.class.isAssignableFrom(selectedConverterType);
 
-    // Error dispatches (Spring Security entry points, BasicErrorController, ...)
-    // already describe the failure; wrapping their body would nest a second
-    // error payload under "data".
-    if (isErrorDispatch(request)) {
-      ApiResponse<Object> errorResponse = ApiResponse.error(mapHttpStatusToResponseCode(getHttpStatus(response)),
-          null, path);
-      return renderWrapper(errorResponse, body, stringConverter, response);
-    }
-
     // Exclude Swagger/OpenAPI endpoints from wrapping
     if (isSwaggerPath(path)) {
       return body;
     }
 
-    // Only wrap JSON-like responses (application/json, application/hal+json, etc.).
-    // String bodies are negotiated as text/plain by the converter itself, so they
-    // are wrapped as well and the content type is corrected below.
-    if (!stringConverter && !isJsonMediaType(selectedContentType)) {
+    // Only wrap JSON-like responses (application/json, application/hal+json, etc.)
+    if (!isJsonMediaType(selectedContentType)) {
       return body;
     }
 
     // Skip types that should not be wrapped
     if (shouldSkipWrapping(body)) {
       return body;
+    }
+
+    // Error dispatches (Spring Security entry points, BasicErrorController, ...)
+    // already describe the failure; wrapping their body would nest a second
+    // error payload under "data". The status is taken from the actual response
+    // so that unmapped statuses (405, 415, 429, ...) are not reported as 500.
+    if (isErrorDispatch(request)) {
+      ApiResponse<Object> errorResponse = ApiResponse.error(getHttpStatus(response), null, path);
+      return renderWrapper(errorResponse, body, stringConverter, response);
     }
 
     // Safely wrap response in try-catch to prevent errors for unexpected types
@@ -112,8 +110,7 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
 
   /**
    * Hands the wrapper to the selected converter: JSON converters take the object
-   * as-is, while StringHttpMessageConverter gets it pre-serialized with the
-   * content type switched from text/plain to application/json.
+   * as-is, while StringHttpMessageConverter gets it pre-serialized as JSON.
    */
   private Object renderWrapper(ApiResponse<?> wrapper, Object originalBody, boolean stringConverter,
       ServerHttpResponse response) {
@@ -173,6 +170,11 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
       case UNAUTHORIZED -> ResponseCode.UNAUTHORIZED;
       case FORBIDDEN -> ResponseCode.FORBIDDEN;
       case CONFLICT -> ResponseCode.CONFLICT;
+      case METHOD_NOT_ALLOWED -> ResponseCode.METHOD_NOT_ALLOWED;
+      case NOT_ACCEPTABLE -> ResponseCode.NOT_ACCEPTABLE;
+      case PAYLOAD_TOO_LARGE -> ResponseCode.PAYLOAD_TOO_LARGE;
+      case UNSUPPORTED_MEDIA_TYPE -> ResponseCode.UNSUPPORTED_MEDIA_TYPE;
+      case TOO_MANY_REQUESTS -> ResponseCode.TOO_MANY_REQUESTS;
       case NO_CONTENT -> ResponseCode.NO_CONTENT;
       case SERVICE_UNAVAILABLE -> ResponseCode.SERVICE_UNAVAILABLE;
       default -> ResponseCode.INTERNAL_ERROR;

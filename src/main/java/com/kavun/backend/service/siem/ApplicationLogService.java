@@ -20,7 +20,6 @@ import com.kavun.shared.dto.mapper.ApplicationLogMapper;
 import com.kavun.shared.request.ApplicationLogRequest;
 import com.kavun.shared.util.core.NetworkUtils;
 
-import org.slf4j.MDC;
 import lombok.extern.slf4j.Slf4j;
 import static com.kavun.constant.LoggingConstants.*;
 
@@ -67,20 +66,20 @@ public class ApplicationLogService extends
           .userIpAddress(ctx.userIp())
           .username(ctx.username())
           .userId(ctx.userId())
-          .requestUrl(ctx.requestUrl())
+          .requestUrl(fit(ctx.requestUrl(), MAX_REQUEST_URL_LENGTH))
           .action(ctx.action())
           .requestParams(ctx.requestParams())
           .requestBody(ctx.requestBody())
           .durationMs(ctx.durationMs())
           .httpStatus(ctx.httpStatus())
-          .deviceId(ctx.deviceId())
+          .deviceId(fit(ctx.deviceId(), MAX_DEVICE_ID_LENGTH))
           .deviceType(ctx.deviceType())
           .operatingSystem(ctx.operatingSystem())
           .browser(ctx.browser())
           .userAgent(ctx.userAgent())
-          .stateBefore(MDC.get("stateBefore"))
-          .stateAfter(MDC.get("stateAfter"))
-          .stateDiff(MDC.get("stateDiff"))
+          .stateBefore(ctx.stateBefore())
+          .stateAfter(ctx.stateAfter())
+          .stateDiff(ctx.stateDiff())
           .build();
 
       save(log);
@@ -121,6 +120,10 @@ public class ApplicationLogService extends
     } catch (Exception e) {
       LOG.error("Failed to save application log: {}", e.getMessage());
     }
+  }
+
+  private static String fit(String value, int maxLength) {
+    return value == null || value.length() <= maxLength ? value : value.substring(0, maxLength);
   }
 
   private String determineLogLevel(int status) {

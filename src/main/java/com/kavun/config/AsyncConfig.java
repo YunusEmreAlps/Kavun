@@ -1,10 +1,10 @@
 package com.kavun.config;
 
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.slf4j.spi.MDCAdapter;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -112,9 +112,11 @@ public class AsyncConfig implements AsyncConfigurer {
     private static class LoggingTaskDecorator implements TaskDecorator {
         @Override
         public Runnable decorate(Runnable runnable) {
-            // Copy MDC context from parent thread
-            MDCAdapter mdcContext = org.slf4j.MDC.getMDCAdapter();
+            Map<String, String> contextMap = org.slf4j.MDC.getCopyOfContextMap();
             return () -> {
+                if (contextMap != null) {
+                    org.slf4j.MDC.setContextMap(contextMap);
+                }
                 try {
                     runnable.run();
                 } finally {

@@ -8,13 +8,14 @@ import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.StringUtils;
 
-import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.MDC;
 import org.slf4j.event.Level;
 import org.springframework.stereotype.Component;
@@ -65,7 +66,7 @@ public class MethodLogger {
 
     // Entry log - skip if log level is not enabled
     if (isLevelEnabled(level)) {
-      logEntry(level, method, joinPoint.getArgs());
+      logEntry(level, method, joinPoint);
     }
 
     final long start = System.nanoTime();
@@ -92,9 +93,9 @@ public class MethodLogger {
       if (isHttpContext) {
         if (!diff.isEmpty() && loggable.entityClass() != Object.class) {
           LOG.info("Entity changes: {}", diff);
-          MDC.put("stateBefore", objectMapper.writeValueAsString(before));
-          MDC.put("stateAfter", objectMapper.writeValueAsString(after));
-          MDC.put("stateDiff", diff);
+          MDC.put(MDC_STATE_BEFORE, objectMapper.writeValueAsString(before));
+          MDC.put(MDC_STATE_AFTER, objectMapper.writeValueAsString(after));
+          MDC.put(MDC_STATE_DIFF, diff);
         }
       } else {
         applicationLogService.persistMethodLog(new MethodLogContext(
@@ -150,14 +151,16 @@ public class MethodLogger {
     };
   }
 
-  private void logEntry(Level level, String method, Object[] args) {
-    String maskedArgs = MaskPasswordUtils.maskPasswordJson(Arrays.toString(args)).toString();
-    logAtLevel(level, ENTRY_FORMAT, method, maskedArgs);
+  private void logEntry(Level level, String method, ProceedingJoinPoint joinPoint) {
+    String[] names = joinPoint.getSignature() instanceof MethodSignature signature
+        ? signature.getParameterNames()
+        : null;
+    logAtLevel(level, ENTRY_FORMAT, method, MaskPasswordUtils.maskArguments(names, joinPoint.getArgs()));
   }
 
   private void logExit(Level level, String method, Object response, long durationMs) {
-    String truncatedResponse = StringUtils.truncate(String.valueOf(response), MAX_RESPONSE_LENGTH);
-    logAtLevel(level, EXIT_FORMAT, method, truncatedResponse, durationMs);
+    String maskedResponse = MaskPasswordUtils.mask(response);
+    logAtLevel(level, EXIT_FORMAT, method, StringUtils.truncate(maskedResponse, MAX_RESPONSE_LENGTH), durationMs);
   }
 
   private void logAtLevel(Level level, String format, Object... args) {
@@ -171,7 +174,7 @@ public class MethodLogger {
   }
 
   private String resolveLogType() {
-    String threadName = Thread.currentThread().getName();
+    String threadName = Thread.currentThread().getName().toLowerCase(Locale.ROOT);
     if (threadName.contains("scheduling"))
       return LOG_TYPE_SCHEDULED_TASK;
     if (threadName.contains("async"))

@@ -2,6 +2,7 @@ package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Otp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -82,22 +83,26 @@ public interface OtpRepository extends DataTablesRepository<Otp, Long> {
   /**
    * Delete inactive OTP records that have expired.
    *
-   * @param threshold the threshold instant before which to delete records
+   * @param threshold the creation time before which to delete records
    * @return the number of deleted records
    */
   @Modifying
   @Transactional
   @Query("DELETE FROM Otp o WHERE o.active = false AND o.createdAt < :threshold")
-  int deleteInactive(Instant threshold);
+  int deleteInactive(LocalDateTime threshold);
 
   /**
    * Cleanup old OTP records (expired or inactive).
    *
-   * @param threshold the threshold datetime before which to delete records
+   * <p>{@code createdAt} is inherited from {@code BaseEntity} as a {@link LocalDateTime}, while
+   * {@code expiresAt} is an {@link Instant}, so the two thresholds have different types.
+   *
+   * @param expiresAtThreshold delete records that expired before this instant
+   * @param createdAtThreshold delete inactive records created before this time
    * @return the number of deleted records
    */
   @Modifying
   @Transactional
   @Query("DELETE FROM Otp o WHERE o.expiresAt < :expiresAtThreshold OR (o.active = false AND o.createdAt < :createdAtThreshold)")
-  int cleanupOldOtps(Instant expiresAtThreshold, Instant createdAtThreshold);
+  int cleanupOldOtps(Instant expiresAtThreshold, LocalDateTime createdAtThreshold);
 }

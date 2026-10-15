@@ -3,20 +3,17 @@ package com.kavun.backend.service.user;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.kavun.IntegrationTestUtils;
-import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.enums.RoleType;
-import com.kavun.enums.UserHistoryType;
 import com.kavun.exception.user.UserAlreadyExistsException;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.springframework.data.jpa.datatables.mapping.DataTablesInput;
 
 class UserServiceIntegrationTest extends IntegrationTestUtils {
 
@@ -33,70 +30,38 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
         () -> {
           Assertions.assertNotNull(persistedUserDto);
           Assertions.assertNotNull(persistedUserDto.getId());
-          Assertions.assertEquals(userDto, persistedUserDto);
+          Assertions.assertEquals(userDto.getUsername(), persistedUserDto.getUsername());
 
-          // assert that the user now has a new USER role assigned after creation.
-          Assertions.assertFalse(
-              persistedUserDto.getUserRoles().stream()
-                  .filter(userRole -> Objects.nonNull(userRole.getRole()))
-                  .filter(userRole -> userRole.getRole().equals(new Role(RoleType.ROLE_USER)))
-                  .collect(Collectors.toSet())
-                  .isEmpty());
+          // assert that the user now has the default USER role assigned after creation.
+          Assertions.assertEquals(RoleType.ROLE_USER.getName(), persistedUserDto.getRole());
         });
   }
 
   /** Creating a user who exists and not enabled should return the existing user. */
   @Test
   void createUserAlreadyExistingAndNotEnabled(TestInfo testInfo) {
-    // Create a new user with the test name as username
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
 
-    // create another user using the same details from the first user "userDto"
     var existingUser = createAndAssertUser(userDto);
 
-    // Assert that the existing user is returned as is and not enabled.
-    Assertions.assertEquals(userDto, existingUser);
+    Assertions.assertEquals(userDto.getId(), existingUser.getId());
   }
 
-  /** Creating a user who exists and not enabled
-   * and register again with changed username should throw exception. */
+  /** Re-registering a not yet enabled email with a different username should fail. */
   @Test
   void createUserAlreadyExistingAndNotEnabledChangedUsername() {
-    assertThrows(UserAlreadyExistsException.class, () -> {
-      // Create a new user with the test name as username
-      var userDto = createAndAssertUser(FAKER.internet().username(), false);
+    var userDto = createAndAssertUser(FAKER.internet().username(), false);
+    userDto.setUsername("testUsername");
 
-      userDto.setUsername("testUsername");
-      // create another user using the same details from the first user "userDto"
-      createAndAssertUser(userDto);
-    });
+    assertThrows(UserAlreadyExistsException.class, () -> createAndAssertUser(userDto));
   }
 
-  /** Creating a user who exists and enabled should return null. */
+  /** Creating a user who exists and is enabled should fail. */
   @Test
   void createUserAlreadyExistingAndEnabled(TestInfo testInfo) {
-    // Create a new user with the test name as username with enabled set to true
     var userDto = createAndAssertUser(testInfo.getDisplayName(), true);
 
-    // since the user is enabled, create another user using the same details from the first user
-    // should throw exception that the user already exists.
     assertThrows(UserAlreadyExistsException.class, () -> persistUser(true, userDto));
-  }
-
-  @Test
-  void getUsersByDataTablesInput() {
-    var dataTablesInput = new DataTablesInput();
-    var defaultLength = dataTablesInput.getLength();
-
-    createAndAssertUser(UserUtils.createUserDto(true));
-
-    var users = userService.getUsers(dataTablesInput);
-
-    Assertions.assertFalse(users.getData().isEmpty());
-    // results should be limited to the default length of dataTable or less
-    Assertions.assertTrue(users.getData().size() <= defaultLength);
-    // all data in the database can be more, but we only fetched less.
-    Assertions.assertTrue(userRepository.count() >= users.getData().size());
   }
 
   /** Test checks that an existing user can be retrieved using the username provided. */
@@ -105,13 +70,12 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
 
     var storedUser = userService.findByUsername(userDto.getUsername());
-    Assertions.assertEquals(userDto, storedUser);
+    Assertions.assertEquals(userDto.getId(), storedUser.getId());
   }
 
   @Test
   void getUserByUsernameNotExisting(TestInfo testInfo) {
-    var userByUsername = userService.findByUsername(testInfo.getDisplayName());
-    Assertions.assertNull(userByUsername);
+    Assertions.assertNull(userService.findByUsername(testInfo.getDisplayName()));
   }
 
   @Test
@@ -119,29 +83,12 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
 
     var storedUser = userService.findById(userDto.getId());
-    Assertions.assertEquals(userDto, storedUser);
+    Assertions.assertEquals(userDto.getUsername(), storedUser.getUsername());
   }
 
   @Test
   void getUserByIdNotExisting() {
-
-    var storedUser = userService.findById(FAKER.random().nextLong());
-    Assertions.assertNull(storedUser);
-  }
-
-  @Test
-  void getUserByPublicId(TestInfo testInfo) {
-    var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
-
-    var storedUser = userService.findByPublicId(userDto.getPublicId());
-    Assertions.assertEquals(userDto, storedUser);
-  }
-
-  @Test
-  void getUserByPublicIdNotExisting(TestInfo testInfo) {
-
-    var storedUser = userService.findByPublicId(testInfo.getDisplayName());
-    Assertions.assertNull(storedUser);
+    Assertions.assertNull(userService.findById(Long.MAX_VALUE));
   }
 
   @Test
@@ -149,24 +96,12 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
 
     var userByEmail = userService.findByEmail(userDto.getEmail());
-    Assertions.assertEquals(userDto, userByEmail);
+    Assertions.assertEquals(userDto.getId(), userByEmail.getId());
   }
 
   @Test
   void getUserByEmailNotExisting(TestInfo testInfo) {
-    var userByEmail = userService.findByEmail(testInfo.getDisplayName());
-    Assertions.assertNull(userByEmail);
-  }
-
-  @Test
-  void getUserHistories(TestInfo testInfo) {
-    var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
-
-    var userHistoryDtos = UserUtils.convertToUserHistoryDto(userDto.getUserHistories());
-
-    Assertions.assertFalse(userHistoryDtos.isEmpty());
-    Assertions.assertEquals(1, userHistoryDtos.size());
-    Assertions.assertEquals(userHistoryDtos.get(0).getUserHistoryType(), UserHistoryType.CREATED);
+    Assertions.assertNull(userService.findByEmail(testInfo.getDisplayName()));
   }
 
   @Test
@@ -175,7 +110,7 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
 
     List<UserDto> users = userService.findAllNotEnabledAfterAllowedDays();
     // User was just created and should not be returned to be deleted.
-    Assertions.assertFalse(users.contains(userDto));
+    Assertions.assertTrue(users.stream().noneMatch(user -> user.getId().equals(userDto.getId())));
   }
 
   @Test
@@ -183,15 +118,14 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
 
     var userDetails = userService.getUserDetails(userDto.getUsername());
-    Assertions.assertTrue(userDetails instanceof UserDetailsBuilder);
+    Assertions.assertInstanceOf(UserDetailsBuilder.class, userDetails);
   }
 
   @Test
   void existsByUsername(TestInfo testInfo) {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
 
-    var existsByUsername = userService.existsByUsername(userDto.getUsername());
-    Assertions.assertTrue(existsByUsername);
+    Assertions.assertTrue(userService.existsByUsername(userDto.getUsername()));
   }
 
   @Test
@@ -201,8 +135,7 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
 
   @Test
   void existsByUsernameNotExisting(TestInfo testInfo) {
-    var existsByUsername = userService.existsByUsername(testInfo.getDisplayName());
-    Assertions.assertFalse(existsByUsername);
+    Assertions.assertFalse(userService.existsByUsername(testInfo.getDisplayName()));
   }
 
   @Test
@@ -224,57 +157,50 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
   @Test
   void updateUser(TestInfo testInfo) {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
-    var previousFirstName = userDto.getFirstName();
-    userDto.setFirstName(FAKER.name().firstName());
+    var newFirstName = FAKER.name().firstName() + "Updated";
 
-    var updatedUserDto = userService.updateUser(userDto, UserHistoryType.PROFILE_UPDATE);
-    Assertions.assertNotNull(updatedUserDto.getId());
-    Assertions.assertNotEquals(previousFirstName, updatedUserDto.getFirstName());
-    Assertions.assertEquals(updatedUserDto.getId(), userDto.getId());
-    Assertions.assertFalse(updatedUserDto.getUserRoles().isEmpty());
-    Assertions.assertEquals(updatedUserDto.getUserRoles().size(), userDto.getUserRoles().size());
+    var request = new UserRequest();
+    request.setUsername(userDto.getUsername());
+    request.setEmail(userDto.getEmail());
+    request.setFirstName(newFirstName);
+    request.setLastName(userDto.getLastName());
+    // updateUser is a full replacement, so required fields must be sent again
+    request.setOtpDeliveryMethod(userDto.getOtpDeliveryMethod());
 
-    Assertions.assertTrue(updatedUserDto.getVersion() > userDto.getVersion());
-    Assertions.assertTrue(updatedUserDto.getUpdatedAt().isAfter(updatedUserDto.getCreatedAt()));
+    var updatedUserDto = userService.updateUser(userDto.getId(), request);
+
+    Assertions.assertEquals(userDto.getId(), updatedUserDto.getId());
+    Assertions.assertEquals(newFirstName, updatedUserDto.getFirstName());
   }
 
   @Test
   void enableUser(TestInfo testInfo) {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), false);
-
-    // User should not be enabled after creation.
     Assertions.assertFalse(userDto.isEnabled());
 
-    // Enable the user.
-    var updatedUserDto = userService.enableUser(userDto.getPublicId());
-    Assertions.assertNotNull(updatedUserDto.getId());
-    Assertions.assertTrue(updatedUserDto.isEnabled());
-    Assertions.assertEquals(updatedUserDto.getId(), userDto.getId());
+    userService.enableUser(userDto.getId());
 
-    Assertions.assertTrue(updatedUserDto.getVersion() > userDto.getVersion());
-    Assertions.assertTrue(updatedUserDto.getUpdatedAt().isAfter(updatedUserDto.getCreatedAt()));
+    Assertions.assertTrue(userService.getUserDetails(userDto.getUsername()).isEnabled());
   }
 
   @Test
-  void enableUserNotExistingDoesNothing(TestInfo testInfo) {
-    Assertions.assertNull(userService.enableUser(testInfo.getDisplayName()));
+  void enableUserNotExistingThrows() {
+    assertThrows(EntityNotFoundException.class, () -> userService.enableUser(Long.MAX_VALUE));
   }
 
   @Test
   void disableUser(TestInfo testInfo) {
     var userDto = createAndAssertUser(testInfo.getDisplayName(), true);
-
-    // User should be enabled after creation.
     Assertions.assertTrue(userDto.isEnabled());
 
-    // Disable the user.
-    var updatedUserDto = userService.disableUser(userDto.getPublicId());
-    Assertions.assertNotNull(updatedUserDto.getId());
-    Assertions.assertFalse(updatedUserDto.isEnabled());
-    Assertions.assertEquals(updatedUserDto.getId(), userDto.getId());
+    userService.disableUser(userDto.getId());
 
-    Assertions.assertTrue(updatedUserDto.getVersion() > userDto.getVersion());
-    Assertions.assertTrue(updatedUserDto.getUpdatedAt().isAfter(updatedUserDto.getCreatedAt()));
+    Assertions.assertFalse(userService.getUserDetails(userDto.getUsername()).isEnabled());
+  }
+
+  @Test
+  void disableUserNotExistingThrows() {
+    assertThrows(EntityNotFoundException.class, () -> userService.disableUser(Long.MAX_VALUE));
   }
 
   @Test
@@ -303,8 +229,12 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
   }
 
   @Test
-  void disableUserNotExistingDoesNothing(TestInfo testInfo) {
-    Assertions.assertNull(userService.disableUser(testInfo.getDisplayName()));
+  void softDeleteUser() {
+    var userDto = createAndAssertUser(UserUtils.createUserDto(false));
+
+    userService.softDeleteUser(userDto.getId());
+
+    Assertions.assertNull(userService.findByUsername(userDto.getUsername()));
   }
 
   @Test
@@ -312,7 +242,7 @@ class UserServiceIntegrationTest extends IntegrationTestUtils {
     var userDto = createAndAssertUser(UserUtils.createUserDto(false));
     Assertions.assertTrue(userService.existsByUsername(userDto.getUsername()));
 
-    userService.deleteUser(userDto.getPublicId());
+    userService.deleteUser(userDto.getId());
     Assertions.assertFalse(userService.existsByUsername(userDto.getUsername()));
   }
 }

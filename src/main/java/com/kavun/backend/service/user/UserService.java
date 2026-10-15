@@ -373,6 +373,9 @@ public class UserService
   public void deleteUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
+    // Cascading the removal would only soft delete the role assignments (@SQLDelete) and leave
+    // rows referencing the user, so they are physically removed first.
+    userRoleRepository.hardDeleteAllByUserId(id);
     repository.deleteById(id);
     LOG.debug("Permanently deleted user with id {}", id);
   }

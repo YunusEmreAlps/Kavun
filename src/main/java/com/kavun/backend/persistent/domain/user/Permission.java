@@ -21,7 +21,6 @@ import java.time.LocalDateTime;
 
 import org.hibernate.annotations.SQLDelete;
 
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -48,7 +47,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @SQLDelete(sql = "UPDATE permissions SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Permission extends BaseEntity<Long> implements Serializable {
 
     @Enumerated(EnumType.STRING)

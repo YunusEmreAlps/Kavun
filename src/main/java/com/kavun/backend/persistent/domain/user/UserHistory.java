@@ -9,7 +9,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Objects;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -49,27 +48,5 @@ public class UserHistory extends BaseEntity<Long> implements Serializable {
     this.setPublicId(publicId);
     this.user = user;
     this.userHistoryType = userHistoryType;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof UserHistory that) || !(super.equals(o))) {
-      return false;
-    }
-    return Objects.equals(getPublicId(), that.getPublicId())
-        && Objects.equals(getUser(), that.getUser())
-        && Objects.equals(getUserHistoryType(), that.getUserHistoryType());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), getPublicId(), getUser(), getUserHistoryType());
-  }
-
-  protected boolean canEqual(Object other) {
-    return other instanceof UserHistory;
   }
 }

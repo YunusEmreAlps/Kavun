@@ -5,7 +5,6 @@ import com.kavun.enums.RoleType;
 import com.kavun.shared.util.UserUtils;
 import com.jparams.verifier.tostring.NameStyle;
 import com.jparams.verifier.tostring.ToStringVerifier;
-import nl.jqno.equalsverifier.EqualsVerifier;
 import org.junit.jupiter.api.Test;
 
 class UserRoleTest {
@@ -18,11 +17,9 @@ class UserRoleTest {
     Role roleClient = new Role(RoleType.ROLE_USER);
     Role roleAdmin = new Role(RoleType.ROLE_ADMIN);
 
-    EqualsVerifier.forClass(UserRole.class)
-        .withRedefinedSuperclass()
+    TestUtils.entityIdentityVerifier(UserRole.class)
         .withPrefabValues(User.class, client, admin)
         .withPrefabValues(Role.class, roleClient, roleAdmin)
-        .withIgnoredFields(TestUtils.getIgnoredFields().toArray(new String[0]))
         .verify();
   }
 

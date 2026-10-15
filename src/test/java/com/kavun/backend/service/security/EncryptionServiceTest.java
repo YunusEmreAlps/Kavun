@@ -78,18 +78,14 @@ class EncryptionServiceTest {
   }
 
   @Test
-  void generatingSecretKeyInEncryptThrowingExceptionShouldBeHandled(TestInfo testInfo) {
+  void generatingSecretKeyThrowingExceptionShouldBeHandled() {
     try (MockedStatic<SecretKeyFactory> mockStatic = Mockito.mockStatic(SecretKeyFactory.class)) {
       mockStatic
-          .when(
-              () -> {
-                var string = ArgumentMatchers.anyString();
-                SecretKeyFactory.getInstance(string);
-              })
+          .when(() -> SecretKeyFactory.getInstance(ArgumentMatchers.anyString()))
           .thenThrow(new NoSuchAlgorithmException());
 
       Assertions.assertThrows(
-          EncryptionException.class, () -> encryptionService.encrypt(testInfo.getDisplayName()));
+          EncryptionException.class, () -> new EncryptionServiceImpl("password", "salt"));
     }
   }
 

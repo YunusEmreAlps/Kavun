@@ -98,8 +98,8 @@ public final class UserConstants {
   // API Paths
   public static final String PUBLIC_ID_PATH = "/{publicId}";
   public static final String UPDATE_PASSWORD_PATH = "/update-password";
-  public static final String ENABLE_USER_PATH = "/{publicId}/enable";
-  public static final String DISABLE_USER_PATH = "/{publicId}/disable";
+  public static final String ENABLE_USER_PATH = "/{id}/enable";
+  public static final String DISABLE_USER_PATH = "/{id}/disable";
 
   private UserConstants() {
     throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);

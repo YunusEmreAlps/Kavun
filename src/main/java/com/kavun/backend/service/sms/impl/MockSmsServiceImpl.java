@@ -1,6 +1,7 @@
 package com.kavun.backend.service.sms.impl;
 
 import com.kavun.backend.service.sms.SmsService;
+import com.kavun.constant.EnvConstants;
 import com.kavun.exception.user.SmsServiceException;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,12 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-@Profile({"development", "test"})
+@Profile({
+  EnvConstants.DEVELOPMENT,
+  EnvConstants.TEST,
+  EnvConstants.INTEGRATION_TEST,
+  EnvConstants.INTEGRATION_TEST_CI
+})
 public class MockSmsServiceImpl implements SmsService {
 
   // Turkish phone number pattern: +90XXXXXXXXXX or 05XXXXXXXXX

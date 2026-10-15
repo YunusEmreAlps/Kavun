@@ -36,8 +36,9 @@ class UserDetailsServiceImplTest extends TestUtils {
   }
 
   @Test
-  void testShouldReturnNullGivenNullInput() {
-    Assertions.assertNull(userDetailsService.loadUserByUsername(null));
+  void testShouldThrowGivenNullInput() {
+    Assertions.assertThrows(
+        UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername(null));
   }
 
   @Test

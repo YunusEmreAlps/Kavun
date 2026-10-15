@@ -4,7 +4,6 @@ import com.kavun.backend.persistent.domain.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,7 +32,6 @@ import java.io.Serializable;
         @Index(name = "idx_app_log_created_at", columnList = "created_at")
 })
 @ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class ApplicationLog extends BaseEntity<Long> implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;

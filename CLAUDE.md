@@ -76,6 +76,8 @@ Endpoint authorization uses the `@RequirePermission` annotation (see `docs/PERMI
 
 ### Entities and soft delete
 
+Entity identity is defined once in `BaseEntity`: `equals`/`hashCode` are `final`, compare the persistent class (Hibernate-proxy aware) and `publicId`, which is assigned on construction. Do not add `equals`/`hashCode` or Lombok `@EqualsAndHashCode` to entities (it will not compile); compare business keys explicitly where needed (see `User.isSameRole`).
+
 Domain services generally implement soft-delete semantics (`delete`/`restore` in `BaseService`) rather than hard deletes; auditing of CRUD operations is handled via Hibernate Envers. When adding a new domain object, follow the existing entity → repository → specification → service (+impl) → payload DTO → REST controller chain (`docs/ENDPOINT.md` walks through this for a new endpoint end-to-end).
 
 ## Testing conventions

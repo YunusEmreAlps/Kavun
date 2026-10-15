@@ -9,13 +9,12 @@ import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.storage.AmazonS3Service;
 import com.kavun.backend.service.user.UserService;
-import com.kavun.backend.service.user.impl.RoleServiceImpl;
+import com.kavun.backend.service.user.RoleService;
 import com.kavun.config.properties.AwsProperties;
 import com.kavun.config.properties.SystemProperties;
-import com.kavun.constant.AdminConstants;
+import com.kavun.constant.SecurityConstants;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
-import com.kavun.shared.util.SignUpUtils;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.task.UserPruningScheduler;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,16 +31,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.auditing.AuditingHandler;
 import org.springframework.data.auditing.DateTimeProvider;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -57,7 +50,7 @@ public abstract class IntegrationTestUtils {
   @Autowired protected EncryptionService encryptionService;
   @Autowired protected I18NService i18NService;
   @Autowired protected UserService userService;
-  @Autowired protected RoleServiceImpl roleService;
+  @Autowired protected RoleService roleService;
   @Autowired protected UserPruningScheduler userPruningScheduler;
   @Autowired protected SystemProperties systemProperties;
   @Autowired protected EmailService emailService;
@@ -115,7 +108,7 @@ public abstract class IntegrationTestUtils {
     if (userDto.isEnabled()) {
       UserUtils.enableUser(userDto);
     }
-    UserDto admin = userService.createUser(SerializationUtils.clone(userDto), roleTypes);
+    UserDto admin = userService.createUser(SerializationUtils.clone(userDto), roleTypes, false);
 
     Assertions.assertNotNull(admin);
     Assertions.assertNotNull(admin.getId());
@@ -127,38 +120,6 @@ public abstract class IntegrationTestUtils {
     return admin;
   }
 
-  /**
-   * Creates a user using the mock mvc request.
-   *
-   * @return the signUpRequest
-   * @throws Exception if anything goes wrong
-   */
-  protected MvcResult createAndAssertUser() throws Exception {
-    return createAndAssertUser(FAKER.internet().username(), FAKER.internet().emailAddress());
-  }
-
-  /**
-   * Creates a user using the mock mvc request.
-   *
-   * @param username the username
-   * @param email the email
-   * @return the signUpRequest
-   * @throws Exception if anything goes wrong
-   */
-  protected MvcResult createAndAssertUser(String username, String email) throws Exception {
-    var signUpRequest = SignUpUtils.createSignUpRequest(username, email);
-
-    return mockMvc
-        .perform(
-            MockMvcRequestBuilders.post(AdminConstants.API_V1_USERS_ROOT_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(signUpRequest))
-                .with(SecurityMockMvcRequestPostProcessors.csrf()))
-        .andDo(MockMvcResultHandlers.print())
-        .andExpect(MockMvcResultMatchers.status().isCreated())
-        .andReturn();
-  }
-
   protected UserDto persistUser(boolean enabled, UserDto userDto) {
     Set<RoleType> roleTypes = new HashSet<>();
 
@@ -167,7 +128,19 @@ public abstract class IntegrationTestUtils {
     if (enabled) {
       UserUtils.enableUser(userDto);
     }
-    return userService.createUser(userDto, roleTypes);
+    return userService.createUser(userDto, roleTypes, false);
+  }
+
+  /**
+   * Builds an Authorization header value for the given user, the same way login issues it
+   * (encrypted JWT), without going through the rate-limited login endpoint.
+   *
+   * @param username the username to authenticate as
+   * @return the bearer token header value
+   */
+  protected String bearerTokenFor(String username) {
+    var accessToken = encryptionService.encrypt(jwtService.generateJwtToken(username));
+    return String.format("%s %s", SecurityConstants.BEARER, accessToken);
   }
 
   protected MockMultipartFile getMultipartFile(String fileName) {

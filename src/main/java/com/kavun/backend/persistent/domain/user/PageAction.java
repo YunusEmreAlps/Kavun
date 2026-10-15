@@ -17,7 +17,6 @@ import java.io.Serializable;
 
 import org.hibernate.annotations.SQLDelete;
 
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -42,7 +41,6 @@ import lombok.Setter;
 )
 @Getter @Setter
 @SQLDelete(sql = "UPDATE page_actions SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class PageAction extends BaseEntity<Long> implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)

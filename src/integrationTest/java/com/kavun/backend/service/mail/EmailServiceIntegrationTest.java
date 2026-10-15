@@ -2,7 +2,6 @@ package com.kavun.backend.service.mail;
 
 import com.kavun.IntegrationTestUtils;
 import com.kavun.constant.email.EmailConstants;
-import com.kavun.exception.InvalidServiceRequestException;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.WebUtils;
 import com.kavun.web.payload.request.mail.FeedbackRequest;
@@ -28,6 +27,7 @@ import org.springframework.mail.SimpleMailMessage;
 class EmailServiceIntegrationTest extends IntegrationTestUtils {
 
   public static final String PROFILE_IMAGE_JPEG = "/profileImage.jpeg";
+  private static final long MAIL_DELIVERY_TIMEOUT_MILLIS = 15_000;
 
   private transient String body;
   private transient String subject;
@@ -68,7 +68,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
     emailService.sendMail(message);
 
     // Retrieve using GreenMail API
-    var messages = greenMail.getReceivedMessages();
+    var messages = awaitMessages(1);
     Assertions.assertEquals(body, GreenMailUtil.getBody(messages[0]).trim());
 
     assertEmailResponse(false);
@@ -92,7 +92,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
     emailService.sendMailWithFeedback(feedback);
 
     // Retrieve using GreenMail API
-    Message[] messages = greenMail.getReceivedMessages();
+    Message[] messages = awaitMessages(1);
     Assertions.assertEquals(body, GreenMailUtil.getBody(messages[0]).trim());
 
     assertEmailResponse(false);
@@ -120,7 +120,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
 
     emailService.sendHtmlEmail(emailRequest);
 
-    assertEmailResponse(false, 2);
+    assertEmailResponse(true, 2);
   }
 
   @Test
@@ -142,9 +142,10 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
     recipient = emailRequest.getTo();
     subject = emailRequest.getSubject();
 
-    Assertions.assertThrows(
-        InvalidServiceRequestException.class,
-        () -> emailService.sendHtmlEmailWithAttachment(emailRequest));
+    // Sending is asynchronous, so the failure cannot surface to the caller: nothing is delivered.
+    emailService.sendHtmlEmailWithAttachment(emailRequest);
+
+    Assertions.assertFalse(greenMail.waitForIncomingEmail(1000, 1));
   }
 
   @Test
@@ -185,7 +186,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
 
     // Send email verification
     emailService.sendAccountVerificationEmail(userDto, token);
-    assertEmailResponse(false);
+    assertEmailResponse(true);
   }
 
   @Test
@@ -197,7 +198,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
 
     // Send email verification
     emailService.sendAccountConfirmationEmail(userDto);
-    assertEmailResponse(false);
+    assertEmailResponse(true);
   }
 
   @Test
@@ -210,7 +211,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
 
     // Send email verification
     emailService.sendPasswordResetEmail(userDto, token);
-    assertEmailResponse(false);
+    assertEmailResponse(true);
   }
 
   @Test
@@ -222,7 +223,22 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
 
     // Send email verification
     emailService.sendPasswordResetConfirmationEmail(userDto);
-    assertEmailResponse(false);
+    assertEmailResponse(true);
+  }
+
+  // Sending is @Async, so poll the inbox (one entry per recipient) until the mails arrive.
+  private Message[] awaitMessages(int numberOfMessages) {
+    long deadline = System.currentTimeMillis() + MAIL_DELIVERY_TIMEOUT_MILLIS;
+    try {
+      while (greenMail.getReceivedMessages().length < numberOfMessages
+          && System.currentTimeMillis() < deadline) {
+        Thread.sleep(100);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      Assertions.fail("Interrupted while waiting for emails", e);
+    }
+    return greenMail.getReceivedMessages();
   }
 
   /**
@@ -242,7 +258,7 @@ class EmailServiceIntegrationTest extends IntegrationTestUtils {
    */
   private void assertEmailResponse(boolean isMultipart, int numberOfMessages) {
     // Retrieve using GreenMail API
-    Message[] messages = greenMail.getReceivedMessages();
+    Message[] messages = awaitMessages(numberOfMessages);
 
     // If no sender is specified, then the email must be from the system.
     if (StringUtils.isBlank(sender)) {

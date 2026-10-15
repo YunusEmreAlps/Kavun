@@ -2,15 +2,14 @@ package com.kavun.backend.persistent.domain.user;
 
 import com.jparams.verifier.tostring.NameStyle;
 import com.jparams.verifier.tostring.ToStringVerifier;
-
-import nl.jqno.equalsverifier.EqualsVerifier;
+import com.kavun.TestUtils;
 import org.junit.jupiter.api.Test;
 
 class RoleTest {
 
   @Test
   void equalsContract() {
-    EqualsVerifier.forClass(Role.class).withOnlyTheseFields("name").verify();
+    TestUtils.entityIdentityVerifier(Role.class).verify();
   }
 
   @Test

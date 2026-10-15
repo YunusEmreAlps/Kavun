@@ -51,7 +51,8 @@ class AuthRestApiTest {
   @Test
   void testLoginPathWithoutUsernameReturnsBadRequest(TestInfo testInfo) throws Exception {
     var loginRequest =
-        TestUtils.toJson(new LoginRequest(StringUtils.EMPTY, testInfo.getDisplayName()));
+        TestUtils.toJson(
+            new LoginRequest(StringUtils.EMPTY, testInfo.getDisplayName(), null, null));
 
     mockMvc
         .perform(
@@ -64,7 +65,8 @@ class AuthRestApiTest {
   @Test
   void testLoginPathWithoutPasswordReturnsBadRequest(TestInfo testInfo) throws Exception {
     var loginRequest =
-        TestUtils.toJson(new LoginRequest(testInfo.getDisplayName(), StringUtils.EMPTY));
+        TestUtils.toJson(
+            new LoginRequest(testInfo.getDisplayName(), StringUtils.EMPTY, null, null));
 
     mockMvc
         .perform(

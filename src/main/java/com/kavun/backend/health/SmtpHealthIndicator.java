@@ -8,8 +8,6 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 
-import com.kavun.config.MailConfig;
-
 import jakarta.mail.MessagingException;
 import jakarta.mail.Transport;
 import jakarta.mail.Session;
@@ -21,7 +19,6 @@ import java.util.Properties;
 @RequiredArgsConstructor
 public class SmtpHealthIndicator implements HealthIndicator {
 
-    private final MailConfig mailConfig;
     private final JavaMailSender mailSender;
 
     // Health check for SMTP configuration
@@ -59,9 +56,9 @@ public class SmtpHealthIndicator implements HealthIndicator {
 
     // Validate SMTP configuration
     private boolean isConfigurationValid() {
-        return mailConfig.getHost() != null && !mailConfig.getHost().trim().isEmpty() &&
-                mailConfig.getUsername() != null && !mailConfig.getUsername().trim().isEmpty() &&
-                mailSender instanceof JavaMailSenderImpl;
+        return mailSender instanceof JavaMailSenderImpl sender &&
+                sender.getHost() != null && !sender.getHost().trim().isEmpty() &&
+                sender.getUsername() != null && !sender.getUsername().trim().isEmpty();
     }
 
     // Create health result
@@ -73,9 +70,9 @@ public class SmtpHealthIndicator implements HealthIndicator {
 
     // Create SMTP connection
     private SmtpConnection createSmtpConnection() {
-        return new SmtpConnection((JavaMailSenderImpl) mailSender,
-                mailConfig.getHost(), mailConfig.getPort(), mailConfig.getUsername(), mailConfig.getPassword(),
-                mailConfig.getProtocol());
+        var sender = (JavaMailSenderImpl) mailSender;
+        return new SmtpConnection(sender, sender.getHost(), sender.getPort(), sender.getUsername(),
+                sender.getPassword(), sender.getProtocol());
     }
 
     // Inner class for managing SMTP connections

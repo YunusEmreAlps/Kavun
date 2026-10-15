@@ -23,6 +23,7 @@ import net.datafaker.Faker;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.validator.routines.EmailValidator;
+import org.mapstruct.factory.Mappers;
 
 /**
  * User utility class that holds user-related methods used across application.
@@ -43,18 +44,20 @@ public final class UserUtils {
   }
 
   /**
-   * Gets the UserMapper bean from Spring context.
+   * Gets the UserMapper bean from Spring context, falling back to the stateless MapStruct
+   * implementation when no context is running (e.g. plain unit tests).
    *
    * @return the UserMapper instance
    */
   private static UserMapper getUserMapper() {
-    return SpringContextHolder.getBean(UserMapper.class);
+    var userMapper = SpringContextHolder.getBean(UserMapper.class);
+    return Objects.nonNull(userMapper) ? userMapper : Mappers.getMapper(UserMapper.class);
   }
 
   /**
    * Gets the UserService bean from Spring context.
    *
-   * @return the UserService instance
+   * @return the UserService instance, or null when no context is running
    */
   private static UserService getUserService() {
     return SpringContextHolder.getBean(UserService.class);
@@ -71,11 +74,12 @@ public final class UserUtils {
 
   // Retrieves the full name of a user based on their ID.
   public static String getUserFullName(Long userId) {
-    if (Objects.isNull(userId)) {
+    var userService = getUserService();
+    if (Objects.isNull(userId) || Objects.isNull(userService)) {
       return null;
     }
 
-    UserDto user = getUserService().findById(userId);
+    UserDto user = userService.findById(userId);
     if (Objects.isNull(user)) {
       return null;
     }

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-@Profile(EnvConstants.INTEGRATION_TEST)
+@Profile(EnvConstants.DOCKER)
 public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
 
   /**

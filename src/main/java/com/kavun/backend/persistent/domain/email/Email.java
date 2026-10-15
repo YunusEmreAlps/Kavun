@@ -26,7 +26,6 @@ import lombok.*;
 @AllArgsConstructor
 @Table(name = "email")
 @ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Email extends BaseEntity<Long> implements Serializable {
   @Serial
   private static final long serialVersionUID = 1L;

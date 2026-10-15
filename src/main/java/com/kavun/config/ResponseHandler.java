@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -80,6 +81,10 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
     if (!isJsonMediaType(selectedContentType)) {
       return body;
     }
+
+    // A controller returning ApiResponse.error(...) as a plain body would otherwise go out
+    // with HTTP 200; the envelope's error status is authoritative for the HTTP status.
+    alignHttpStatusWithErrorEnvelope(body, response);
 
     // Skip types that should not be wrapped
     if (shouldSkipWrapping(body)) {
@@ -239,6 +244,15 @@ public class ResponseHandler implements ResponseBodyAdvice<Object> {
   /**
    * Determines if the response body should skip wrapping.
    */
+  private void alignHttpStatusWithErrorEnvelope(Object body, ServerHttpResponse response) {
+    if (body instanceof ApiResponse<?> apiResponse
+        && apiResponse.getStatus() >= HttpStatus.BAD_REQUEST.value()
+        && apiResponse.getStatus() < 600
+        && getHttpStatus(response).is2xxSuccessful()) {
+      response.setStatusCode(HttpStatusCode.valueOf(apiResponse.getStatus()));
+    }
+  }
+
   private boolean shouldSkipWrapping(Object body) {
     return body instanceof byte[]
         || body instanceof ApiResponse<?>;

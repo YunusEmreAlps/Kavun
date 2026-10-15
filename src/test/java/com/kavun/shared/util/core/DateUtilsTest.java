@@ -81,7 +81,7 @@ class DateUtilsTest {
   @Test
   void getTimeElapsed() {
     int numberOfDays = 10;
-    LocalDateTime localDateTime = LocalDateTime.now().plusDays(numberOfDays);
+    LocalDateTime localDateTime = LocalDateTime.now().minusDays(numberOfDays);
     SeparateDateFormat timeElapsed = DateUtils.getTimeElapsed(localDateTime);
 
     Assertions.assertTrue(timeElapsed.getDays() <= numberOfDays);
@@ -98,7 +98,7 @@ class DateUtilsTest {
   @Test
   void getTimeElapsedDescriptionForSeconds() {
     int numberOfSeconds = 20;
-    LocalDateTime localDateTime = LocalDateTime.now().plusSeconds(numberOfSeconds);
+    LocalDateTime localDateTime = LocalDateTime.now().minusSeconds(numberOfSeconds);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
     Assertions.assertTrue(timeElapsedDescription.contains("seconds ago"));
@@ -107,7 +107,7 @@ class DateUtilsTest {
   @Test
   void getTimeElapsedDescriptionForMinutes() {
     int numberOfMinutes = 5;
-    LocalDateTime localDateTime = LocalDateTime.now().plusMinutes(numberOfMinutes);
+    LocalDateTime localDateTime = LocalDateTime.now().minusMinutes(numberOfMinutes);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
     Assertions.assertTrue(timeElapsedDescription.contains("minutes ago"));
@@ -116,34 +116,34 @@ class DateUtilsTest {
   @Test
   void getTimeElapsedDescriptionForHours() {
     int numberOfHours = 2;
-    LocalDateTime localDateTime = LocalDateTime.now().plusHours(numberOfHours);
+    LocalDateTime localDateTime = LocalDateTime.now().minusHours(numberOfHours);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
-    Assertions.assertEquals("1 hour ago", timeElapsedDescription);
+    Assertions.assertEquals("2 hours ago", timeElapsedDescription);
   }
 
   @Test
   void getTimeElapsedDescriptionForDays() {
     int numberOfDays = 2;
-    LocalDateTime localDateTime = LocalDateTime.now().plusDays(numberOfDays);
+    LocalDateTime localDateTime = LocalDateTime.now().minusDays(numberOfDays);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
-    Assertions.assertEquals("1 day ago", timeElapsedDescription);
+    Assertions.assertEquals("2 days ago", timeElapsedDescription);
   }
 
   @Test
   void getTimeElapsedDescriptionForWeeks() {
     int numberOfWeeks = 2;
-    LocalDateTime localDateTime = LocalDateTime.now().plusWeeks(numberOfWeeks);
+    LocalDateTime localDateTime = LocalDateTime.now().minusWeeks(numberOfWeeks);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
-    Assertions.assertEquals("1 week ago", timeElapsedDescription);
+    Assertions.assertEquals("2 weeks ago", timeElapsedDescription);
   }
 
   @Test
   void getTimeElapsedDescriptionForMonths() {
     int numberOfMonths = 10;
-    LocalDateTime localDateTime = LocalDateTime.now().plusMonths(numberOfMonths);
+    LocalDateTime localDateTime = LocalDateTime.now().minusMonths(numberOfMonths);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
     Assertions.assertTrue(timeElapsedDescription.contains("months ago"));
@@ -152,7 +152,7 @@ class DateUtilsTest {
   @Test
   void getTimeElapsedDescriptionForYears() {
     int numberOfYears = 10;
-    LocalDateTime localDateTime = LocalDateTime.now().plusYears(numberOfYears);
+    LocalDateTime localDateTime = LocalDateTime.now().minusYears(numberOfYears);
     String timeElapsedDescription = DateUtils.getTimeElapsedDescription(localDateTime);
 
     Assertions.assertTrue(timeElapsedDescription.contains("years ago"));

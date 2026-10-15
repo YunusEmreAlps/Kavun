@@ -3,6 +3,10 @@
 ## Equals, Hashcode and ToString
 
 - Equals and Hashcode is tested using [EqualsVerifier](https://github.com/jqno/equalsverifier)
+- Entities never define their own `equals`/`hashCode` (nor Lombok `@EqualsAndHashCode`): `BaseEntity`
+  declares them `final`, based on the persistent class and the `publicId` assigned on construction.
+  Entity tests therefore use the shared `TestUtils.entityIdentityVerifier(...)`, adding prefab values
+  only for self-referencing relations.
 - Sample code is
 
 ```java
@@ -13,10 +17,8 @@ class UserTest {
         User client = UserUtils.createUser();
         User admin = UserUtils.createUser();
 
-        EqualsVerifier.forClass(User.class)
-                .withRedefinedSuperclass()
+        TestUtils.entityIdentityVerifier(User.class)
                 .withPrefabValues(User.class, client, admin)
-                .withOnlyTheseFields(TestUtils.getUserEqualsFields().toArray(new String[0]))
                 .verify();
     }
 }

@@ -41,6 +41,8 @@ public class I18NConfig implements WebMvcConfigurer {
     messageSource.setBasename(MESSAGES_LOCATION);
     messageSource.setCacheMillis(CACHE_MILLIS);
     messageSource.setDefaultEncoding(StandardCharsets.UTF_8.name());
+    // Unsupported locales resolve to the default bundle, not to whatever the host OS locale is.
+    messageSource.setFallbackToSystemLocale(false);
 
     return messageSource;
   }

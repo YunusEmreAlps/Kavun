@@ -18,7 +18,6 @@ import java.util.List;
 
 import org.hibernate.annotations.SQLDelete;
 
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -44,7 +43,6 @@ import lombok.Setter;
 )
 @Getter @Setter
 @SQLDelete(sql = "UPDATE pages SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class WebPage extends BaseEntity<Long> implements Serializable {
 
     @Column(nullable = false, length = 100, unique = true)

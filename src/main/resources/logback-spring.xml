@@ -150,7 +150,7 @@
 	</logger>
 
 	<!-- Root logger -->
-	<springProfile name="local | development | test">
+	<springProfile name="local | development | test | integration-test | integration-test-ci">
 		<root level="INFO">
 			<appender-ref ref="CONSOLE" />
 			<appender-ref ref="ASYNC_APP_FILE" />

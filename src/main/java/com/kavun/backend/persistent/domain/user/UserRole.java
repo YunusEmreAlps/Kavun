@@ -12,8 +12,6 @@ import jakarta.persistence.JoinColumn;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Objects;
-import java.util.UUID;
 
 import org.hibernate.annotations.SQLDelete;
 
@@ -63,34 +61,7 @@ public class UserRole extends BaseEntity<Long> implements Serializable {
    * @param role user for object instantiation.
    */
   public UserRole(User user, Role role) {
-    this.setPublicId(UUID.randomUUID().toString());
     this.user = user;
     this.role = role;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (!(o instanceof UserRole that) || !super.equals(o))
-      return false;
-
-    return Objects.equals(
-        user != null ? user.getId() : null,
-        that.user != null ? that.user.getId() : null)
-        && Objects.equals(
-            role != null ? role.getId() : null,
-            that.role != null ? that.role.getId() : null);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        user != null ? user.getId() : null,
-        role != null ? role.getId() : null);
-  }
-
-  protected boolean canEqual(Object other) {
-    return other instanceof UserRole;
   }
 }

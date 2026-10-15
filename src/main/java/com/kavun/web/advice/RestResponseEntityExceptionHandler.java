@@ -11,6 +11,7 @@ import com.kavun.exception.VirusDetectedException;
 import com.kavun.exception.user.CaptchaGenerationException;
 import com.kavun.exception.user.CaptchaValidationException;
 import com.kavun.exception.user.EmailServiceException;
+import com.kavun.exception.user.InvalidTokenException;
 import com.kavun.exception.user.OtpGenerationException;
 import com.kavun.exception.user.OtpValidationException;
 import com.kavun.exception.user.SmsServiceException;
@@ -137,9 +138,9 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
      * Handles unauthorized business actions (distinct from authentication failures, which are
      * handled separately below).
      */
-    @ExceptionHandler(UnAuthorizedActionException.class)
+    @ExceptionHandler(value = {UnAuthorizedActionException.class, InvalidTokenException.class})
     protected ResponseEntity<ApiResponse<Object>> handleUnAuthorizedActionException(
-            UnAuthorizedActionException ex, HttpServletRequest request) {
+            RuntimeException ex, HttpServletRequest request) {
 
         String path = request.getRequestURI();
         LOG.warn("Unauthorized action at {}: {}", path, ex.getMessage());

@@ -11,6 +11,8 @@ import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.ErrorConstants;
+import com.kavun.exception.EncryptionException;
+import com.kavun.exception.user.InvalidTokenException;
 import com.kavun.constant.LoggingConstants;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.constant.user.UserConstants;
@@ -228,7 +230,8 @@ public class AuthRestApi {
   @SecurityRequirements
   @PostMapping(value = SecurityConstants.LOGIN)
   public ApiResponse<?> authenticateUser(@CookieValue(required = false) String refreshToken,
-      @Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+      @Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request,
+      HttpServletResponse httpResponse) {
 
     var username = loginRequest.getUsername();
 
@@ -304,7 +307,7 @@ public class AuthRestApi {
       return ApiResponse.error(HttpStatus.UNAUTHORIZED, AuthConstants.INVALID_CREDENTIALS, SecurityConstants.LOGIN);
     }
 
-    var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
+    var decryptedRefreshToken = decryptClientToken(refreshToken);
     var isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
 
     if (isOtpEnabled) {
@@ -356,6 +359,10 @@ public class AuthRestApi {
         var encryptedRefreshToken = encryptionService.encrypt(newRefreshToken);
         var refreshDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
         cookieService.addCookieToHeaders(responseHeaders, TokenType.REFRESH, encryptedRefreshToken, refreshDuration);
+        // The handler returns the envelope directly, so the cookie must be written to the
+        // servlet response explicitly or it never reaches the client.
+        responseHeaders.forEach(
+            (name, values) -> values.forEach(value -> httpResponse.addHeader(name, value)));
       }
 
       String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
@@ -416,11 +423,11 @@ public class AuthRestApi {
   public ResponseEntity<AuthResponse> refreshToken(
       @CookieValue String refreshToken, HttpServletRequest request) {
 
-    var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
+    var decryptedRefreshToken = decryptClientToken(refreshToken);
     boolean refreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
 
     if (!refreshTokenValid) {
-      throw new IllegalArgumentException(ErrorConstants.INVALID_TOKEN);
+      throw new InvalidTokenException(ErrorConstants.INVALID_TOKEN);
     }
     var username = jwtService.getUsernameFromToken(decryptedRefreshToken);
 
@@ -539,7 +546,7 @@ public class AuthRestApi {
     LOG.info("Created session: {} for user: {} after OTP verification", sessionId, user.getUsername());
 
     // Check if refresh token is valid
-    String decryptedRefreshToken = encryptionService.decrypt(refreshToken);
+    String decryptedRefreshToken = decryptClientToken(refreshToken);
     boolean isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
 
     // Generate tokens with session ID embedded
@@ -704,7 +711,10 @@ public class AuthRestApi {
   public ApiResponse<Object> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
     String decodedToken = encryptionService.decode(request.getToken());
-    String decryptedToken = encryptionService.decrypt(decodedToken);
+    String decryptedToken = decryptClientToken(decodedToken);
+    if (decryptedToken == null) {
+      throw new InvalidTokenException(ErrorConstants.INVALID_TOKEN);
+    }
     String message = userService.resetPassword(decryptedToken, request.getNewPassword());
     return ApiResponse.success(message, SecurityConstants.RESET_PASSWORD);
   }
@@ -758,6 +768,17 @@ public class AuthRestApi {
   // =========================================================================
   // UTILITY OPERATIONS
   // =========================================================================
+
+  // Tokens arrive from the client (cookie or body); one that cannot be decrypted is simply invalid,
+  // not a server fault.
+  private String decryptClientToken(String token) {
+    try {
+      return encryptionService.decrypt(token);
+    } catch (EncryptionException e) {
+      LOG.debug("Discarding a token that could not be decrypted: {}", e.getMessage());
+      return null;
+    }
+  }
 
   // Register device if Device ID header is provided
   private void registerDeviceId(Long userId, HttpServletRequest request) {

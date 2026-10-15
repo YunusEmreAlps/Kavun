@@ -2,7 +2,6 @@ package com.kavun.backend.service.user;
 
 import com.kavun.backend.persistent.domain.user.UserSession;
 import com.kavun.backend.persistent.repository.UserSessionRepository;
-import com.kavun.backend.persistent.specification.UserSessionSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.backend.service.DeviceDetectionService.DeviceInfo;
@@ -13,7 +12,6 @@ import com.kavun.shared.request.UserSessionRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.jpa.domain.Specification;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,8 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -37,7 +35,7 @@ import java.util.Optional;
 @Service
 @Transactional
 public class UserSessionService extends
-        AbstractService<UserSessionRequest, UserSession, UserSessionDto, UserSessionRepository, UserSessionMapper, UserSessionSpecification> {
+        AbstractService<UserSessionRequest, UserSession, UserSessionDto, UserSessionRepository, UserSessionMapper> {
 
     @Value("${access-token-expiration-in-minutes:60}")
     private long sessionTimeoutMinutes;
@@ -46,10 +44,16 @@ public class UserSessionService extends
 
     public UserSessionService(UserSessionRepository repository,
                               DeviceDetectionService deviceDetectionService,
-                              UserSessionMapper mapper,
-                              UserSessionSpecification specification) {
-        super(mapper, repository, specification);
+                              UserSessionMapper mapper) {
+        super(mapper, repository);
         this.deviceDetectionService = deviceDetectionService;
+    }
+
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of(
+            "userId", "deviceId", "deviceType", "operatingSystem", "browser", "ipAddress",
+            "isActive", "logoutType", "loginAt", "lastActivityAt");
     }
 
     // Creates a new user session from HTTP request.
@@ -233,7 +237,4 @@ public class UserSessionService extends
     }
 
     // Search sessions based on dynamic criteria.
-    public Specification<UserSession> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
-    }
 }

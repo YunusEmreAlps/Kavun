@@ -4,7 +4,6 @@ import com.kavun.annotation.AuthenticatedEndpoint;
 import com.kavun.annotation.Loggable;
 import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.User;
-import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.mail.EmailService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.user.UserService;
@@ -36,7 +35,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -68,7 +66,6 @@ public class UserRestApi {
   private final UserService userService;
   private final JwtService jwtService;
   private final EmailService emailService;
-  private final UserSpecification userSpecification;
   private final UserMapper userMapper;
 
   /**
@@ -86,8 +83,7 @@ public class UserRestApi {
       @RequestBody Map<String, Object> searchParams,
       @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    Specification<User> spec = userSpecification.search(searchParams);
-    Page<UserDto> userDtos = userService.findAll(spec, pageable);
+    Page<UserDto> userDtos = userService.findAll(searchParams, pageable);
     Page<UserResponse> users = userDtos.map(userDto -> userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
     return ResponseEntity.ok(users);
   }

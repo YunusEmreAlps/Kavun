@@ -4,7 +4,6 @@ import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
-import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
@@ -53,7 +52,6 @@ class UserServiceTest {
         new UserService(
             Mappers.getMapper(UserMapper.class),
             userRepository,
-            new UserSpecification(),
             clock,
             roleService,
             passwordEncoder,

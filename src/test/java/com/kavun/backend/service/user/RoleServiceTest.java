@@ -5,7 +5,6 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
-import com.kavun.backend.persistent.specification.RoleSpecification;
 import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.mapper.RoleMapper;
@@ -42,7 +41,6 @@ class RoleServiceTest {
         new RoleService(
             Mappers.getMapper(RoleMapper.class),
             roleRepository,
-            new RoleSpecification(),
             userRepository,
             userRoleRepository,
             accessControlService);

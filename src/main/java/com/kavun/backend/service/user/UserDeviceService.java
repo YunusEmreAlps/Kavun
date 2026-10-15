@@ -1,15 +1,14 @@
 package com.kavun.backend.service.user;
 
+import java.util.Set;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.kavun.backend.persistent.domain.user.UserDevice;
 import com.kavun.backend.persistent.repository.UserDeviceRepository;
-import com.kavun.backend.persistent.specification.UserDeviceSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.constant.LoggingConstants;
@@ -34,14 +33,19 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Transactional
 public class UserDeviceService extends
-        AbstractService<UserDeviceRequest, UserDevice, UserDeviceDto, UserDeviceRepository, UserDeviceMapper, UserDeviceSpecification> {
+        AbstractService<UserDeviceRequest, UserDevice, UserDeviceDto, UserDeviceRepository, UserDeviceMapper> {
 
     private final DeviceDetectionService deviceDetectionService;
 
     public UserDeviceService(DeviceDetectionService deviceDetectionService, UserDeviceMapper mapper,
-            UserDeviceRepository repository, UserDeviceSpecification specification) {
-        super(mapper, repository, specification);
+            UserDeviceRepository repository) {
+        super(mapper, repository);
         this.deviceDetectionService = deviceDetectionService;
+    }
+
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of("userId", "deviceId", "deviceType", "operatingSystem", "browser", "createdAt");
     }
 
     public void createDevice(Long userId, String deviceId, HttpServletRequest request) {
@@ -75,10 +79,6 @@ public class UserDeviceService extends
             repository.save(userDevice);
             LOG.info("Registered new device ID {} for user: {}", deviceId, userId);
         }
-    }
-
-    public Specification<UserDevice> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
     }
 
     public Map<String, Long> getDeviceUsageAnalytics() {

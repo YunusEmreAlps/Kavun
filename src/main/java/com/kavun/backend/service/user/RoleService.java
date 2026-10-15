@@ -8,7 +8,6 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
-import com.kavun.backend.persistent.specification.RoleSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.shared.dto.RoleDto;
@@ -19,11 +18,9 @@ import com.kavun.web.payload.response.UserRoleResponse;
 
 import jakarta.persistence.EntityNotFoundException;
 
-import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,19 +33,24 @@ import java.util.stream.Collectors;
  */
 @Service
 @Transactional
-public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper, RoleSpecification> {
+public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, RoleRepository, RoleMapper> {
 
   private final UserRepository userRepository;
   private final UserRoleRepository userRoleRepository;
   private final AccessControlService accessControlService;
 
-  public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification,
+  public RoleService(RoleMapper mapper, RoleRepository repository,
       UserRepository userRepository, UserRoleRepository userRoleRepository,
       AccessControlService accessControlService) {
-    super(mapper, repository, specification);
+    super(mapper, repository);
     this.userRepository = userRepository;
     this.userRoleRepository = userRoleRepository;
     this.accessControlService = accessControlService;
+  }
+
+  @Override
+  protected Set<String> filterableFields() {
+    return Set.of("name", "label", "description", "createdAt");
   }
 
   // Built-in roles are checked before the request is applied, while the entity still has its
@@ -69,10 +71,6 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
   public RoleDto restore(Long id) {
     accessControlService.checkCanModifyRole(getEntityById(id));
     return super.restore(id);
-  }
-
-  public Specification<Role> search(Map<String, Object> parameterMap) {
-    return specification.search(parameterMap);
   }
 
   public Integer count() {

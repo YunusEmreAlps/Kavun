@@ -1,9 +1,8 @@
 package com.kavun.backend.service.siem;
 
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -13,7 +12,6 @@ import com.kavun.backend.persistent.context.HttpLogContext;
 import com.kavun.backend.persistent.context.MethodLogContext;
 import com.kavun.backend.persistent.domain.siem.ApplicationLog;
 import com.kavun.backend.persistent.repository.ApplicationLogRepository;
-import com.kavun.backend.persistent.specification.ApplicationLogSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.ApplicationLogDto;
 import com.kavun.shared.dto.mapper.ApplicationLogMapper;
@@ -35,21 +33,23 @@ import static com.kavun.constant.LoggingConstants.*;
 @Service
 @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 public class ApplicationLogService extends
-        AbstractService<ApplicationLogRequest, ApplicationLog, ApplicationLogDto, ApplicationLogRepository, ApplicationLogMapper, ApplicationLogSpecification> {
+        AbstractService<ApplicationLogRequest, ApplicationLog, ApplicationLogDto, ApplicationLogRepository, ApplicationLogMapper> {
 
   private static final String CACHED_HOSTNAME = NetworkUtils.resolveHostname();
   private static final String CACHED_IP = NetworkUtils.resolveIp();
 
-
-    public ApplicationLogService(ApplicationLogMapper mapper, ApplicationLogRepository repository,
-            ApplicationLogSpecification specification) {
-        super(mapper, repository, specification);
+    public ApplicationLogService(ApplicationLogMapper mapper, ApplicationLogRepository repository) {
+        super(mapper, repository);
     }
 
-    public Specification<ApplicationLog> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of(
+            "correlationId", "logLevel", "threadName", "loggerName", "logMessage",
+            "hostname", "ip", "logType", "userIpAddress", "username", "requestUrl", "action",
+            "requestParams", "httpStatus", "deviceId", "deviceType", "operatingSystem",
+            "browser", "createdAt");
     }
-
 
   @Async("taskExecutor")
   public void persistHttpLog(HttpLogContext ctx) {

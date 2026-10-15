@@ -5,15 +5,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Permission;
 import com.kavun.backend.persistent.repository.PermissionRepository;
-import com.kavun.backend.persistent.specification.PermissionSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.PermissionDto;
 import com.kavun.shared.dto.mapper.PermissionMapper;
 import com.kavun.shared.request.PermissionRequest;
 
-import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Map;
+import java.util.Set;
 
 /**
 * Permission service to provide implementation for the definitions about a permission.
@@ -25,14 +23,14 @@ import java.util.Map;
 @Service
 @Transactional
 public class PermissionService
-        extends AbstractService<PermissionRequest, Permission, PermissionDto, PermissionRepository, PermissionMapper, PermissionSpecification> {
+        extends AbstractService<PermissionRequest, Permission, PermissionDto, PermissionRepository, PermissionMapper> {
 
-    public PermissionService(PermissionMapper mapper, PermissionRepository repository, PermissionSpecification specification) {
-        super(mapper, repository, specification);
+    public PermissionService(PermissionMapper mapper, PermissionRepository repository) {
+        super(mapper, repository);
     }
 
-    public Specification<Permission> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of("entityType", "entityId", "pageAction", "granted", "expiresAt", "createdAt");
     }
-
 }

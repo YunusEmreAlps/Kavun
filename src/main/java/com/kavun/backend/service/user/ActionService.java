@@ -6,15 +6,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Action;
 import com.kavun.backend.persistent.repository.ActionRepository;
-import com.kavun.backend.persistent.specification.ActionSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.ActionDto;
 import com.kavun.shared.dto.mapper.ActionMapper;
 import com.kavun.shared.request.ActionRequest;
 
-import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Map;
+import java.util.Set;
 
 /**
  * Action service to provide implementation for the definitions about an action.
@@ -26,14 +24,14 @@ import java.util.Map;
 @Service
 @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 public class ActionService
-        extends AbstractService<ActionRequest, Action, ActionDto, ActionRepository, ActionMapper, ActionSpecification> {
+        extends AbstractService<ActionRequest, Action, ActionDto, ActionRepository, ActionMapper> {
 
-    public ActionService(ActionMapper mapper, ActionRepository repository, ActionSpecification specification) {
-        super(mapper, repository, specification);
+    public ActionService(ActionMapper mapper, ActionRepository repository) {
+        super(mapper, repository);
     }
 
-    public Specification<Action> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of("code", "name", "type", "createdAt");
     }
-
 }

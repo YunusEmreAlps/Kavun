@@ -1,221 +1,145 @@
-# How to Add a New Endpoint to a Spring Boot Application
+# Adding a Resource
 
-Adding new endpoints to a Spring Boot application involves several steps, including defining the endpoint, creating a new method in the controller, implementing the service method, adding a repository method, creating a response DTO, writing unit tests, updating the documentation, testing the endpoint, committing and pushing changes, and creating a pull request.
+A resource (e.g. `Product`) with list, get, create, update, soft delete and restore endpoints takes
+seven small files. The generic pieces (`AbstractService`, `AbstractCrudRestApi`,
+`FilterSpecification`) do the rest.
 
-## Step 1: Define the Endpoint
-
-Decide on the URL, HTTP method, and the purpose of the endpoint. For example, let's create a new endpoint to fetch user details by their username.
-
-## Step 2: Create a New Method in the Controller
-
-Locate the appropriate controller or create a new one if necessary. For this example, we'll add a new method to the `UserRestApi` controller.
+## 1. Entity
 
 ```java
-package com.kavun.web.rest.v1;
+@Entity
+@Table(name = "products")
+@Getter
+@Setter
+@SQLDelete(sql = "UPDATE products SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+public class Product extends BaseEntity<Long> {
 
-import com.kavun.backend.service.user.UserService;
-import com.kavun.web.payload.response.UserResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+  @Column(nullable = false, length = 200)
+  private String name;
 
-@Slf4j
-@RestController
-@RequiredArgsConstructor
-@RequestMapping(AdminConstants.API_V1_USERS_ROOT_URL)
-public class UserRestApi {
+  @Column(nullable = false)
+  private BigDecimal price;
 
-    private final UserService userService;
-
-    @GetMapping("/username/{username}")
-    public ResponseEntity<UserResponse> getUserByUsername(@PathVariable String username) {
-        UserResponse userResponse = userService.findByUsername(username);
-        return ResponseEntity.ok(userResponse);
-    }
+  @ManyToOne(fetch = FetchType.LAZY)
+  private Category category;
 }
 ```
 
-## Step 3: Implement the Service Method
+`BaseEntity` provides the id, `publicId`, version, audit fields, soft delete flag and the entity
+identity (`equals`/`hashCode`); do not add your own.
 
-Add the corresponding method in the `UserService` interface and its implementation.
+## 2. Repository
 
 ```java
-package com.kavun.backend.service.user;
-
-import com.kavun.web.payload.response.UserResponse;
-
-public interface UserService {
-    UserResponse findByUsername(String username);
-}
+@Repository
+public interface ProductRepository extends BaseRepository<Product> {}
 ```
 
+## 3. Request, DTO and mapper
+
 ```java
-package com.kavun.backend.service.user.impl;
-
-import com.kavun.backend.persistent.domain.user.User;
-import com.kavun.backend.persistent.repository.UserRepository;
-import com.kavun.backend.service.user.UserService;
-import com.kavun.web.payload.response.UserResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
-@Service
-@RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
-
-    private final UserRepository userRepository;
-
-    @Override
-    public UserResponse findByUsername(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return new UserResponse(user);
-    }
+@Data
+@SuperBuilder
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class ProductRequest extends BaseRequest {
+  @NotBlank private String name;
+  @NotNull @Positive private BigDecimal price;
 }
-```
-
-## Step 4: Add Repository Method
-
-Add the method to the `UserRepository` to fetch user details by username.
-
-```java
-package com.kavun.backend.persistent.repository;
-
-import com.kavun.backend.persistent.domain.user.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
-
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByUsername(String username);
-}
-```
-
-## Step 5: Create a Response DTO
-
-Create a DTO to structure the response data.
-
-```java
-package com.kavun.web.payload.response;
-
-import com.kavun.backend.persistent.domain.user.User;
-import lombok.Data;
 
 @Data
-public class UserResponse {
-    private String username;
-    private String email;
-
-    public UserResponse(User user) {
-        this.username = user.getUsername();
-        this.email = user.getEmail();
-    }
+@SuperBuilder
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class ProductDto extends BaseDto {
+  private String name;
+  private BigDecimal price;
 }
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface ProductMapper extends BaseMapper<ProductRequest, Product, ProductDto> {}
 ```
 
-## Step 6: Write Unit Tests
+Put validation on the request: the generic endpoints validate it with `@Valid`.
 
-Write unit tests to ensure the new endpoint works as expected.
+## 4. Service
 
 ```java
-package com.kavun.web.rest.v1;
+@Service
+@Transactional
+public class ProductService
+    extends AbstractService<ProductRequest, Product, ProductDto, ProductRepository, ProductMapper> {
 
-import com.kavun.backend.service.user.UserService;
-import com.kavun.web.payload.response.UserResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+  public ProductService(ProductMapper mapper, ProductRepository repository) {
+    super(mapper, repository);
+  }
 
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@ExtendWith(MockitoExtension.class)
-class UserRestApiTest {
-
-    @Mock
-    private UserService userService;
-
-    @InjectMocks
-    private UserRestApi userRestApi;
-
-    private MockMvc mockMvc;
-
-    @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(userRestApi).build();
-    }
-
-    @Test
-    void getUserByUsername() throws Exception {
-        String username = "testuser";
-        UserResponse userResponse = new UserResponse();
-        userResponse.setUsername(username);
-        userResponse.setEmail("testuser@example.com");
-
-        when(userService.findByUsername(username)).thenReturn(userResponse);
-
-        mockMvc.perform(get("/api/v1/users/username/{username}", username)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+  @Override
+  protected Set<String> filterableFields() {
+    return Set.of("name", "price", "category", "createdAt");
+  }
 }
 ```
 
-## Step 7: Update Documentation
+Only the listed fields can be filtered (see [Filtering](#filtering)). Never list sensitive fields.
+Business rules go into the hooks (`beforeCreate`, `afterUpdate`, ...) or into extra methods.
 
-Update the API documentation to include the new endpoint.
+## 5. Controller
 
-```md
-## Get User by Username Endpoint
+```java
+@RestController
+@RequestMapping("/api/v1/product")
+@Tag(name = "10. Products", description = "APIs for managing products")
+@RequirePermission(page = "PRODUCTS")
+public class ProductRestApi extends AbstractCrudRestApi<ProductRequest, ProductDto> {
 
-Fetches user details by their username.
-
-The URL for the endpoint is:
-
-```bash
-GET: /api/v1/users/username/{username}
-```
-
-```json
-{
-  "username": "testuser",
-  "email": "testuser@example.com"
+  public ProductRestApi(ProductService service) {
+    super(service);
+  }
 }
 ```
 
-## Step 8: Test the Endpoint
+This exposes, with the permissions they require:
 
-Run the application and test the new endpoint using tools like Postman or cURL.
+| Endpoint | Permission |
+| --- | --- |
+| `GET /api/v1/product` (paged, filters as query parameters) | `PRODUCTS:VIEW` |
+| `GET /api/v1/product/list` (unpaged) | `PRODUCTS:VIEW` |
+| `GET /api/v1/product/{id}` | `PRODUCTS:VIEW` |
+| `GET /api/v1/product/{id}/exists` | `PRODUCTS:VIEW` |
+| `GET /api/v1/product/count` | `PRODUCTS:VIEW` |
+| `POST /api/v1/product/search` (paged, filters in the body) | `PRODUCTS:VIEW` |
+| `POST /api/v1/product` | `PRODUCTS:CREATE` |
+| `PUT /api/v1/product/{id}` | `PRODUCTS:EDIT` |
+| `DELETE /api/v1/product/{id}` (soft delete) | `PRODUCTS:DELETE` |
+| `POST /api/v1/product/{id}/restore` | `PRODUCTS:DELETE` |
 
-```sh
-curl -X GET "http://localhost:8080/api/v1/users/username/testuser" -H "accept: application/json"
+Add resource-specific endpoints as ordinary methods of the controller (see `RoleRestApi`).
+
+## 6. Permission catalog
+
+Declare the page in a `PermissionCatalogContributor` (see `docs/PERMISSION_MANAGEMENT.md`):
+
+```java
+catalog.page("PRODUCTS").name("Products").url("/products").icon("fa-solid fa-box")
+    .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
 ```
 
-## Step 9: Commit and Push Changes
+On the next start the page and its actions are created and granted to `ROLE_ADMIN`. If the
+controller requires a page or action the catalog does not declare, the application does not start.
 
-Commit your changes and push them to the repository.
+## Filtering
 
-```sh
-git add .
-git commit -m "feat: add endpoint to fetch user details by username"
-git push origin feature/branch-name
-```
+List endpoints accept filters for the fields the service declares filterable. Other parameters,
+including `page`, `size` and `sort`, are ignored by the filter.
 
-## Step 10: Create a Pull Request
+| Parameter | Meaning |
+| --- | --- |
+| `name=lap` | text field contains the value, case-insensitive |
+| `price=100` | equality for numbers, booleans, enums (case-insensitive) and ids |
+| `createdAt=2026-10-16` | a date on a date-time field matches the whole day |
+| `priceFrom=100` / `priceTo=500` | inclusive range; `createdAtTo=2026-10-16` includes that day |
+| `categoryId=7` | many-to-one relation by id |
+| `deleted=true` | only soft deleted records (they are hidden otherwise) |
 
-Create a pull request to merge your changes into the main branch.
-
-That's it! You've successfully added a new endpoint to your project.
-
-Similar code found with 3 license types
+A value that does not fit its field (e.g. `price=abc`) is answered with 400.

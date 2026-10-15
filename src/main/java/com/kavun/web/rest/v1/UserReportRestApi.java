@@ -48,24 +48,20 @@ public class UserReportRestApi {
     @Loggable
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<UserSessionDto> getUserSessions(
-            @RequestParam Map<String, Object> parameterMap,
+            @RequestParam Map<String, String> parameterMap,
             @PageableDefault(size = 20, sort = "loginAt") Pageable pageable) {
 
-        return userSessionService.findAll(
-                userSessionService.search(parameterMap),
-                pageable);
+        return userSessionService.findAll(parameterMap, pageable);
     }
 
     // Retrieves user devices with dynamic filtering and pagination.
     @Loggable
     @GetMapping(value = "/devices", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<UserDeviceDto> getUserDevices(
-            @RequestParam Map<String, Object> parameterMap,
+            @RequestParam Map<String, String> parameterMap,
             @PageableDefault(size = 20) Pageable pageable) {
 
-        return userDeviceService.findAll(
-                userDeviceService.search(parameterMap),
-                pageable);
+        return userDeviceService.findAll(parameterMap, pageable);
     }
 
     // Retrieves device usage analytics for all user devices.
@@ -87,11 +83,9 @@ public class UserReportRestApi {
     @Loggable
     @GetMapping(value = "/activity-logs", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<ApplicationLogDto> getUserActivityLogs(
-            @RequestParam Map<String, Object> parameterMap,
+            @RequestParam Map<String, String> parameterMap,
             @PageableDefault(size = 20) Pageable pageable) {
 
-        return applicationLogService.findAll(
-                applicationLogService.search(parameterMap),
-                pageable);
+        return applicationLogService.findAll(parameterMap, pageable);
     }
 }

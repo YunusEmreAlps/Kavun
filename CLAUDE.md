@@ -53,8 +53,8 @@ Local URLs once running: app at `:8080`, H2 console at `:8080/console`, Swagger 
 Layered, package-by-concern structure under `src/main/java/com/kavun/`:
 
 - `backend/persistent/domain/**` — JPA entities, split by bounded area (`user`, `security`, `email`, `upload`, `siem`, `base`). `base/BaseEntity` provides the common id/auditing/soft-delete fields all entities extend.
-- `backend/persistent/repository` / `backend/persistent/specification` — Spring Data JPA repositories and `Specification<T>` builders used for dynamic, filterable queries (paired with DataTables server-side processing).
-- `backend/service/**` — business logic, one subpackage per domain (`user`, `security`, `mail`, `sms`, `storage`, `i18n`, `scheduled`), each typically with an interface at the package root and an `impl` subpackage. `service/base/BaseService<REQUEST, DTO, ENTITY>` defines the standard CRUD contract (find/create/update/soft-delete/restore/paged findAll) that domain services implement.
+- `backend/persistent/repository` / `backend/persistent/specification` — Spring Data JPA repositories, and `FilterSpecification`, the single generic builder that turns list filters (`name=..`, `createdAtFrom=..`, `parentId=..`) into queries over the fields a service allows. Do not write per-entity `Specification` classes.
+- `backend/service/**` — business logic, one subpackage per domain (`user`, `security`, `mail`, `sms`, `storage`, `i18n`, `scheduled`), each typically with an interface at the package root and an `impl` subpackage. `service/base/BaseService<REQUEST, DTO>` defines the standard CRUD contract (find/create/update/soft-delete/restore, filtered findAll/count), implemented once by `AbstractService`; a domain service extends it and overrides `filterableFields()` (an explicit allow-list: never include sensitive fields). Soft deleted records are excluded from lists unless `deleted=true`.
 - `web/controller` — Thymeleaf MVC controllers serving the server-rendered admin UI.
 - `web/rest/v1` — versioned JSON REST API controllers.
 - `web/payload/{request,response,pojo}` — API request/response shapes, separate from JPA entities and from `shared/dto`.
@@ -78,7 +78,7 @@ See `docs/PERMISSION_MANAGEMENT.md`. Every `/api` endpoint must carry exactly on
 
 Entity identity is defined once in `BaseEntity`: `equals`/`hashCode` are `final`, compare the persistent class (Hibernate-proxy aware) and `publicId`, which is assigned on construction. Do not add `equals`/`hashCode` or Lombok `@EqualsAndHashCode` to entities (it will not compile); compare business keys explicitly where needed (see `User.isSameRole`).
 
-Domain services generally implement soft-delete semantics (`delete`/`restore` in `BaseService`) rather than hard deletes; auditing of CRUD operations is handled via Hibernate Envers. When adding a new domain object, follow the existing entity → repository → specification → service (+impl) → payload DTO → REST controller chain (`docs/ENDPOINT.md` walks through this for a new endpoint end-to-end).
+Domain services generally implement soft-delete semantics (`delete`/`restore` in `BaseService`) rather than hard deletes; auditing of CRUD operations is handled via Hibernate Envers. When adding a new resource, follow `docs/ENDPOINT.md`: entity → repository → request/DTO/mapper → service extending `AbstractService` → controller extending `web/rest/AbstractCrudRestApi` (standard CRUD endpoints) with `@RequirePermission(page = ...)` → page in a permission catalog contributor.
 
 ## Testing conventions
 

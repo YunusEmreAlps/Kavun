@@ -8,7 +8,6 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
-import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.backend.service.security.permission.AccessControlService;
@@ -47,7 +46,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -67,7 +65,7 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Transactional
 public class UserService
-    extends AbstractService<UserRequest, User, UserDto, UserRepository, UserMapper, UserSpecification> {
+    extends AbstractService<UserRequest, User, UserDto, UserRepository, UserMapper> {
 
   private final Clock clock;
   private final RoleService roleService;
@@ -75,10 +73,10 @@ public class UserService
   private final UserRoleRepository userRoleRepository;
   private final AccessControlService accessControlService;
 
-  public UserService(UserMapper mapper, UserRepository repository, UserSpecification specification,
+  public UserService(UserMapper mapper, UserRepository repository,
       Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository,
       AccessControlService accessControlService) {
-    super(mapper, repository, specification);
+    super(mapper, repository);
     this.clock = clock;
     this.roleService = roleService;
     this.passwordEncoder = passwordEncoder;
@@ -86,8 +84,11 @@ public class UserService
     this.accessControlService = accessControlService;
   }
 
-  public Specification<User> search(Map<String, Object> parameterMap) {
-    return specification.search(parameterMap);
+  @Override
+  protected Set<String> filterableFields() {
+    return Set.of(
+        "publicId", "username", "email", "firstName", "lastName", "phone", "enabled",
+        "deletedAt", "createdAt");
   }
 
   public Integer count() {
@@ -415,7 +416,6 @@ public class UserService
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
-
     if (!passwordEncoder.matches(oldPassword, storedUser.getPassword())) {
       throw new IllegalArgumentException(UserConstants.PASSWORD_UPDATED_FAILED);
     }
@@ -433,7 +433,6 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
-
 
     storedUser.setPassword(passwordEncoder.encode(newPassword));
     repository.save(storedUser);

@@ -4,6 +4,7 @@ import com.kavun.constant.base.BaseConstants;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.exception.EncryptionException;
 import com.kavun.exception.InvalidFileFormatException;
+import com.kavun.exception.InvalidFilterException;
 import com.kavun.exception.InvalidServiceRequestException;
 import com.kavun.exception.ResourceUnavailableException;
 import com.kavun.exception.StorageException;
@@ -118,12 +119,13 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
     /**
      * Handles domain exceptions caused by bad client input (invalid OTP/CAPTCHA, unsupported or
-     * infected file upload) rather than a server-side fault.
+     * infected file upload, malformed list filter) rather than a server-side fault.
      */
     @ExceptionHandler(value = {
             OtpValidationException.class,
             CaptchaValidationException.class,
             InvalidFileFormatException.class,
+            InvalidFilterException.class,
             VirusDetectedException.class
     })
     protected ResponseEntity<ApiResponse<Object>> handleClientInputException(

@@ -2,7 +2,7 @@ package com.kavun.backend.service;
 
 import com.kavun.backend.persistent.domain.base.BaseEntity;
 import com.kavun.backend.persistent.repository.BaseRepository;
-import com.kavun.backend.persistent.specification.BaseSpecification;
+import com.kavun.backend.persistent.specification.FilterSpecification;
 import com.kavun.backend.service.base.BaseService;
 import com.kavun.shared.dto.BaseDto;
 import com.kavun.shared.dto.mapper.BaseMapper;
@@ -12,6 +12,8 @@ import com.kavun.shared.util.core.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,8 +21,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Abstract base service implementation providing common CRUD operations.
@@ -31,25 +36,27 @@ import java.util.Objects;
  * operation flow.
  * </p>
  *
+ * <p>List queries are filtered by {@link FilterSpecification}; subclasses only declare which fields
+ * may be filtered by overriding {@link #filterableFields()}.
+ *
  * @param <REQUEST> Request type for create/update operations
  * @param <ENTITY>  Entity type extending BaseEntity
  * @param <DTO>     Data Transfer Object type for responses
  * @param <REPO>    Repository interface extending BaseRepository
  * @param <MAPPER>  Mapper interface for entity/dto conversions
- * @param <SPEC>    Specification builder for queries
  */
 @Slf4j
-public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extends BaseEntity<Long>, DTO extends BaseDto, REPO extends BaseRepository<ENTITY>, MAPPER extends BaseMapper<REQUEST, ENTITY, DTO>, SPEC extends BaseSpecification<ENTITY>>
-    implements BaseService<REQUEST, DTO, ENTITY> {
+public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extends BaseEntity<Long>, DTO extends BaseDto, REPO extends BaseRepository<ENTITY>, MAPPER extends BaseMapper<REQUEST, ENTITY, DTO>>
+    implements BaseService<REQUEST, DTO> {
+
+  private static final String DELETED = "deleted";
 
   protected final MAPPER mapper;
   protected final REPO repository;
-  protected final SPEC specification;
 
-  protected AbstractService(MAPPER mapper, REPO repository, SPEC specification) {
+  protected AbstractService(MAPPER mapper, REPO repository) {
     this.mapper = Objects.requireNonNull(mapper, "Mapper cannot be null");
     this.repository = Objects.requireNonNull(repository, "Repository cannot be null");
-    this.specification = Objects.requireNonNull(specification, "Specification cannot be null");
   }
 
   @Override
@@ -136,16 +143,16 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
 
   @Override
   @Transactional(readOnly = true)
-  public Page<DTO> findAll(Specification<ENTITY> specification, Pageable pageable) {
-    LOG.debug("Finding entities with specification and pagination: {}", pageable);
-    return repository.findAll(specification, pageable).map(mapper::toDto);
+  public Page<DTO> findAll(Map<String, ?> filters, Pageable pageable) {
+    LOG.debug("Finding entities with filters {} and pagination: {}", filters, pageable);
+    return repository.findAll(filter(filters), pageable).map(mapper::toDto);
   }
 
   @Override
   @Transactional(readOnly = true)
-  public List<DTO> findAll(Specification<ENTITY> specification) {
-    LOG.debug("Finding all entities with specification");
-    return repository.findAll(specification).stream()
+  public List<DTO> findAll(Map<String, ?> filters) {
+    LOG.debug("Finding all entities with filters {}", filters);
+    return repository.findAll(filter(filters)).stream()
         .map(mapper::toDto)
         .toList();
   }
@@ -159,9 +166,39 @@ public abstract class AbstractService<REQUEST extends BaseRequest, ENTITY extend
 
   @Override
   @Transactional(readOnly = true)
-  public long count(Specification<ENTITY> specification) {
-    LOG.debug("Counting entities with specification");
-    return repository.count(specification);
+  public long count(Map<String, ?> filters) {
+    LOG.debug("Counting entities with filters {}", filters);
+    return repository.count(filter(filters));
+  }
+
+  /**
+   * The fields list queries may filter on. Empty by default, so that no field (e.g. a password
+   * hash) can be queried unless a subclass names it explicitly. {@code deleted} is always
+   * filterable.
+   *
+   * @return the filterable field names
+   */
+  protected Set<String> filterableFields() {
+    return Set.of();
+  }
+
+  /**
+   * Builds the query for list filters. Soft deleted records are left out unless {@code
+   * deleted=true} is passed.
+   *
+   * @param filters the filter parameters, may be null
+   * @return the specification
+   */
+  protected Specification<ENTITY> filter(Map<String, ?> filters) {
+    Map<String, ?> params = filters == null ? Map.of() : filters;
+    Set<String> fields = new HashSet<>(filterableFields());
+    fields.add(DELETED);
+
+    Specification<ENTITY> specification = FilterSpecification.of(params, fields);
+    if (StringUtils.isBlank(Objects.toString(params.get(DELETED), null))) {
+      specification = specification.and((root, query, cb) -> cb.isFalse(root.get(DELETED)));
+    }
+    return specification;
   }
 
   // Protected helper methods

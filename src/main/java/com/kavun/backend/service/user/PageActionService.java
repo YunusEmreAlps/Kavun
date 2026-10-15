@@ -6,15 +6,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.PageAction;
 import com.kavun.backend.persistent.repository.PageActionRepository;
-import com.kavun.backend.persistent.specification.PageActionSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.PageActionDto;
 import com.kavun.shared.dto.mapper.PageActionMapper;
 import com.kavun.shared.request.PageActionRequest;
 
-import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Map;
+import java.util.Set;
 
 /**
 * PageAction service to provide implementation for the definitions about a page action.
@@ -26,14 +24,14 @@ import java.util.Map;
 @Service
 @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 public class PageActionService
-        extends AbstractService<PageActionRequest, PageAction, PageActionDto, PageActionRepository, PageActionMapper, PageActionSpecification> {
+        extends AbstractService<PageActionRequest, PageAction, PageActionDto, PageActionRepository, PageActionMapper> {
 
-    public PageActionService(PageActionMapper mapper, PageActionRepository repository, PageActionSpecification specification) {
-        super(mapper, repository, specification);
+    public PageActionService(PageActionMapper mapper, PageActionRepository repository) {
+        super(mapper, repository);
     }
 
-    public Specification<PageAction> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of("page", "action", "apiEndpoint", "httpMethod", "label", "createdAt");
     }
-
 }

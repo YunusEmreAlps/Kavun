@@ -1,5 +1,6 @@
 package com.kavun.web.rest.v1;
 
+import com.kavun.annotation.AuthenticatedEndpoint;
 import com.kavun.annotation.Loggable;
 import com.kavun.backend.service.user.NavigationService;
 import com.kavun.shared.dto.UserDto;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/navigation")
 @Tag(name = "08. Navigation API", description = "This API provides endpoints for navigation and page permissions.")
+@AuthenticatedEndpoint
 public class NavigationRestApi {
 
   private final NavigationService navigationService;

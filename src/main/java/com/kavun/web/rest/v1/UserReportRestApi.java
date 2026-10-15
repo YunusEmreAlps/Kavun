@@ -1,9 +1,11 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.backend.service.user.UserDeviceService;
 import com.kavun.backend.service.user.UserSessionService;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.constant.base.BaseConstants;
 import com.kavun.shared.dto.ApplicationLogDto;
 import com.kavun.shared.dto.UserDeviceDto;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping(BaseConstants.API_V1_USERS_ROOT_URL + "/reports")
 @Tag(name = "09. User Reports", description = "APIs for user session reporting and analytics")
+@RequirePermission(page = Pages.USER_REPORTS)
 public class UserReportRestApi {
 
     private final UserDeviceService userDeviceService;

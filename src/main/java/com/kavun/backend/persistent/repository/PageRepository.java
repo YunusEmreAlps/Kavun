@@ -3,9 +3,9 @@ package com.kavun.backend.persistent.repository;
 import com.kavun.backend.persistent.domain.user.WebPage;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -17,9 +17,11 @@ import org.springframework.stereotype.Repository;
  * @since 1.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface PageRepository extends BaseRepository<WebPage> {
     WebPage findByCodeAndDeletedFalse(String code);
+
+    // Includes soft-deleted pages, so a deleted page is not recreated.
+    Optional<WebPage> findByCode(String code);
 
     WebPage findByUrlAndDeletedFalse(String url);
 

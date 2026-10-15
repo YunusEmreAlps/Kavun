@@ -6,6 +6,7 @@ import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.RoleSpecification;
+import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.mapper.RoleMapper;
 import com.kavun.shared.request.RoleRequest;
@@ -29,6 +30,8 @@ class RoleServiceTest {
 
   @Mock private transient UserRoleRepository userRoleRepository;
 
+  @Mock private transient AccessControlService accessControlService;
+
   private transient RoleService roleService;
 
   private transient Role roleEntity;
@@ -41,7 +44,8 @@ class RoleServiceTest {
             roleRepository,
             new RoleSpecification(),
             userRepository,
-            userRoleRepository);
+            userRoleRepository,
+            accessControlService);
     roleEntity = new Role(RoleType.ROLE_USER);
     roleEntity.setId(1L);
   }

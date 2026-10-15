@@ -1,8 +1,11 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.Action;
 import com.kavun.backend.service.user.ActionService;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.shared.dto.ActionDto;
 import com.kavun.shared.request.ActionRequest;
 
@@ -29,6 +32,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/action")
 @RequiredArgsConstructor
 @Tag(name = "04. Action Management", description = "APIs for managing actions")
+@RequirePermission(page = Pages.ACTIONS)
 public class ActionRestApi {
 
     private final ActionService actionService;
@@ -172,6 +176,7 @@ public class ActionRestApi {
      * @return restored action DTO
      */
     @Loggable
+    @RequirePermission(action = Actions.DELETE)
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore action", description = "Restore a soft-deleted action")
     @ApiResponses(value = {
@@ -232,6 +237,7 @@ public class ActionRestApi {
      * @return page of matching actions
      */
     @Loggable
+    @RequirePermission(action = Actions.VIEW)
     @PostMapping("/search")
     @Operation(summary = "Search actions", description = "Search actions with dynamic criteria")
     public ResponseEntity<Page<ActionDto>> search(

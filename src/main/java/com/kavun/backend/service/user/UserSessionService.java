@@ -110,6 +110,38 @@ public class UserSessionService extends
         repository.updateLastActivity(sessionId, LocalDateTime.now());
     }
 
+    // Whether an access token bound to this session may still be used.
+    @Transactional(readOnly = true)
+    public boolean isActive(Long sessionId, Long userId) {
+        return sessionId != null && userId != null
+                && repository.existsByIdAndUserIdAndIsActiveTrue(sessionId, userId);
+    }
+
+    /**
+     * Continues a session for a token refresh. A session that only timed out is reactivated, so the
+     * refresh token keeps the user signed in; one ended by a logout (manual or forced) stays closed.
+     *
+     * @param sessionId the session of the refresh token
+     * @param userId    the user of the refresh token
+     * @return true if the session can be used, false if a new login is required
+     */
+    @Transactional
+    public boolean resumeSession(Long sessionId, Long userId) {
+        if (sessionId == null || userId == null) {
+            return false;
+        }
+        return repository.findById(sessionId)
+                .filter(session -> userId.equals(session.getUserId()))
+                .filter(session -> Boolean.TRUE.equals(session.getIsActive())
+                        || UserSession.LOGOUT_TYPE_TIMEOUT.equals(session.getLogoutType()))
+                .map(session -> {
+                    session.resume();
+                    repository.save(session);
+                    return true;
+                })
+                .orElse(false);
+    }
+
     // Logs out a specific session (manual logout).
     @Transactional
     public void logout(Long sessionId) {

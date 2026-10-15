@@ -1,678 +1,227 @@
-# Permission Management with @RequirePermission
+# Permission Management
 
-## Overview
-
-The `@RequirePermission` annotation provides a flexible and powerful way to manage endpoint permissions in the application. It supports both hardcoded permission definitions and dynamic auto-detection based on HTTP methods, URL paths, and custom headers.
+Every API endpoint declares who may call it. The declaration lives on the controller, is checked by
+the server, and is verified when the application starts. Nothing the client sends (headers, URLs)
+decides which permission applies.
 
 ## Table of Contents
 
-- [Basic Concepts](#basic-concepts)
-- [Annotation Parameters](#annotation-parameters)
-- [Auto-Detection Mechanism](#auto-detection-mechanism)
-- [Usage Examples](#usage-examples)
-- [Priority Rules](#priority-rules)
-- [Frontend Integration](#frontend-integration)
-- [Best Practices](#best-practices)
+- [Concepts](#concepts)
+- [Declaring access on endpoints](#declaring-access-on-endpoints)
+- [The permission catalog](#the-permission-catalog)
+- [How a request is authorized](#how-a-request-is-authorized)
+- [Escalation guards](#escalation-guards)
+- [Tokens and sessions](#tokens-and-sessions)
+- [Adding a new module](#adding-a-new-module)
+- [Frontend integration](#frontend-integration)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
 
-## Basic Concepts
+## Concepts
 
-### Permission Format
+A permission is an action on a page, written `PAGE_CODE:ACTION_CODE`, e.g. `USERS:EDIT`.
 
-Permissions follow the format: `PAGE_CODE:ACTION_CODE`
+- **Page** (`WebPage`): an area of the application and a navigation menu entry (`USERS`, `ROLES`).
+- **Action** (`Action`): something that can be done on pages (`VIEW`, `CREATE`, `EDIT`, `DELETE`,
+  `ASSIGN`).
+- **Page action** (`PageAction`): an action a page supports; this is what gets granted.
+- **Permission** (`Permission`): a grant (or an explicit deny) of a page action to a role or to a
+  single user, optionally with an expiry date.
 
-- **PAGE_CODE**: Identifies the page or module (e.g., `ACTIONS`, `USERS`, `REPORTS`)
-- **ACTION_CODE**: Identifies the action (e.g., `VIEW`, `CREATE`, `EDIT`, `DELETE`, `APPROVE`)
+Permissions are resolved in this order; the first level that has a record decides:
 
-Example: `ACTIONS:DELETE` means "delete permission on the actions page"
+1. User level: any non-expired deny wins, otherwise any non-expired grant allows.
+2. Role level (all roles of the user): any non-expired deny wins, otherwise any grant allows.
+3. Nothing found: access is denied.
 
-### Permission Check Logic
+## Declaring access on endpoints
 
-The system uses **OR logic** for multiple permissions - users need **any one** of the specified permissions to access an endpoint.
+Every endpoint under `/api` must carry exactly one of these annotations, on the method or on its
+controller. A method annotation replaces the controller's.
 
-## Annotation Parameters
+| Annotation | Who may call |
+| --- | --- |
+| `@PublicEndpoint` | anyone, without authentication (login, password reset, ...) |
+| `@AuthenticatedEndpoint` | any signed-in user; only for endpoints acting on the caller's own data |
+| `@RequirePermission` | signed-in users holding the permission |
 
-### `pageActions` (String[])
+### `@RequirePermission`
 
-Explicitly defines required permissions.
+Put the page on the controller; the action is implied by the HTTP method:
 
-```java
-@RequirePermission(pageActions = { "ACTIONS:DELETE", "ADMIN:DELETE" })
-```
+| HTTP method | Action |
+| --- | --- |
+| GET, HEAD | `VIEW` |
+| POST | `CREATE` |
+| PUT, PATCH | `EDIT` |
+| DELETE | `DELETE` |
 
-- Default: `{}`
-- Use when you need explicit control over permissions
-- Multiple values create OR logic (user needs any one)
-
-### `autoDetect` (boolean)
-
-Enables automatic permission detection from HTTP method, URL path, and headers.
-
-```java
-@RequirePermission(autoDetect = true)
-```
-
-- Default: `false`
-- Only works when `pageActions` is empty
-- See [Auto-Detection Mechanism](#auto-detection-mechanism) for details
-
-### `actionOverride` (String)
-
-Overrides the action part when using `autoDetect`.
-
-```java
-@RequirePermission(autoDetect = true, actionOverride = "APPROVE")
-```
-
-- Default: `""`
-- Useful when HTTP method doesn't match the actual business action
-- Example: POST request requiring APPROVE permission instead of CREATE
-
-### `message` (String)
-
-Custom error message when permission is denied.
-
-```java
-@RequirePermission(
-    autoDetect = true,
-    message = "You don't have permission to approve actions"
-)
-```
-
-- Default: `"Bu işlemi gerçekleştirmek için izniniz bulunmamaktadır."`
-
-## Auto-Detection Mechanism
-
-When `autoDetect = true` and `pageActions` is empty, the system automatically determines permissions using:
-
-### 1. Page Code Detection
-
-**Priority Order:**
-
-1. **`Page-Code` Header** (from frontend)
-   ```javascript
-   fetch('/api/v1/action/delete/123', {
-     headers: { 'Page-Code': 'CUSTOM_PAGE' }
-   });
-   // Result: CUSTOM_PAGE:DELETE
-   ```
-
-2. **URL Path Extraction**
-   - Pattern: `/api/v1/{resource}/...`
-   - Example: `/api/v1/action/delete/123` → `ACTION`
-   - Example: `/api/v1/user/list` → `USER`
-
-### 2. Action Code Detection
-
-**Priority Order:**
-
-1. **`actionOverride` Parameter**
-   ```java
-   @RequirePermission(autoDetect = true, actionOverride = "APPROVE")
-   // Result: PAGE_CODE:APPROVE
-   ```
-
-2. **HTTP Method Mapping**
-   - `GET` → `VIEW`
-   - `POST` → `CREATE`
-   - `PUT` / `PATCH` → `EDIT`
-   - `DELETE` → `DELETE`
-
-## Usage Examples
-
-### Standard REST Operations
+Override the action where the verb does not match the business action:
 
 ```java
 @RestController
-@RequestMapping("/api/v1/action")
-public class ActionRestApi {
+@RequestMapping("/api/v1/role")
+@RequirePermission(page = Pages.ROLES)        // GET -> ROLES:VIEW, POST -> ROLES:CREATE, ...
+public class RoleRestApi {
 
-    // GET → ACTION:VIEW
-    @GetMapping("/{id}")
-    @RequirePermission(autoDetect = true)
-    public ActionDto getById(@PathVariable UUID id) {
-        return actionService.get(id);
-    }
+  @PostMapping("/search")
+  @RequirePermission(action = Actions.VIEW)   // read-only POST
+  public Page<RoleDto> search(...) { ... }
 
-    // POST → ACTION:CREATE
-    @PostMapping("/create")
-    @RequirePermission(autoDetect = true)
-    public ActionDto create(@RequestBody ActionRequest request) {
-        return actionService.save(request);
-    }
+  @PostMapping("/{id}/restore")
+  @RequirePermission(action = Actions.DELETE) // restoring undoes a delete
+  public RoleDto restore(...) { ... }
 
-    // PUT → ACTION:EDIT
-    @PutMapping("/update/{id}")
-    @RequirePermission(autoDetect = true)
-    public ActionDto update(@PathVariable UUID id, @RequestBody ActionRequest request) {
-        return actionService.update(id, request);
-    }
-
-    // DELETE → ACTION:DELETE
-    @DeleteMapping("/delete/{id}")
-    @RequirePermission(autoDetect = true)
-    public void delete(@PathVariable UUID id) {
-        actionService.delete(id);
-    }
+  @PostMapping("/assign-roles/{userId}")
+  @RequirePermission(action = Actions.ASSIGN)
+  public void assignRoles(...) { ... }
 }
 ```
 
-### Custom Business Actions
+A method-level `@RequirePermission` uses the controller's page when it does not set one, and may
+also name another page (`@RequirePermission(page = Pages.INVOICES)`). `action` belongs on methods
+only; the controller-level annotation takes a page.
+
+Use the constants in `PermissionConstants.Pages` / `PermissionConstants.Actions` (or your module's
+own constants) rather than string literals.
+
+### Startup validation
+
+`EndpointPolicyValidator` checks every `/api` endpoint when the application starts and refuses to
+start if an endpoint:
+
+- has no access annotation,
+- has more than one on the same element,
+- uses `@RequirePermission` without a page, with an `action` on the controller, or with an HTTP
+  method that implies no action,
+- requires a page action that the permission catalog does not declare.
+
+A forgotten annotation therefore fails the build (the integration tests start the application)
+instead of shipping an endpoint that is open or that nobody can use.
+
+## The permission catalog
+
+Pages and actions are declared in code by `PermissionCatalogContributor` beans. The platform's own
+administration pages are in `CorePermissionCatalog`:
 
 ```java
-@RestController
-@RequestMapping("/api/v1/action")
-public class ActionRestApi {
+@Component
+public class CorePermissionCatalog implements PermissionCatalogContributor {
 
-    // POST but requires APPROVE permission
-    @PostMapping("/approve/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "APPROVE")
-    public ActionDto approve(@PathVariable UUID id) {
-        return actionService.approve(id);
-    }
-
-    // POST but requires REJECT permission
-    @PostMapping("/reject/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "REJECT")
-    public ActionDto reject(@PathVariable UUID id) {
-        return actionService.reject(id);
-    }
-
-    // POST but requires PUBLISH permission
-    @PostMapping("/publish/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "PUBLISH")
-    public ActionDto publish(@PathVariable UUID id) {
-        return actionService.publish(id);
-    }
-
-    // GET but requires EXPORT permission
-    @GetMapping("/export")
-    @RequirePermission(autoDetect = true, actionOverride = "EXPORT")
-    public ResponseEntity<byte[]> export() {
-        return actionService.exportToExcel();
-    }
-}
-```
-
-### Hardcoded Permissions
-
-```java
-@RestController
-@RequestMapping("/api/v1/action")
-public class ActionRestApi {
-
-    // User needs EITHER "ACTIONS:DELETE" OR "ADMIN:DELETE"
-    @DeleteMapping("/delete/{id}")
-    @RequirePermission(pageActions = { "ACTIONS:DELETE", "ADMIN:DELETE" })
-    public void delete(@PathVariable UUID id) {
-        actionService.delete(id);
-    }
-
-    // Complex scenario: multiple page permissions
-    @PostMapping("/special-operation")
-    @RequirePermission(
-        pageActions = { 
-            "WORKFLOW:APPROVE", 
-            "ADMIN:SPECIAL_OPS",
-            "SUPERVISOR:OVERRIDE" 
-        },
-        message = "You need supervisor-level permissions for this operation"
-    )
-    public void specialOperation(@RequestBody SpecialRequest request) {
-        actionService.processSpecial(request);
-    }
-}
-```
-
-### Mixed Approaches
-
-```java
-@RestController
-@RequestMapping("/api/v1/report")
-public class ReportRestApi {
-
-    // Auto-detect for standard operations
-    @GetMapping("/{id}")
-    @RequirePermission(autoDetect = true)  // REPORT:VIEW
-    public ReportDto getById(@PathVariable UUID id) {
-        return reportService.get(id);
-    }
-
-    // Hardcoded for sensitive operations
-    @PostMapping("/financial-export")
-    @RequirePermission(
-        pageActions = { "FINANCIAL_REPORTS:EXPORT", "CFO:VIEW" },
-        message = "Financial exports require special authorization"
-    )
-    public ResponseEntity<byte[]> exportFinancial() {
-        return reportService.exportFinancial();
-    }
-
-    // actionOverride for special cases
-    @PostMapping("/schedule/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "SCHEDULE")
-    public ReportDto schedule(@PathVariable UUID id) {
-        return reportService.schedule(id);
-    }
-}
-```
-
-## Priority Rules
-
-### Decision Flow
-
-```
-1. Is pageActions specified and not empty?
-   YES → Use hardcoded pageActions
-   NO → Continue to step 2
-
-2. Is autoDetect = true?
-   YES → Continue to step 3
-   NO → Throw error (no permissions specified)
-
-3. Detect PAGE_CODE:
-   a. Check Page-Code header
-   b. If not found, extract from URL path
-   c. If not found, throw error
-
-4. Detect ACTION_CODE:
-   a. Check actionOverride parameter
-   b. If not set, map from HTTP method
-   c. If cannot map, throw error
-
-5. Result: PAGE_CODE:ACTION_CODE
-```
-
-### Example Flow
-
-For request: `POST /api/v1/action/approve/123`
-
-```java
-@PostMapping("/approve/{id}")
-@RequirePermission(autoDetect = true, actionOverride = "APPROVE")
-public ActionDto approve(@PathVariable UUID id) { ... }
-```
-
-**Detection Steps:**
-1. pageActions is empty? **YES** → Continue
-2. autoDetect is true? **YES** → Continue
-3. Page-Code header? **Not provided**
-4. Extract from URL path: `/api/v1/action/...` → `ACTION`
-5. actionOverride? **APPROVE**
-6. **Result:** `ACTION:APPROVE`
-
-## Frontend Integration
-
-### Sending Page-Code Header
-
-```javascript
-// Using Fetch API
-fetch('/api/v1/action/delete/123', {
-  method: 'DELETE',
-  headers: {
-    'Page-Code': 'WORKFLOW_ACTIONS',  // Custom page code
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + token
+  @Override
+  public void contribute(PermissionCatalog.Builder catalog) {
+    catalog.action(Actions.VIEW, "View", ActionType.PAGE);
+    // ...
+    catalog
+        .page(Pages.USERS)
+        .parent(Pages.ADMINISTRATION)
+        .name("Users")
+        .url("/administration/users")
+        .icon("fa-solid fa-users")
+        .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
   }
-});
-
-// Using Axios
-axios.delete('/api/v1/action/delete/123', {
-  headers: {
-    'Page-Code': 'WORKFLOW_ACTIONS'
-  }
-});
-
-// Using Axios Interceptor (Global)
-axios.interceptors.request.use(config => {
-  // Auto-detect page from current route
-  const currentPage = getCurrentPageCode(); // Your logic here
-  config.headers['Page-Code'] = currentPage;
-  return config;
-});
-```
-
-### Dynamic Page Code Example
-
-```javascript
-// React Example
-import { useLocation } from 'react-router-dom';
-import axios from 'axios';
-
-const useApiClient = () => {
-  const location = useLocation();
-  
-  const getPageCode = () => {
-    // Map route to page code
-    const pageMap = {
-      '/dashboard': 'DASHBOARD',
-      '/users': 'USERS',
-      '/actions': 'ACTIONS',
-      '/reports': 'REPORTS'
-    };
-    
-    const basePath = '/' + location.pathname.split('/')[1];
-    return pageMap[basePath] || 'DEFAULT';
-  };
-
-  const apiClient = axios.create({
-    baseURL: '/api/v1',
-    headers: {
-      'Page-Code': getPageCode()
-    }
-  });
-
-  return apiClient;
-};
-
-// Usage
-const api = useApiClient();
-api.delete(`/action/delete/${id}`); // Automatically includes Page-Code
-```
-
-## Best Practices
-
-### 1. Choose the Right Approach
-
-**Use `autoDetect = true` when:**
-- Standard REST CRUD operations
-- Action matches HTTP method semantics
-- Page can be derived from URL or header
-
-**Use `actionOverride` when:**
-- Business action differs from HTTP method
-- Example: POST for approve/reject/publish operations
-
-**Use hardcoded `pageActions` when:**
-- Complex permission requirements
-- Multiple alternative permissions (OR logic)
-- Cross-page permissions needed
-- Sensitive operations requiring explicit control
-
-### 2. Naming Conventions
-
-**Page Codes:**
-- Use UPPER_SNAKE_CASE
-- Be descriptive but concise
-- Examples: `USERS`, `ACTIONS`, `FINANCIAL_REPORTS`, `USER_MANAGEMENT`
-
-**Action Codes:**
-- Use UPPER_SNAKE_CASE
-- Standard actions: `VIEW`, `CREATE`, `EDIT`, `DELETE`
-- Custom actions: `APPROVE`, `REJECT`, `PUBLISH`, `EXPORT`, `IMPORT`, `SCHEDULE`
-
-### 3. Documentation
-
-Always document non-standard permissions:
-
-```java
-/**
- * Approve an action.
- * 
- * Required Permission: ACTION:APPROVE
- * This is a supervisor-level action that requires explicit approval rights.
- * 
- * @param id Action ID to approve
- * @return Updated action
- */
-@PostMapping("/approve/{id}")
-@RequirePermission(autoDetect = true, actionOverride = "APPROVE")
-public ActionDto approve(@PathVariable UUID id) {
-    return actionService.approve(id);
 }
 ```
 
-### 4. Admin Bypass Configuration
+The catalog is validated as a whole (unique codes, existing parents and actions, no cycles); an
+invalid catalog stops the application.
 
-Configure admin bypass in `application.properties`:
+On every startup, after the roles are seeded, `PermissionCatalogSynchronizer` writes the catalog to
+the database:
+
+- Missing actions, pages and page actions are created. Existing rows are left as they are, so
+  names, icons or menu order changed by administrators are kept, and rows they soft deleted are not
+  brought back.
+- Every newly created page action is granted to `ROLE_ADMIN`, so administrators can use a new
+  feature right away. If an administrator later revokes such a grant, it stays revoked.
+
+## How a request is authorized
+
+The Spring Security filter chain only authenticates (`JwtAuthTokenFilter`). Authorization happens in
+`EndpointAuthorizationInterceptor`, a Spring MVC interceptor on `/api/**` that runs once the
+controller method is known but before the request body is read:
+
+1. It resolves the method's policy (`EndpointPolicyResolver`).
+2. `@PublicEndpoint` passes, `@AuthenticatedEndpoint` requires a valid token, and
+   `@RequirePermission` additionally asks `AccessControlService` whether the caller holds the
+   permission.
+
+Requests that match no endpoint get 404. Denials go through the global exception handler and use
+the standard envelope:
+
+- **401** `UNAUTHORIZED`: no valid token.
+- **403** `FORBIDDEN`: valid token, missing permission. The message is localized from the
+  `Accept-Language` header (`error.access.denied` in `i18n/messages*.properties`).
+
+For checks inside business logic, call `AccessControlService.checkPermission(page, action)`; it
+throws `AccessDeniedException`, which the global handler turns into the same 403 response.
+
+## Escalation guards
+
+Holding a permission must not let a user grant themselves more. These rules are enforced in the
+services, whichever endpoint is used:
+
+- Assigning roles requires `ROLES:ASSIGN`, also when roles are sent while creating or updating a
+  user. Re-sending the roles a user already has needs no extra permission.
+- Only administrators can assign `ROLE_ADMIN`.
+- Only administrators can change, enable/disable, delete or re-role administrator accounts (a user
+  manager could otherwise take an admin account over by changing its email).
+- Only administrators can change, delete or restore the built-in roles (`ROLE_ADMIN`, `ROLE_USER`).
+
+Granting permissions (`PERMISSIONS:*`) is inherently powerful: whoever holds it can grant any page
+action except the admin role. Give it to administrators only.
+
+## Tokens and sessions
+
+An access token is accepted only from the `Authorization: Bearer` header (never from a cookie: CSRF
+protection is off for the stateless API) and only while:
+
+- the user can still sign in (enabled, not locked, not expired, not deleted), and
+- the session the token was issued for is active.
+
+Disabling a user or logging out therefore takes effect on the next request instead of when the
+token expires. A refresh continues a session that only timed out; a session that was logged out
+(manually or by force) cannot be refreshed and the user has to sign in again.
+
+## Adding a new module
+
+1. Add page/action codes as constants of the module.
+2. Register a `PermissionCatalogContributor` that declares the module's pages (and any new actions).
+3. Annotate the module's controllers with `@RequirePermission(page = ...)`; mark read-only POSTs and
+   other non-standard actions explicitly.
+4. Start the application (or run the integration tests): the validator lists anything missing, and
+   the synchronizer creates the pages and grants them to `ROLE_ADMIN`.
+5. Grant the new page actions to other roles through the Permission API.
+
+## Frontend integration
+
+- Build the menu from `GET /api/v1/navigation`: it returns the pages the user may view, with the
+  other actions the user may perform on each page, so buttons can be shown or hidden.
+- A page the user may not view still appears when one of its children is accessible, as a heading
+  with `access: false` and no actions: render it without a link. Grouping pages
+  (`navigable: false`) therefore need no permission of their own; they are listed when they contain
+  an accessible page and left out when they are empty. Granting `USERS:VIEW` alone is enough for
+  "Administration > Users" to appear.
+- No `Page-Code` or `Page-Url` header is needed; they are ignored.
+- Send `Accept-Language` (`en`, `tr`) to get localized error messages.
+
+## Configuration
 
 ```properties
-# Enable/disable admin bypass for permission checks
-security.permission.admin-bypass-enabled=true
-```
-
-When enabled, users with `ROLE_ADMIN` automatically bypass all permission checks.
-
-### 5. Logging and Debugging
-
-The system logs detailed permission check information:
-
-```
-DEBUG - Checking permission for user abc123 on DELETE /api/v1/action/delete/123 (Page-Code header: ACTIONS)
-DEBUG - RequirePermission pageActions: [], autoDetect: true
-INFO  - Auto-detected page:action: ACTIONS:DELETE
-DEBUG - Checking if user has any of page:action combinations: ACTIONS:DELETE
-DEBUG - User abc123 granted access via page:action permission
-```
-
-Enable debug logging:
-
-```properties
-logging.level.com.kavun.annotation.impl.PermissionAspect=DEBUG
-```
-
-### 6. Error Handling
-
-Provide meaningful error messages:
-
-```java
-@RequirePermission(
-    pageActions = { "FINANCIAL_REPORTS:EXPORT" },
-    message = "Only authorized financial staff can export this data. Contact your manager for access."
-)
-```
-
-### 7. Testing Permissions
-
-```java
-@Test
-@WithMockUser(username = "testuser", authorities = {"ROLE_USER"})
-void testDeleteWithoutPermission() {
-    // Should throw AccessDeniedException
-    assertThrows(AccessDeniedException.class, () -> {
-        actionRestApi.delete(actionId);
-    });
-}
-
-@Test
-@WithMockUser(username = "admin", authorities = {"ROLE_ADMIN"})
-void testDeleteAsAdmin() {
-    // Should succeed (admin bypass)
-    assertDoesNotThrow(() -> {
-        actionRestApi.delete(actionId);
-    });
-}
-
-@Test
-@WithMockUser(username = "testuser", authorities = {"ROLE_USER"})
-void testDeleteWithPermission() {
-    // Mock user having ACTIONS:DELETE permission
-    when(permissionCheckService.hasPermissionByUserId(any(), any()))
-        .thenReturn(true);
-    
-    assertDoesNotThrow(() -> {
-        actionRestApi.delete(actionId);
-    });
-}
-```
-
-## Common Patterns
-
-### Pattern 1: Standard CRUD Controller
-
-```java
-@RestController
-@RequestMapping("/api/v1/product")
-@RequiredArgsConstructor
-public class ProductRestApi {
-
-    private final ProductService productService;
-
-    @GetMapping("/{id}")
-    @RequirePermission(autoDetect = true)  // PRODUCT:VIEW
-    public ProductDto getById(@PathVariable UUID id) {
-        return productService.get(id);
-    }
-
-    @GetMapping("/paging")
-    @RequirePermission(autoDetect = true)  // PRODUCT:VIEW
-    public Page<ProductDto> paging(Pageable pageable) {
-        return productService.paging(pageable);
-    }
-
-    @PostMapping("/create")
-    @RequirePermission(autoDetect = true)  // PRODUCT:CREATE
-    public ProductDto create(@RequestBody ProductRequest request) {
-        return productService.save(request);
-    }
-
-    @PutMapping("/update/{id}")
-    @RequirePermission(autoDetect = true)  // PRODUCT:EDIT
-    public ProductDto update(@PathVariable UUID id, @RequestBody ProductRequest request) {
-        return productService.update(id, request);
-    }
-
-    @DeleteMapping("/delete/{id}")
-    @RequirePermission(autoDetect = true)  // PRODUCT:DELETE
-    public void delete(@PathVariable UUID id) {
-        productService.delete(id);
-    }
-}
-```
-
-### Pattern 2: Workflow Controller
-
-```java
-@RestController
-@RequestMapping("/api/v1/workflow")
-@RequiredArgsConstructor
-public class WorkflowRestApi {
-
-    private final WorkflowService workflowService;
-
-    @GetMapping("/{id}")
-    @RequirePermission(autoDetect = true)  // WORKFLOW:VIEW
-    public WorkflowDto getById(@PathVariable UUID id) {
-        return workflowService.get(id);
-    }
-
-    @PostMapping("/submit/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "SUBMIT")  // WORKFLOW:SUBMIT
-    public WorkflowDto submit(@PathVariable UUID id) {
-        return workflowService.submit(id);
-    }
-
-    @PostMapping("/approve/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "APPROVE")  // WORKFLOW:APPROVE
-    public WorkflowDto approve(@PathVariable UUID id) {
-        return workflowService.approve(id);
-    }
-
-    @PostMapping("/reject/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "REJECT")  // WORKFLOW:REJECT
-    public WorkflowDto reject(@PathVariable UUID id, @RequestBody RejectionReason reason) {
-        return workflowService.reject(id, reason);
-    }
-
-    @PostMapping("/cancel/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "CANCEL")  // WORKFLOW:CANCEL
-    public WorkflowDto cancel(@PathVariable UUID id) {
-        return workflowService.cancel(id);
-    }
-}
-```
-
-### Pattern 3: Mixed Permission Controller
-
-```java
-@RestController
-@RequestMapping("/api/v1/report")
-@RequiredArgsConstructor
-public class ReportRestApi {
-
-    private final ReportService reportService;
-
-    // Standard operations use auto-detect
-    @GetMapping("/{id}")
-    @RequirePermission(autoDetect = true)
-    public ReportDto getById(@PathVariable UUID id) {
-        return reportService.get(id);
-    }
-
-    // Special operations use actionOverride
-    @GetMapping("/export/{id}")
-    @RequirePermission(autoDetect = true, actionOverride = "EXPORT")
-    public ResponseEntity<byte[]> export(@PathVariable UUID id) {
-        return reportService.export(id);
-    }
-
-    // Sensitive operations use hardcoded permissions with OR logic
-    @PostMapping("/financial-audit")
-    @RequirePermission(
-        pageActions = { "FINANCIAL_REPORTS:AUDIT", "COMPLIANCE:AUDIT", "CFO:VIEW" },
-        message = "Financial audit access requires special authorization"
-    )
-    public AuditReportDto financialAudit(@RequestBody AuditRequest request) {
-        return reportService.performFinancialAudit(request);
-    }
-}
+# ROLE_ADMIN passes every permission check without explicit grants.
+# On in development, off in production (administrators rely on the catalog grants there).
+security.permission.admin-bypass-enabled=false
 ```
 
 ## Troubleshooting
 
-### Permission Denied Unexpectedly
+**The application does not start and lists endpoints.** Each line names the endpoint and the
+problem: add the missing annotation, set the action for non-standard HTTP methods, or declare the
+page/action in a catalog contributor.
 
-1. **Check debug logs** to see what permission was checked
-2. **Verify user has the required permission** in database
-3. **Check admin bypass setting** if user is admin
-4. **Verify Page-Code header** if using frontend header
-5. **Check URL path structure** for auto-detection
+**A user gets 403 unexpectedly.** Check that the page action exists and is not soft deleted, that
+the user's role has a non-expired grant for it, and that there is no user-level or role-level deny.
 
-### Auto-Detection Not Working
-
-1. **Verify `autoDetect = true`** in annotation
-2. **Ensure `pageActions` is empty** (not specified)
-3. **Check URL follows pattern** `/api/v1/{resource}/...`
-4. **Review logs** for detection errors
-
-### Wrong Permission Being Checked
-
-1. **Check `actionOverride`** if action doesn't match HTTP method
-2. **Verify Page-Code header** value
-3. **Review URL path** for correct resource name
-4. **Check method mapping** annotation (GET, POST, etc.)
-
-## Migration Guide
-
-### From Hardcoded to Auto-Detect
-
-**Before:**
-```java
-@RequirePermission(pageActions = { "ACTIONS:VIEW" })
-@GetMapping("/{id}")
-public ActionDto getById(@PathVariable UUID id) { ... }
-```
-
-**After:**
-```java
-@RequirePermission(autoDetect = true)
-@GetMapping("/{id}")
-public ActionDto getById(@PathVariable UUID id) { ... }
-```
-
-**Steps:**
-1. Replace `pageActions` with `autoDetect = true`
-2. Test endpoints to verify correct permission detection
-3. Add `actionOverride` if action doesn't match HTTP method
-4. Update frontend to send `Page-Code` header if needed
-
-## Related Documentation
-
-- [Authentication](AUTHENTICATION.md) - User authentication setup
-- [Security](SECURITY.md) - Overall security configuration
-- [API Response Standards](API_RESPONSE_STANDARDS.md) - API conventions
-- [Tests](TESTS.md) - Testing guidelines
-
-## Version History
-
-- **v1.1** - Added `autoDetect` and `actionOverride` parameters for flexible permission management
-- **v1.0** - Initial implementation with hardcoded `pageActions`
+**An administrator gets 403 in production.** The grant of that page action to `ROLE_ADMIN` was
+revoked or the page action was created manually (only page actions created by the synchronizer are
+granted automatically). Grant it through the Permission API.

@@ -22,7 +22,7 @@ class UserRestApiIntegrationTest extends IntegrationTestUtils {
   @BeforeAll
   void beforeAll() {
     var admin = createAndAssertAdmin(UserUtils.createUserDto(true));
-    adminBearerToken = bearerTokenFor(admin.getUsername());
+    adminBearerToken = bearerTokenFor(admin);
   }
 
   @Test

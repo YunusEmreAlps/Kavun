@@ -2,6 +2,7 @@ package com.kavun.web.rest.v1;
 
 import com.kavun.IntegrationTestUtils;
 import com.kavun.TestUtils;
+import com.kavun.backend.persistent.repository.UserSessionRepository;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.enums.TokenType;
 import com.kavun.shared.dto.UserDto;
@@ -11,15 +12,19 @@ import com.kavun.shared.util.core.JwtUtils.JwtTokenType;
 import com.kavun.web.payload.request.LoginRequest;
 import com.jayway.jsonpath.JsonPath;
 import java.time.Duration;
+import java.util.Date;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -36,6 +41,8 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
   private transient String refreshUri;
   private transient String loginRequestJson;
   private transient UserDto storedUser;
+
+  @Autowired private transient UserSessionRepository userSessionRepository;
 
   @BeforeAll
   void beforeAll() {
@@ -96,14 +103,11 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
    */
   @Test
   void validRefreshTokenReturnsNewAccessToken() throws Exception {
-    var jwtToken = jwtService.generateJwtToken(storedUser.getUsername());
-    var encryptedJwtToken = encryptionService.encrypt(jwtToken);
-    var cookie = cookieService.createTokenCookie(encryptedJwtToken, TokenType.REFRESH);
+    var session = userSessionService.createSession(storedUser.getId(), new MockHttpServletRequest());
+    var jwtToken = refreshTokenFor(session.getId());
 
     MvcResult mvcResult =
-        performRequest(
-                MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie)),
-                StringUtils.EMPTY)
+        performRequest(refreshRequest(jwtToken), StringUtils.EMPTY)
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andReturn();
 
@@ -111,6 +115,45 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
 
     Assertions.assertTrue(jwtService.isValidJwtToken(originalAccessToken));
     Assertions.assertNotEquals(jwtToken, originalAccessToken);
+  }
+
+  @Test
+  void refreshTokenOfTimedOutSessionResumesIt() throws Exception {
+    var session = userSessionService.createSession(storedUser.getId(), new MockHttpServletRequest());
+    session.expire();
+    userSessionRepository.save(session);
+
+    performRequest(refreshRequest(refreshTokenFor(session.getId())), StringUtils.EMPTY)
+        .andExpect(MockMvcResultMatchers.status().isOk());
+    Assertions.assertTrue(userSessionService.isActive(session.getId(), storedUser.getId()));
+  }
+
+  @Test
+  void refreshTokenOfLoggedOutSessionIsRejected() throws Exception {
+    var session = userSessionService.createSession(storedUser.getId(), new MockHttpServletRequest());
+    userSessionService.logout(session.getId());
+
+    performRequest(refreshRequest(refreshTokenFor(session.getId())), StringUtils.EMPTY)
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+  }
+
+  @Test
+  void refreshTokenWithoutSessionIsRejected() throws Exception {
+    var jwtToken = jwtService.generateJwtToken(storedUser.getUsername());
+
+    performRequest(refreshRequest(jwtToken), StringUtils.EMPTY)
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+  }
+
+  private String refreshTokenFor(Long sessionId) {
+    var expiration = DateUtils.addDays(new Date(), SecurityConstants.DEFAULT_TOKEN_DURATION);
+    return jwtService.generateJwtToken(storedUser.getUsername(), expiration, sessionId.toString());
+  }
+
+  private MockHttpServletRequestBuilder refreshRequest(String jwtToken) {
+    var cookie =
+        cookieService.createTokenCookie(encryptionService.encrypt(jwtToken), TokenType.REFRESH);
+    return MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie));
   }
 
   @Test
@@ -141,7 +184,7 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
   void logoutClearsRefreshCookie() throws Exception {
     performRequest(
             MockMvcRequestBuilders.delete(logoutUri)
-                .header(HttpHeaders.AUTHORIZATION, bearerTokenFor(storedUser.getUsername())),
+                .header(HttpHeaders.AUTHORIZATION, bearerTokenFor(storedUser)),
             StringUtils.EMPTY)
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.cookie().exists(TokenType.REFRESH.getName()))

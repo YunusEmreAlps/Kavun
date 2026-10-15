@@ -10,9 +10,11 @@ import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.RoleSpecification;
 import com.kavun.backend.service.AbstractService;
+import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.shared.dto.RoleDto;
 import com.kavun.shared.dto.mapper.RoleMapper;
 import com.kavun.shared.request.RoleRequest;
+import com.kavun.shared.util.UserUtils;
 import com.kavun.web.payload.response.UserRoleResponse;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -38,12 +40,35 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
 
   private final UserRepository userRepository;
   private final UserRoleRepository userRoleRepository;
+  private final AccessControlService accessControlService;
 
   public RoleService(RoleMapper mapper, RoleRepository repository, RoleSpecification specification,
-      UserRepository userRepository, UserRoleRepository userRoleRepository) {
+      UserRepository userRepository, UserRoleRepository userRoleRepository,
+      AccessControlService accessControlService) {
     super(mapper, repository, specification);
     this.userRepository = userRepository;
     this.userRoleRepository = userRoleRepository;
+    this.accessControlService = accessControlService;
+  }
+
+  // Built-in roles are checked before the request is applied, while the entity still has its
+  // original name.
+  @Override
+  public RoleDto update(Long id, RoleRequest request) {
+    accessControlService.checkCanModifyRole(getEntityById(id));
+    return super.update(id, request);
+  }
+
+  @Override
+  public void delete(Long id) {
+    accessControlService.checkCanModifyRole(getEntityById(id));
+    super.delete(id);
+  }
+
+  @Override
+  public RoleDto restore(Long id) {
+    accessControlService.checkCanModifyRole(getEntityById(id));
+    return super.restore(id);
   }
 
   public Specification<Role> search(Map<String, Object> parameterMap) {
@@ -80,12 +105,19 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     return mapper.toUserRoleResponseList(repository.getUsersByRoleId(roleId));
   }
 
+  // Only administrators may change administrator accounts.
+  private void checkCanManage(User user) {
+    accessControlService.checkCanManageUserWithRoles(UserUtils.getRoles(user.getUserRoles()));
+  }
+
   public void assignRoleToUser(final Long roleId, final Long userId) {
     Role role = repository.findById(roleId)
         .orElseThrow(() -> new EntityNotFoundException("Role not found with id: " + roleId));
 
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+    accessControlService.checkCanAssign(role);
+    checkCanManage(user);
 
     // Active check via @SQLRestriction-filtered collection
     boolean alreadyActive = user.getUserRoles().stream()
@@ -122,6 +154,8 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
     if (users.size() != userIds.size()) {
       throw new EntityNotFoundException("Some users not found");
     }
+    accessControlService.checkCanAssign(role);
+    users.forEach(this::checkCanManage);
 
     // Get user IDs that already have this role (active only via @SQLRestriction)
     Set<Long> existingUserIds = users.stream()

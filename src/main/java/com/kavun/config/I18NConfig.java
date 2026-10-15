@@ -9,10 +9,8 @@ import org.springframework.context.support.ReloadableResourceBundleMessageSource
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.servlet.LocaleResolver;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.i18n.CookieLocaleResolver;
-import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
+import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
 /**
  * Defines the Internationalization configuration.
@@ -27,7 +25,9 @@ public class I18NConfig implements WebMvcConfigurer {
   /** The number of seconds for the message source to reload. */
   private static final int CACHE_MILLIS = 1800;
 
-  private static final String LOCALE = "locale";
+  /** Languages with a message bundle; extend together with the bundles under i18n/. */
+  private static final List<Locale> SUPPORTED_LOCALES =
+      List.of(Locale.ENGLISH, Locale.forLanguageTag("tr"));
   private static final String MESSAGES_LOCATION = "classpath:i18n/messages";
 
   /**
@@ -48,42 +48,18 @@ public class I18NConfig implements WebMvcConfigurer {
   }
 
   /**
-   * Setup localeResolver. The LocaleResolver interface has implementations that determine the
-   * current locale based on the session, cookies, the Accept-Language header, or a fixed value.
+   * Resolves the locale from the Accept-Language header, the standard for an API consumed by
+   * separate frontends. Unsupported languages fall back to English.
    *
-   * @return localResolver.
+   * @return localeResolver.
    */
   @Bean
   public LocaleResolver localeResolver() {
-    CookieLocaleResolver localeResolver = new CookieLocaleResolver();
-    localeResolver.setDefaultLocale(Locale.US);
+    AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
+    localeResolver.setSupportedLocales(SUPPORTED_LOCALES);
+    localeResolver.setDefaultLocale(Locale.ENGLISH);
 
     return localeResolver;
-  }
-
-  /**
-   * Setup localChangeInterceptor. The LocalChangeInterceptor bean that will switch to a new locale
-   * based on the value of the lang parameter appended to a request:
-   *
-   * @return localChangeInterceptor.
-   */
-  @Bean
-  public LocaleChangeInterceptor localeChangeInterceptor() {
-    LocaleChangeInterceptor localeChangeInterceptor = new LocaleChangeInterceptor();
-    localeChangeInterceptor.setParamName(LOCALE);
-
-    return localeChangeInterceptor;
-  }
-
-  /**
-   * Add localChangeInterceptor to registry interceptors. The LocalChangeInterceptor needs to be
-   * added to the application’s interceptor registry.
-   *
-   * @param registry addInterceptors.
-   */
-  @Override
-  public void addInterceptors(final InterceptorRegistry registry) {
-    registry.addInterceptor(localeChangeInterceptor());
   }
 
   @Bean

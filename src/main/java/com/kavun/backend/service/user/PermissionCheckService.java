@@ -199,6 +199,34 @@ public class PermissionCheckService {
     }
 
     /**
+     * Check whether a user holds a permission identified by its page and action codes, using a
+     * single query. Applies the same priority rules as {@link #hasPermission(Long, Long)}.
+     *
+     * @param userId     the user ID
+     * @param pageCode   the page code
+     * @param actionCode the action code
+     * @return true if the user has the permission, false otherwise
+     */
+    @Transactional(readOnly = true)
+    public boolean hasPermission(Long userId, String pageCode, String actionCode) {
+        if (userId == null || pageCode == null || actionCode == null) {
+            return false;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<PermissionGrantDto> userGrants = new ArrayList<>();
+        List<PermissionGrantDto> roleGrants = new ArrayList<>();
+        for (PermissionGrantDto grant
+                : permissionRepository.findPermissionGrantsByUserIdAndPageAction(userId, pageCode, actionCode)) {
+            if (!grant.isExpired(now)) {
+                (grant.entityType() == EntityType.USER ? userGrants : roleGrants).add(grant);
+            }
+        }
+
+        return decide(userGrants).or(() -> decide(roleGrants)).orElse(false);
+    }
+
+    /**
      * Decide a single permission level from its non-expired grants.
      *
      * @param grants the non-expired grants of one level for one page action

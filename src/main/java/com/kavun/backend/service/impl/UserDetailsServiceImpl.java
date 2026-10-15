@@ -52,8 +52,8 @@ class UserDetailsServiceImpl implements UserDetailsService {
 
     var storedUser =
         UserUtils.isEmail(usernameOrEmail)
-            ? userRepository.findByEmail(usernameOrEmail)
-            : userRepository.findByUsername(usernameOrEmail);
+            ? userRepository.findByEmailAndDeletedFalse(usernameOrEmail)
+            : userRepository.findByUsernameAndDeletedFalse(usernameOrEmail);
 
     if (Objects.isNull(storedUser)) {
       LOG.warn("No record found for storedUser with usernameOrEmail {}", usernameOrEmail);

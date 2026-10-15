@@ -5,13 +5,11 @@ import static org.springframework.security.config.Customizer.withDefaults;
 import com.kavun.annotation.LoggingFilter;
 import com.kavun.config.security.jwt.JwtAuthTokenFilter;
 import com.kavun.config.security.jwt.JwtAuthenticationEntryPoint;
-import com.kavun.constant.AdminConstants;
 import com.kavun.constant.SecurityConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -58,22 +56,10 @@ public class ApiWebSecurityConfig {
         .sessionManagement(
             (sessionManagement) ->
                 sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(
-            requests -> {
-              // Allow public access to POST /api/v1/users: Used to register new users
-              requests
-                  .requestMatchers(SecurityConstants.ERROR_URL_MAPPING)
-                  .permitAll()
-                  .requestMatchers(
-                          AdminConstants.API_V1_USERS_ROOT_URL, HttpMethod.POST.name())
-                  .permitAll();
-
-              // Allow access for users to authenticate after registration and refresh tokens
-              requests
-                  .requestMatchers(SecurityConstants.API_V1_AUTH_URL_MAPPING)
-                  .permitAll();
-              requests.anyRequest().authenticated();
-            })
+        // The filter chain only authenticates. Every API endpoint declares its own access through
+        // @PublicEndpoint, @AuthenticatedEndpoint or @RequirePermission, enforced per request by
+        // EndpointAuthorizationInterceptor; there is no path-based allow list.
+        .authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
         .cors(withDefaults())
 
         // If your application is attaching the credentials via an Authorization header,

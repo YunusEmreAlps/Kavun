@@ -8,7 +8,6 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Repository;
  * @since 1.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface PermissionRepository extends BaseRepository<Permission> {
 
     @Query("SELECT p FROM Permission p WHERE p.pageAction.id = :pageActionId " +
@@ -42,6 +40,16 @@ public interface PermissionRepository extends BaseRepository<Permission> {
            "(p.entityType = 'ROLE' AND p.entityId IN " +
            "(SELECT ur.role.id FROM UserRole ur WHERE ur.user.id = :userId AND ur.deleted = false)))")
     List<PermissionGrantDto> findPermissionGrantsByUserId(Long userId);
+
+    @Query("SELECT new com.kavun.shared.dto.PermissionGrantDto(p.pageAction.id, p.entityType, p.granted, p.expiresAt) " +
+           "FROM Permission p WHERE p.deleted = false " +
+           "AND p.pageAction.deleted = false AND p.pageAction.page.deleted = false AND p.pageAction.action.deleted = false " +
+           "AND p.pageAction.page.code = :pageCode AND p.pageAction.action.code = :actionCode AND (" +
+           "(p.entityType = 'USER' AND p.entityId = :userId) OR " +
+           "(p.entityType = 'ROLE' AND p.entityId IN " +
+           "(SELECT ur.role.id FROM UserRole ur WHERE ur.user.id = :userId AND ur.deleted = false)))")
+    List<PermissionGrantDto> findPermissionGrantsByUserIdAndPageAction(
+        Long userId, String pageCode, String actionCode);
 
     @Modifying
     @Query("UPDATE Permission p SET p.granted = false WHERE p.expiresAt IS NOT NULL " +

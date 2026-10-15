@@ -27,6 +27,11 @@ public class NavigationItemResponse {
     private String url;
     private String icon;
     private int level;
+
+    /**
+     * Whether the user may open the page. False for a heading listed only because one of its
+     * children is accessible; render it without a link.
+     */
     private boolean access;
     private boolean navigable;
     private boolean showInMenu;

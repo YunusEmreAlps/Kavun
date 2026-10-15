@@ -7,7 +7,6 @@ import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -20,7 +19,6 @@ import java.time.LocalDateTime;
  * @since 1.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface CaptchaRepository extends DataTablesRepository<Captcha, Long> {
     // Find captcha by captchaId and code that is not used and not expired
     @Query("SELECT c FROM Captcha c WHERE c.captchaId = :captchaId AND c.code = :code AND c.used = false AND c.usedAt IS NULL AND c.expiresAt > :now")

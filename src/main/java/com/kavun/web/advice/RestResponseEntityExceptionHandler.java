@@ -1,6 +1,7 @@
 package com.kavun.web.advice;
 
 import com.kavun.constant.base.BaseConstants;
+import com.kavun.constant.ErrorConstants;
 import com.kavun.exception.EncryptionException;
 import com.kavun.exception.InvalidFileFormatException;
 import com.kavun.exception.InvalidServiceRequestException;
@@ -23,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessException;
@@ -196,7 +198,9 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         String path = request.getRequestURI();
         LOG.error("{} at {}: {}", ex.getClass().getSimpleName(), path, ex.getMessage(), ex);
 
-        ApiResponse<Object> response = ApiResponse.error(ResponseCode.INTERNAL_ERROR, ex.getMessage(), path);
+        // Internal details stay in the log; the client only learns that the server failed.
+        ApiResponse<Object> response = ApiResponse.error(
+                ResponseCode.INTERNAL_ERROR, ResponseCode.INTERNAL_ERROR.getMessage(), path);
         return response.toResponseEntity();
     }
 
@@ -423,7 +427,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
             HttpServletRequest request) {
 
         String path = request.getRequestURI();
-        LOG.warn("Authentication failed at {}", path, ex);
+        LOG.warn("Authentication failed at {}: {}", path, ex.getMessage());
 
         ApiResponse<Object> response = ApiResponse.error(
                 ResponseCode.UNAUTHORIZED,
@@ -475,10 +479,11 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         String path = request.getRequestURI();
         LOG.warn("Access denied at {}: {}", path, ex.getMessage());
 
-        ApiResponse<Object> response = ApiResponse.error(
-                ResponseCode.FORBIDDEN,
-                BaseConstants.INSUFFICIENT_PERMISSIONS,
-                path);
+        String message = getMessageSource() == null
+                ? BaseConstants.INSUFFICIENT_PERMISSIONS
+                : getMessageSource().getMessage(ErrorConstants.ACCESS_DENIED_MESSAGE_KEY, null,
+                        BaseConstants.INSUFFICIENT_PERMISSIONS, LocaleContextHolder.getLocale());
+        ApiResponse<Object> response = ApiResponse.error(ResponseCode.FORBIDDEN, message, path);
         return response.toResponseEntity();
     }
 

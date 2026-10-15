@@ -1,7 +1,10 @@
 package com.kavun.web.rest.v1;
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.service.user.RoleService;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.shared.dto.RoleDto;
 import com.kavun.shared.request.RoleRequest;
 import com.kavun.web.payload.response.UserRoleResponse;
@@ -30,6 +33,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/role")
 @RequiredArgsConstructor
 @Tag(name = "03. Role Management", description = "APIs for managing roles")
+@RequirePermission(page = Pages.ROLES)
 public class RoleRestApi {
 
     private final RoleService roleService;
@@ -172,6 +176,7 @@ public class RoleRestApi {
      * @return restored role DTO
      */
     @Loggable
+    @RequirePermission(action = Actions.DELETE)
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore role", description = "Restore a soft-deleted role")
     @ApiResponses(value = {
@@ -232,6 +237,7 @@ public class RoleRestApi {
      * @return page of matching roles
      */
     @Loggable
+    @RequirePermission(action = Actions.VIEW)
     @PostMapping("/search")
     @Operation(summary = "Search roles", description = "Search roles with dynamic criteria")
     public ResponseEntity<Page<RoleDto>> search(
@@ -250,7 +256,6 @@ public class RoleRestApi {
      * @return list of user IDs assigned to the role
      */
     @Loggable
-    // @RequirePermission(pageActions = { "ROLES:VIEW" })
     @GetMapping(value = "/{id}/users", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<UserRoleResponse> getUsersByRoleId(@PathVariable Long id) {
         List<UserRoleResponse> users = roleService.getUsersByRoleId(id);
@@ -261,7 +266,7 @@ public class RoleRestApi {
      * Assign role to multiple users
      */
     @Loggable
-    // @RequirePermission(pageActions = { "ROLES:EDIT" })
+    @RequirePermission(action = Actions.ASSIGN)
     @PostMapping(value = "/{roleId}/assign-users", produces = MediaType.APPLICATION_JSON_VALUE)
     public void assignRoleToMultipleUsers(@PathVariable Long roleId,
             @RequestBody List<Long> userIds) {
@@ -272,7 +277,7 @@ public class RoleRestApi {
      * Assing multiple roles to user
      */
     @Loggable
-    // @RequirePermission(pageActions = { "ROLES:EDIT" })
+    @RequirePermission(action = Actions.ASSIGN)
     @PostMapping(value = "/assign-roles/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public void assignMultipleRolesToUser(@PathVariable Long userId,
             @RequestBody List<Long> roleIds) {

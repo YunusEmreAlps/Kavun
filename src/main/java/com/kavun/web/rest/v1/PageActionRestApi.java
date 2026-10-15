@@ -1,8 +1,11 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.PageAction;
 import com.kavun.backend.service.user.PageActionService;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.shared.dto.PageActionDto;
 import com.kavun.shared.request.PageActionRequest;
 
@@ -29,6 +32,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/page-action")
 @RequiredArgsConstructor
 @Tag(name = "06. Page Action Management", description = "APIs for managing page actions")
+@RequirePermission(page = Pages.PAGE_ACTIONS)
 public class PageActionRestApi {
 
     private final PageActionService pageActionService;
@@ -172,6 +176,7 @@ public class PageActionRestApi {
      * @return restored page DTO
      */
     @Loggable
+    @RequirePermission(action = Actions.DELETE)
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore page action", description = "Restore a soft-deleted page action")
     @ApiResponses(value = {
@@ -232,6 +237,7 @@ public class PageActionRestApi {
      * @return page of matching page actions
      */
     @Loggable
+    @RequirePermission(action = Actions.VIEW)
     @PostMapping("/search")
     @Operation(summary = "Search page actions", description = "Search page actions with dynamic criteria")
     public ResponseEntity<Page<PageActionDto>> search(

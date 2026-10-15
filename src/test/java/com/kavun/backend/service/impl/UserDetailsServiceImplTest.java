@@ -30,8 +30,9 @@ class UserDetailsServiceImplTest extends TestUtils {
       var user =
           UserUtils.createUser(testInfo.getDisplayName(), FAKER.internet().password(), email);
 
-      Mockito.when(userRepository.findByUsername(testInfo.getDisplayName())).thenReturn(user);
-      Mockito.when(userRepository.findByEmail(user.getEmail())).thenReturn(user);
+      Mockito.when(userRepository.findByUsernameAndDeletedFalse(testInfo.getDisplayName()))
+          .thenReturn(user);
+      Mockito.when(userRepository.findByEmailAndDeletedFalse(user.getEmail())).thenReturn(user);
     }
   }
 

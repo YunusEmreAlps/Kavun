@@ -8,16 +8,12 @@ import lombok.NonNull;
 
 import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-import org.springframework.data.rest.core.annotation.RestResource;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@RepositoryRestResource(exported = false)
 public interface EmailRepository extends DataTablesRepository<Email, Long> {
 
     @Override
-    @RestResource(exported = false)
     Optional<Email> findById(@NonNull Long id);
 
     Email findByPublicId(String publicId);

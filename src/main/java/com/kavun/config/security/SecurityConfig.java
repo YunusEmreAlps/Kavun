@@ -7,8 +7,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * This class holds security configuration settings from this application.
@@ -22,16 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
-  /**
-   * Creates a PasswordEncoder bean for encoding passwords.
-   *
-   * @return PasswordEncoder
-   */
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
 
   /**
    * Exposes the AuthenticationManager bean for programmatic authentication.

@@ -1,5 +1,6 @@
 package com.kavun.web.rest.v1;
 
+import com.kavun.annotation.AuthenticatedEndpoint;
 import com.kavun.annotation.Loggable;
 import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.User;
@@ -9,6 +10,8 @@ import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.AdminConstants;
 import com.kavun.constant.ErrorConstants;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.exception.user.UserAlreadyExistsException;
@@ -18,6 +21,7 @@ import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.request.UpdatePasswordRequest;
+import com.kavun.web.payload.request.UserRoleRequest;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.UserResponse;
 import org.springframework.data.domain.Sort;
@@ -58,6 +62,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping(AdminConstants.API_V1_USERS_ROOT_URL)
 @Tag(name = "02. User Management", description = "APIs for managing users")
+@RequirePermission(page = Pages.USERS)
 public class UserRestApi {
 
   private final UserService userService;
@@ -74,6 +79,7 @@ public class UserRestApi {
    * @return page of matching users
    */
   @Loggable
+  @RequirePermission(action = Actions.VIEW)
   @PostMapping("/search")
   @Operation(summary = "Search users", description = "Search users with dynamic criteria")
   public ResponseEntity<Page<UserResponse>> search(
@@ -109,7 +115,6 @@ public class UserRestApi {
    * @return if the operation is success
    */
   @Loggable
-  @RequirePermission(autoDetect = true)
   @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> softDeleteUser(@PathVariable Long id) {
     userService.softDeleteUser(id);
@@ -125,7 +130,6 @@ public class UserRestApi {
    */
   @Loggable
   @PostMapping
-  @RequirePermission(autoDetect = true)
   public ApiResponse<?> createUser(@Valid @RequestBody UserRequest request) {
     // Password is required for creation
     if (request.getPassword() == null || request.getPassword().isBlank()) {
@@ -148,13 +152,19 @@ public class UserRestApi {
       throw new UserAlreadyExistsException(UserConstants.EXIST_EMAIL);
     }
 
+    // Fail before creating anything if the caller may not hand out the requested roles.
+    boolean hasRoles = request.getRoles() != null && !request.getRoles().isEmpty();
+    if (hasRoles) {
+      userService.checkCanAssignRoles(
+          request.getRoles().stream().map(UserRoleRequest::getRoleId).toList());
+    }
+
     var userDto = UserUtils.convertToUserDto(request);
 
     var verificationToken = jwtService.generateJwtToken(userDto.getUsername());
     userDto.setVerificationToken(verificationToken);
 
     // If roles are provided in request, skip default ROLE_USER assignment
-    boolean hasRoles = request.getRoles() != null && !request.getRoles().isEmpty();
     var savedUserDto = userService.createUser(userDto, hasRoles);
 
     // Tracks whether role assignment below succeeded, so the response never claims full success
@@ -198,7 +208,6 @@ public class UserRestApi {
    */
   @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-  @RequirePermission(autoDetect = true)
   public ApiResponse<?> updateUser(
       @PathVariable Long id,
       @Valid @RequestBody UserRequest request) {
@@ -210,6 +219,7 @@ public class UserRestApi {
 
   // Update the user password for the currently authenticated user.
   @Loggable
+  @AuthenticatedEndpoint
   @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<String> updatePassword(@Valid @RequestBody UpdatePasswordRequest request) {
 

@@ -11,8 +11,6 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.EntityGraph.EntityGraphType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-import org.springframework.data.rest.core.annotation.RestResource;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -23,12 +21,10 @@ import org.springframework.stereotype.Repository;
  * @since 1.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface UserRepository extends BaseRepository<User> {
 
     @NonNull
     @Override
-    @RestResource(exported = false)
     @EntityGraph(type = EntityGraphType.FETCH, attributePaths = { "userRoles", "userRoles.role" })
     Optional<User> findById(@NonNull Long id);
 
@@ -87,7 +83,6 @@ public interface UserRepository extends BaseRepository<User> {
      * @param email    email to check if user exists.
      * @return True if user exists or false otherwise.
      */
-    @RestResource(exported = false)
     Boolean existsByUsernameAndEnabledTrueOrEmailAndEnabledTrue(
             String username, String email);
 
@@ -113,7 +108,6 @@ public interface UserRepository extends BaseRepository<User> {
      * @param allowedDaysToVerify email verification allowed days.
      * @return List of users that failed to verify their email.
      */
-    @RestResource(exported = false)
     List<User> findByEnabledFalseAndCreatedAtBefore(LocalDateTime allowedDaysToVerify);
 
     /**

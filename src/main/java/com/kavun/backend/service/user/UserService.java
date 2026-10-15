@@ -11,7 +11,10 @@ import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
+import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.constant.CacheConstants;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserMapper;
@@ -28,6 +31,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -69,14 +73,17 @@ public class UserService
   private final RoleService roleService;
   private final PasswordEncoder passwordEncoder;
   private final UserRoleRepository userRoleRepository;
+  private final AccessControlService accessControlService;
 
   public UserService(UserMapper mapper, UserRepository repository, UserSpecification specification,
-      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository) {
+      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository,
+      AccessControlService accessControlService) {
     super(mapper, repository, specification);
     this.clock = clock;
     this.roleService = roleService;
     this.passwordEncoder = passwordEncoder;
     this.userRoleRepository = userRoleRepository;
+    this.accessControlService = accessControlService;
   }
 
   public Specification<User> search(Map<String, Object> parameterMap) {
@@ -268,6 +275,7 @@ public class UserService
     // Fetch user
     User existingUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(existingUser);
 
     // Validate uniqueness only if changed
     if (!existingUser.getUsername().equals(request.getUsername())) {
@@ -317,6 +325,7 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(storedUser);
 
     LOG.debug("Enabling user {}", storedUser.getUsername());
     storedUser.setEnabled(true);
@@ -335,6 +344,7 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(storedUser);
 
     LOG.debug("Disabling user {}", storedUser.getUsername());
     storedUser.setEnabled(false);
@@ -353,6 +363,7 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(storedUser);
 
     var authenticatedUser = SecurityUtils.getAuthenticatedUserDetails();
     storedUser.setDeleted(true);
@@ -493,6 +504,18 @@ public class UserService
         throw new EntityNotFoundException("Role not found with id: " + roleId);
       }
     }
+    checkCanManage(user);
+
+    // Re-sending the roles a user already has (e.g. a full update) needs no assign permission.
+    Set<Long> currentRoleIds = user.getUserRoles().stream()
+        .map(ur -> ur.getRole().getId())
+        .collect(Collectors.toSet());
+    if (!currentRoleIds.equals(requestedRoleIds)) {
+      checkCanAssign(requestedRoleIds.stream()
+          .filter(roleId -> !currentRoleIds.contains(roleId))
+          .map(rolesById::get)
+          .toList());
+    }
 
     // Soft-delete active roles not in the request (orphanRemoval=true + @SQLDelete)
     user.getUserRoles().removeIf(ur -> !requestedRoleIds.contains(ur.getRole().getId()));
@@ -527,6 +550,28 @@ public class UserService
 
     repository.save(user);
     LOG.info("Updated roles for user {} - requested: {}", userId, requestedRoleIds.size());
+  }
+
+  /**
+   * Requires the current caller to be allowed to hand out the given roles: the ROLES:ASSIGN
+   * permission, and administrator rights for the admin role.
+   *
+   * @param roleIds the ids of the roles to be assigned
+   * @throws org.springframework.security.access.AccessDeniedException if the caller may not
+   */
+  @Transactional(readOnly = true)
+  public void checkCanAssignRoles(Collection<Long> roleIds) {
+    checkCanAssign(roleService.findAllByIds(Set.copyOf(roleIds)));
+  }
+
+  private void checkCanAssign(Collection<Role> roles) {
+    accessControlService.checkPermission(Pages.ROLES, Actions.ASSIGN);
+    roles.forEach(accessControlService::checkCanAssign);
+  }
+
+  // Only administrators may change administrator accounts.
+  private void checkCanManage(User user) {
+    accessControlService.checkCanManageUserWithRoles(UserUtils.getRoles(user.getUserRoles()));
   }
 
   // Generates a secure temporary password.

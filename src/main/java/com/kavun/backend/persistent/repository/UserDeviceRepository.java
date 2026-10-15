@@ -3,7 +3,6 @@ package com.kavun.backend.persistent.repository;
 import com.kavun.backend.persistent.domain.user.UserDevice;
 
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,7 +16,6 @@ import java.util.Optional;
  * @since 1.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface UserDeviceRepository extends BaseRepository<UserDevice> {
     /**
      * Finds a user device by its device ID.

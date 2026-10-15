@@ -23,6 +23,9 @@ public final class ErrorConstants {
   /** Null elements not allowed. */
   public static final String NULL_ELEMENTS_NOT_ALLOWED = "Null elements not allowed!";
 
+  /** Message bundle key of the response sent when a permission check fails. */
+  public static final String ACCESS_DENIED_MESSAGE_KEY = "error.access.denied";
+
   private ErrorConstants() {
     throw new AssertionError(NOT_INSTANTIABLE);
   }

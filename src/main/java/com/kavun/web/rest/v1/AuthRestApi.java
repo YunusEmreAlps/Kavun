@@ -1,33 +1,34 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
-import com.kavun.backend.service.user.OtpService;
-import com.kavun.backend.service.user.UserDeviceService;
-import com.kavun.backend.service.user.UserService;
-import com.kavun.backend.service.user.UserSessionService;
+import com.kavun.annotation.PublicEndpoint;
+import com.kavun.backend.persistent.domain.user.Captcha;
+import com.kavun.backend.persistent.domain.user.UserSession;
+import com.kavun.backend.persistent.repository.CaptchaRepository;
+import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.backend.service.mail.EmailService;
 import com.kavun.backend.service.security.CookieService;
 import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
+import com.kavun.backend.service.user.OtpService;
+import com.kavun.backend.service.user.UserDeviceService;
+import com.kavun.backend.service.user.UserService;
+import com.kavun.backend.service.user.UserSessionService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.ErrorConstants;
-import com.kavun.exception.EncryptionException;
-import com.kavun.exception.user.InvalidTokenException;
 import com.kavun.constant.LoggingConstants;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.enums.OtpDeliveryMethod;
 import com.kavun.enums.TokenType;
+import com.kavun.exception.EncryptionException;
+import com.kavun.exception.user.InvalidTokenException;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.CaptchaGenerator;
 import com.kavun.shared.util.CaptchaStore;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
-import com.kavun.backend.persistent.domain.user.Captcha;
-import com.kavun.backend.persistent.domain.user.UserSession;
-import com.kavun.backend.persistent.repository.CaptchaRepository;
-import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
 import com.kavun.web.payload.request.GenerateOtpRequest;
 import com.kavun.web.payload.request.LoginRequest;
@@ -35,6 +36,7 @@ import com.kavun.web.payload.request.OtpVerificationRequest;
 import com.kavun.web.payload.request.ResetPasswordRequest;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.AuthResponse;
+import com.kavun.web.payload.response.CaptchaResponse;
 import com.kavun.web.payload.response.LogoutResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,6 +51,7 @@ import java.util.concurrent.CompletableFuture;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -70,7 +73,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
-import com.kavun.web.payload.response.CaptchaResponse;
 
 /**
  * This class attempt to authenticate with AuthenticationManager bean, add an
@@ -87,6 +89,7 @@ import com.kavun.web.payload.response.CaptchaResponse;
 @RequiredArgsConstructor
 @RequestMapping(SecurityConstants.API_V1_AUTH_ROOT_URL)
 @Tag(name = "01. Authentication", description = "APIs for user authentication and authorization")
+@PublicEndpoint
 public class AuthRestApi {
 
   @Value("${access-token-expiration-in-minutes}")
@@ -437,17 +440,15 @@ public class AuthRestApi {
     var userDetails = userDetailsService.loadUserByUsername(username);
 
     SecurityUtils.validateUserDetailsStatus(userDetails);
-    SecurityUtils.authenticateUser(request, userDetails);
 
-    // Update session activity if session ID is present
-    if (sessionId != null && !sessionId.isBlank()) {
-      try {
-        userSessionService.updateActivity(Long.parseLong(sessionId));
-        LOG.debug("Updated activity for session: {}", sessionId);
-      } catch (Exception e) {
-        LOG.warn("Failed to update session activity: {}", e.getMessage());
-      }
+    // A refresh continues the session the token was issued for; once that session was logged out
+    // (manually or by force) the refresh token is dead and the user has to sign in again.
+    var userId = ((UserDetailsBuilder) userDetails).getId();
+    if (!NumberUtils.isDigits(sessionId)
+        || !userSessionService.resumeSession(Long.valueOf(sessionId), userId)) {
+      throw new InvalidTokenException(ErrorConstants.INVALID_TOKEN);
     }
+    SecurityUtils.authenticateUser(request, userDetails);
 
     var expiration = DateUtils.addMinutes(new Date(), accessTokenExpirationInMinutes);
     // Generate new access token with the same session ID

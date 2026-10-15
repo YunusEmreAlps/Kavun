@@ -5,6 +5,7 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
 import com.kavun.backend.persistent.specification.UserSpecification;
+import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserMapper;
@@ -37,6 +38,8 @@ class UserServiceTest {
 
   @Mock private transient PasswordEncoder passwordEncoder;
 
+  @Mock private transient AccessControlService accessControlService;
+
   private final transient Clock clock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
 
   private transient UserService userService;
@@ -54,7 +57,8 @@ class UserServiceTest {
             clock,
             roleService,
             passwordEncoder,
-            userRoleRepository);
+            userRoleRepository,
+            accessControlService);
     userDto = UserUtils.createUserDto(testInfo.getDisplayName());
     user = UserUtils.convertToUser(userDto);
   }

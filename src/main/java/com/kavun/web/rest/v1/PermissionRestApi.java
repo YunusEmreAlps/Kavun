@@ -1,8 +1,11 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.Permission;
 import com.kavun.backend.service.user.PermissionService;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.shared.dto.PermissionDto;
 import com.kavun.shared.request.PermissionRequest;
 
@@ -29,6 +32,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/permission")
 @RequiredArgsConstructor
 @Tag(name = "07. Permission Management", description = "APIs for managing permissions")
+@RequirePermission(page = Pages.PERMISSIONS)
 public class PermissionRestApi {
 
     private final PermissionService permissionService;
@@ -171,6 +175,7 @@ public class PermissionRestApi {
      * @return restored page DTO
      */
     @Loggable
+    @RequirePermission(action = Actions.DELETE)
     @PostMapping("/{id}/restore")
     @Operation(summary = "Restore permission", description = "Restore a soft-deleted permission")
     @ApiResponses(value = {
@@ -231,6 +236,7 @@ public class PermissionRestApi {
      * @return page of matching page actions
      */
     @Loggable
+    @RequirePermission(action = Actions.VIEW)
     @PostMapping("/search")
     @Operation(summary = "Search permissions", description = "Search permissions with dynamic criteria")
     public ResponseEntity<Page<PermissionDto>> search(

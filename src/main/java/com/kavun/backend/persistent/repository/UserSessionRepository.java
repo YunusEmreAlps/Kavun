@@ -4,7 +4,6 @@ import com.kavun.backend.persistent.domain.user.UserSession;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -20,7 +19,6 @@ import java.util.Optional;
  * @since 2.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface UserSessionRepository extends BaseRepository<UserSession> {
 
     // Find all active sessions for a specific user.
@@ -37,6 +35,9 @@ public interface UserSessionRepository extends BaseRepository<UserSession> {
     @Modifying
     @Query("UPDATE UserSession s SET s.isActive = false, s.logoutAt = :logoutAt, s.logoutType = 'TIMEOUT' WHERE s.isActive = true AND s.lastActivityAt < :cutoffTime")
     int expireInactiveSessions(@Param("cutoffTime") LocalDateTime cutoffTime, @Param("logoutAt") LocalDateTime logoutAt);
+
+    // Whether the session exists, belongs to the user and is still active.
+    boolean existsByIdAndUserIdAndIsActiveTrue(Long id, Long userId);
 
     // Count active sessions for a user.
     long countByUserIdAndIsActiveTrue(Long userId);

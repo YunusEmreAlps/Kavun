@@ -87,10 +87,16 @@ public class NavigationService {
   /**
    * Build a single navigation item with its children and actions.
    *
+   * <p>Children are built first, because a page is listed either when the user can open it (VIEW
+   * on a navigable page) or as a heading on the way to an accessible child. A heading the user has
+   * no VIEW permission for comes with {@code access=false} and no actions, so the frontend renders
+   * it without a link. A grouping page (not navigable) needs no permission of its own and is left
+   * out when none of its children is accessible.
+   *
    * @param page    the page to build navigation item for
    * @param context the preloaded pages, page actions and permissions
    * @param level   the current level in the hierarchy
-   * @return navigation item or null if no access
+   * @return navigation item or null if neither the page nor any of its children is accessible
    */
   private NavigationItemResponse buildNavigationItem(WebPage page, NavigationContext context, int level) {
     // Check if the page should be shown in the menu
@@ -100,18 +106,18 @@ public class NavigationService {
      * }
      */
 
-    List<PageAction> pageActions = context.actionsByPageId().getOrDefault(page.getId(), List.of());
-
-    // No VIEW permission, exclude the page and its subtree from navigation
-    if (!hasViewPermission(pageActions, context.permittedPageActionIds())) {
-      return null;
-    }
-
     List<NavigationItemResponse> childItems = context.childrenByParentId()
         .getOrDefault(page.getId(), List.of()).stream()
         .map(child -> buildNavigationItem(child, context, level + 1))
         .filter(Objects::nonNull)
         .toList();
+
+    List<PageAction> pageActions = context.actionsByPageId().getOrDefault(page.getId(), List.of());
+    boolean canView = hasViewPermission(pageActions, context.permittedPageActionIds());
+
+    if (!(canView && page.isNavigable()) && childItems.isEmpty()) {
+      return null;
+    }
 
     return NavigationItemResponse.builder()
         .id(page.getId())
@@ -120,10 +126,10 @@ public class NavigationService {
         .url(page.getUrl())
         .icon(page.getIcon())
         .level(level)
-        .access(true)
+        .access(canView)
         .navigable(page.isNavigable())
         .showInMenu(page.isShowInMenu())
-        .actions(buildPageActions(pageActions, context.permittedPageActionIds()))
+        .actions(canView ? buildPageActions(pageActions, context.permittedPageActionIds()) : List.of())
         .children(childItems)
         .build();
   }

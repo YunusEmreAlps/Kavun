@@ -39,14 +39,21 @@ public class CorePermissionCatalog implements PermissionCatalogContributor {
         .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE, Actions.ASSIGN);
     administrationPage(catalog, Pages.PERMISSIONS, "Permissions", "fa-solid fa-key")
         .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
+    // Pages and actions are shared by every tenant, so only the platform may change them.
     administrationPage(catalog, Pages.PAGES, "Pages", "fa-solid fa-sitemap")
+        .platformOnly()
         .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
     administrationPage(catalog, Pages.ACTIONS, "Actions", "fa-solid fa-bolt")
+        .platformOnly()
         .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
     administrationPage(catalog, Pages.PAGE_ACTIONS, "Page Actions", "fa-solid fa-link")
+        .platformOnly()
         .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
     administrationPage(catalog, Pages.USER_REPORTS, "User Reports", "fa-solid fa-chart-line")
         .actions(Actions.VIEW);
+    administrationPage(catalog, Pages.TENANTS, "Tenants", "fa-solid fa-building")
+        .platformOnly()
+        .actions(Actions.VIEW, Actions.CREATE, Actions.EDIT, Actions.DELETE);
   }
 
   private static PermissionCatalog.PageSpec administrationPage(

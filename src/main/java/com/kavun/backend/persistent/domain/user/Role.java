@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import com.kavun.enums.RoleType;
 
 import jakarta.persistence.*;
@@ -19,7 +19,7 @@ import lombok.ToString;
 
 @Entity
 @Table(uniqueConstraints = {
-    @UniqueConstraint(columnNames = "name")
+    @UniqueConstraint(columnNames = {"tenant_code", "name"})
 })
 @Getter
 @Setter
@@ -30,12 +30,12 @@ import lombok.ToString;
 @Cacheable
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @SQLDelete(sql = "UPDATE roles SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-public class Role extends BaseEntity<Long> implements Serializable {
+public class Role extends TenantScopedEntity implements Serializable {
 
   @Serial
   private static final long serialVersionUID = 1L;
 
-  @Column(nullable = false, length = 100, unique = true)
+  @Column(nullable = false, length = 100)
   private String name;
 
   @Column(length = 100)

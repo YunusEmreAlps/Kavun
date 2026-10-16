@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OtpDeliveryMethod;
@@ -40,7 +40,7 @@ import org.hibernate.envers.NotAudited;
 @Audited
 @Table(name = "users")
 @ToString(callSuper = true)
-public class User extends BaseEntity<Long> implements Serializable {
+public class User extends TenantScopedEntity implements Serializable {
   @Serial private static final long serialVersionUID = 7538542321562810251L;
 
   @Column(unique = true, nullable = false)

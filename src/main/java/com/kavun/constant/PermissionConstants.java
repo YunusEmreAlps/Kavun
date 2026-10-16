@@ -38,6 +38,7 @@ public final class PermissionConstants {
     public static final String PAGES = "PAGES";
     public static final String ACTIONS = "ACTIONS";
     public static final String PAGE_ACTIONS = "PAGE_ACTIONS";
+    public static final String TENANTS = "TENANTS";
 
     private Pages() {
       throw new AssertionError(ErrorConstants.NOT_INSTANTIABLE);

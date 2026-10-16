@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -163,12 +162,14 @@ public class UserService
   /**
    * Returns a user for the given id or null if a user could not be found.
    *
+   * <p>Not cached, like {@link #findByUsername}: Spring caches are not tenant-aware and would hand
+   * a user looked up for one tenant to another.
+   *
    * @param id The Long associated to the user to find
    * @return a user for the given id or null if a user could not be found.
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Transactional(readOnly = true)
-  @Cacheable(CacheConstants.USERS)
   public UserDto findById(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
@@ -184,7 +185,6 @@ public class UserService
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Transactional(readOnly = true)
-  @Cacheable(CacheConstants.USERS)
   public UserDto findByUsername(final String username) {
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
 

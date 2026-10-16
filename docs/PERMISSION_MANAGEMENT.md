@@ -132,8 +132,12 @@ the database:
 - Missing actions, pages and page actions are created. Existing rows are left as they are, so
   names, icons or menu order changed by administrators are kept, and rows they soft deleted are not
   brought back.
-- Every newly created page action is granted to `ROLE_ADMIN`, so administrators can use a new
-  feature right away. If an administrator later revokes such a grant, it stays revoked.
+- Every newly created page action is granted to the `ROLE_ADMIN` of every tenant, so
+  administrators can use a new feature right away. If an administrator later revokes such a grant,
+  it stays revoked. A newly provisioned tenant gets all current page actions for its `ROLE_ADMIN`.
+- Pages marked `.platformOnly()` (tenant management, the shared catalog pages) are granted to the
+  platform tenant's `ROLE_ADMIN` only and refused to every other tenant; see
+  `docs/MULTI_TENANCY.md`.
 
 ## How a request is authorized
 

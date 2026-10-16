@@ -24,6 +24,7 @@ import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.request.RoleRequest;
 import com.kavun.shared.util.UserUtils;
+import com.kavun.shared.util.core.TenantContext;
 import com.kavun.task.UserPruningScheduler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.icegreen.greenmail.util.GreenMail;
@@ -37,6 +38,7 @@ import net.datafaker.Faker;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -51,6 +53,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ExtendWith(PlatformTenantExtension.class)
 public abstract class IntegrationTestUtils {
   protected static final Faker FAKER = new Faker();
 
@@ -155,7 +158,10 @@ public abstract class IntegrationTestUtils {
    * @return the bearer token header value
    */
   protected String bearerTokenFor(UserDto user) {
-    var session = userSessionService.createSession(user.getId(), new MockHttpServletRequest());
+    var session =
+        TenantContext.callAs(
+            user.getTenantCode(),
+            () -> userSessionService.createSession(user.getId(), new MockHttpServletRequest()));
     var expiration = DateUtils.addMinutes(new Date(), 60);
     var jwt = jwtService.generateJwtToken(user.getUsername(), expiration, session.getId().toString());
     return String.format("%s %s", SecurityConstants.BEARER, encryptionService.encrypt(jwt));

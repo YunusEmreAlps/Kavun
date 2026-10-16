@@ -7,6 +7,7 @@ import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.NetworkUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.shared.util.core.StringUtils;
+import com.kavun.shared.util.core.TenantContext;
 
 import jakarta.persistence.EntityManager;
 import jakarta.servlet.FilterChain;
@@ -189,6 +190,7 @@ public class LoggingFilter extends OncePerRequestFilter {
       String deviceId = request.getHeader(DEVICE_ID_HEADER);
 
       applicationLogService.persistHttpLog(new HttpLogContext(
+          TenantContext.current(),
           correlationId,
           getClass().getName(),
           buildLogMessage(request.getMethod(), request.getRequestURI(), duration),

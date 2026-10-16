@@ -46,6 +46,17 @@ public final class PermissionCatalog {
   }
 
   /**
+   * Whether the page may only be used by the platform tenant.
+   *
+   * @param pageCode the page code
+   * @return true for platform-only pages
+   */
+  public boolean isPlatformOnly(String pageCode) {
+    var page = pages.get(pageCode);
+    return page != null && page.platformOnly();
+  }
+
+  /**
    * Whether the page declares the action.
    *
    * @param code the page action code
@@ -77,6 +88,7 @@ public final class PermissionCatalog {
    * @param showInMenu whether the page is listed in the navigation menu
    * @param navigable whether the page can be navigated to
    * @param order the position among its siblings
+   * @param platformOnly whether only the platform tenant may use the page
    * @param actionCodes the actions the page supports
    */
   public record PageDefinition(
@@ -89,6 +101,7 @@ public final class PermissionCatalog {
       boolean showInMenu,
       boolean navigable,
       int order,
+      boolean platformOnly,
       List<String> actionCodes) {}
 
   /** Collects the definitions of all contributors and validates them as a whole. */
@@ -186,6 +199,7 @@ public final class PermissionCatalog {
     private String parentCode;
     private boolean showInMenu = true;
     private boolean navigable = true;
+    private boolean platformOnly;
     private final List<String> actionCodes = new ArrayList<>();
 
     private PageSpec(String code, int position) {
@@ -230,6 +244,15 @@ public final class PermissionCatalog {
       return this;
     }
 
+    /**
+     * For pages that act on all tenants (e.g. tenant management, the shared permission catalog):
+     * never granted to, nor usable by, other tenants, even their administrators.
+     */
+    public PageSpec platformOnly() {
+      this.platformOnly = true;
+      return this;
+    }
+
     public PageSpec actions(String... actionCodes) {
       this.actionCodes.addAll(List.of(actionCodes));
       return this;
@@ -250,6 +273,7 @@ public final class PermissionCatalog {
           showInMenu,
           navigable,
           (position + 1) * ORDER_STEP,
+          platformOnly,
           List.copyOf(actionCodes));
     }
   }

@@ -1,7 +1,10 @@
 package com.kavun.backend.service.impl;
 
+import com.kavun.backend.persistent.domain.tenant.Tenant;
+import com.kavun.backend.persistent.repository.TenantRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.constant.CacheConstants;
+import com.kavun.constant.user.UserConstants;
 import com.kavun.shared.util.UserUtils;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Primary;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -30,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 class UserDetailsServiceImpl implements UserDetailsService {
 
   private final UserRepository userRepository;
+  private final TenantRepository tenantRepository;
 
   /**
    * Locates the user based on the usernameOrEmail. In the actual implementation, the search may be
@@ -59,6 +64,13 @@ class UserDetailsServiceImpl implements UserDetailsService {
       LOG.warn("No record found for storedUser with usernameOrEmail {}", usernameOrEmail);
       throw new UsernameNotFoundException(
           "User with usernameOrEmail " + usernameOrEmail + " not found");
+    }
+
+    boolean tenantActive =
+        tenantRepository.findByCode(storedUser.getTenantCode()).map(Tenant::isActive).orElse(false);
+    if (!tenantActive) {
+      LOG.warn("Rejected user {} of inactive tenant {}", usernameOrEmail, storedUser.getTenantCode());
+      throw new DisabledException(UserConstants.TENANT_DISABLED_MESSAGE);
     }
 
     return UserDetailsBuilder.buildUserDetails(storedUser);

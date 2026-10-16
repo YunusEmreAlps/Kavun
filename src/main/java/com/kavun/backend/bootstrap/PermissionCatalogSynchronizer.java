@@ -15,7 +15,9 @@ import com.kavun.backend.service.security.permission.PermissionCatalog.ActionDef
 import com.kavun.backend.service.security.permission.PermissionCatalog.PageDefinition;
 import com.kavun.enums.EntityType;
 import com.kavun.enums.RoleType;
+import com.kavun.shared.util.core.TenantContext;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,8 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Only what is missing is created: rows edited by administrators (names, icons, menu order) are
  * left alone, and rows they soft deleted are not brought back. Each newly created page action is
- * granted to {@code ROLE_ADMIN}, so administrators can use new features without manual setup
- * even when the admin permission bypass is off.
+ * granted to the {@code ROLE_ADMIN} of every tenant (platform-only pages: of the platform tenant
+ * only), so administrators can use new features without manual setup even when the admin
+ * permission bypass is off. Runs in the root tenant context, across all tenants.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -71,19 +74,30 @@ public class PermissionCatalogSynchronizer implements ApplicationRunner {
               .orElseGet(() -> createPage(definition, pages.get(definition.parentCode()))));
     }
 
-    Role adminRole = roleRepository.findByName(RoleType.ROLE_ADMIN.getName()).orElse(null);
+    List<Role> adminRoles = roleRepository.findAllByName(RoleType.ROLE_ADMIN.getName());
     int created = 0;
     for (PageDefinition definition : catalog.getPages()) {
       WebPage page = pages.get(definition.code());
       for (String actionCode : definition.actionCodes()) {
         Action action = actions.get(actionCode);
         if (pageActionRepository.findByPageIdAndActionId(page.getId(), action.getId()).isEmpty()) {
-          grant(adminRole, createPageAction(page, action));
+          PageAction pageAction = createPageAction(page, action);
+          adminRoles.forEach(role -> grant(role, pageAction));
           created++;
         }
       }
     }
     LOG.info("Permission catalog synchronized, {} new page actions", created);
+  }
+
+  /**
+   * Grants every page action the role's tenant may use to a freshly provisioned admin role.
+   *
+   * @param adminRole the {@code ROLE_ADMIN} of a new tenant
+   */
+  @Transactional
+  public void grantCatalogTo(Role adminRole) {
+    pageActionRepository.findAllActiveWithDetails().forEach(pageAction -> grant(adminRole, pageAction));
   }
 
   private Action createAction(ActionDefinition definition) {
@@ -117,10 +131,12 @@ public class PermissionCatalogSynchronizer implements ApplicationRunner {
   }
 
   private void grant(Role role, PageAction pageAction) {
-    if (role == null) {
+    boolean platformRole = TenantContext.PLATFORM.equals(role.getTenantCode());
+    if (catalog.isPlatformOnly(pageAction.getPage().getCode()) && !platformRole) {
       return;
     }
     var permission = new Permission();
+    permission.setTenantCode(role.getTenantCode());
     permission.setEntityType(EntityType.ROLE);
     permission.setEntityId(role.getId());
     permission.setPageAction(pageAction);

@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
@@ -40,7 +40,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @SQLDelete(sql = "UPDATE user_role SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 @ToString(callSuper = true, exclude = { "user", "role" })
-public class UserRole extends BaseEntity<Long> implements Serializable {
+public class UserRole extends TenantScopedEntity implements Serializable {
   @Serial
   private static final long serialVersionUID = 2803657434288286128L;
 
@@ -63,5 +63,6 @@ public class UserRole extends BaseEntity<Long> implements Serializable {
   public UserRole(User user, Role role) {
     this.user = user;
     this.role = role;
+    setTenantCode(user.getTenantCode());
   }
 }

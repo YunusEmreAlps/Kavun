@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -23,7 +23,7 @@ import org.hibernate.annotations.SQLDelete;
 @Getter
 @Setter
 @SQLDelete(sql = "UPDATE user_devices SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-public class UserDevice extends BaseEntity<Long> implements Serializable {
+public class UserDevice extends TenantScopedEntity implements Serializable {
 
     @Column(nullable = false)
     private Long userId;

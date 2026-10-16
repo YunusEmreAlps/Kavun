@@ -23,6 +23,9 @@ public interface RoleRepository extends BaseRepository<Role> {
 
   Optional<Role> findByName(final String name);
 
+  // In the root tenant context: the role of that name in every tenant.
+  List<Role> findAllByName(final String name);
+
   List<Role> findByNameIn(final Collection<String> names);
 
   boolean existsById(final Long id);

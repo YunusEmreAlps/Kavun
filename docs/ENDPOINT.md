@@ -12,7 +12,7 @@ seven small files. The generic pieces (`AbstractService`, `AbstractCrudRestApi`,
 @Getter
 @Setter
 @SQLDelete(sql = "UPDATE products SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-public class Product extends BaseEntity<Long> {
+public class Product extends TenantScopedEntity {
 
   @Column(nullable = false, length = 200)
   private String name;
@@ -25,8 +25,10 @@ public class Product extends BaseEntity<Long> {
 }
 ```
 
-`BaseEntity` provides the id, `publicId`, version, audit fields, soft delete flag and the entity
-identity (`equals`/`hashCode`); do not add your own.
+`TenantScopedEntity` makes the product owned by a tenant: every query is limited to the current
+tenant and new rows are stamped with it (see `docs/MULTI_TENANCY.md`). Extend `BaseEntity` directly
+only for data shared by all tenants. Both provide the id, `publicId`, version, audit fields, soft
+delete flag and the entity identity (`equals`/`hashCode`); do not add your own.
 
 ## 2. Repository
 

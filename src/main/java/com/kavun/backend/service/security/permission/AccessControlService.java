@@ -5,6 +5,7 @@ import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.backend.service.user.PermissionCheckService;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.util.core.SecurityUtils;
+import com.kavun.shared.util.core.TenantContext;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
@@ -20,9 +21,10 @@ import org.springframework.stereotype.Service;
  * Answers whether a caller may perform an action: page permissions for endpoints, plus the rules
  * that keep non-admins from granting themselves admin rights.
  *
- * <p>Holders of {@code ROLE_ADMIN} pass every permission check while {@code
- * security.permission.admin-bypass-enabled} is on; otherwise they need explicit grants like anyone
- * else (the permission catalog grants every page action to {@code ROLE_ADMIN} when it is created).
+ * <p>Holders of {@code ROLE_ADMIN} (each tenant has its own) pass every permission check while
+ * {@code security.permission.admin-bypass-enabled} is on; otherwise they need explicit grants like
+ * anyone else (the permission catalog grants every page action to the {@code ROLE_ADMIN} of each
+ * tenant when it is created). Platform-only pages are refused to every tenant but the platform.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -37,12 +39,15 @@ public class AccessControlService {
       Arrays.stream(RoleType.values()).map(RoleType::getName).collect(Collectors.toSet());
 
   private final PermissionCheckService permissionCheckService;
+  private final PermissionCatalog permissionCatalog;
   private final boolean adminBypassEnabled;
 
   public AccessControlService(
       PermissionCheckService permissionCheckService,
+      PermissionCatalog permissionCatalog,
       @Value("${security.permission.admin-bypass-enabled:false}") boolean adminBypassEnabled) {
     this.permissionCheckService = permissionCheckService;
+    this.permissionCatalog = permissionCatalog;
     this.adminBypassEnabled = adminBypassEnabled;
   }
 
@@ -55,6 +60,9 @@ public class AccessControlService {
    */
   public boolean hasPermission(Authentication authentication, PageActionCode permission) {
     if (!SecurityUtils.isAuthenticated(authentication)) {
+      return false;
+    }
+    if (permissionCatalog.isPlatformOnly(permission.page()) && !TenantContext.isPlatform()) {
       return false;
     }
     if (adminBypassEnabled && isAdmin(authentication)) {

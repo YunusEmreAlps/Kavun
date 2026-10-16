@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import com.kavun.enums.EntityType;
 
 import jakarta.persistence.Column;
@@ -47,7 +47,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @SQLDelete(sql = "UPDATE permissions SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-public class Permission extends BaseEntity<Long> implements Serializable {
+public class Permission extends TenantScopedEntity implements Serializable {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

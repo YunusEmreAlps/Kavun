@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,7 +30,7 @@ import org.hibernate.annotations.SQLDelete;
 })
 @Getter @Setter
 @SQLDelete(sql = "UPDATE user_sessions SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-public class UserSession extends BaseEntity<Long> implements Serializable {
+public class UserSession extends TenantScopedEntity implements Serializable {
 
     public static final String LOGOUT_TYPE_MANUAL = "MANUAL";
     public static final String LOGOUT_TYPE_TIMEOUT = "TIMEOUT";

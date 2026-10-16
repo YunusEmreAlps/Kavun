@@ -17,6 +17,7 @@ import com.kavun.shared.dto.ApplicationLogDto;
 import com.kavun.shared.dto.mapper.ApplicationLogMapper;
 import com.kavun.shared.request.ApplicationLogRequest;
 import com.kavun.shared.util.core.NetworkUtils;
+import com.kavun.shared.util.core.TenantContext;
 
 import lombok.extern.slf4j.Slf4j;
 import static com.kavun.constant.LoggingConstants.*;
@@ -81,6 +82,7 @@ public class ApplicationLogService extends
           .stateAfter(ctx.stateAfter())
           .stateDiff(ctx.stateDiff())
           .build();
+      log.setTenantCode(owningTenant(ctx.tenantCode()));
 
       save(log);
     } catch (Exception e) {
@@ -106,12 +108,20 @@ public class ApplicationLogService extends
           .stateAfter(ctx.stateAfter())
           .stateDiff(ctx.stateDiff())
           .build();
+      log.setTenantCode(owningTenant(ctx.tenantCode()));
 
       save(log);
     } catch (Exception e) {
       // Handle exception or log error
       LOG.error("Failed to persist method log: {}", e.getMessage());
     }
+  }
+
+  // Activity outside any tenant (anonymous requests, scheduled jobs) is visible to the platform.
+  private static String owningTenant(String tenantCode) {
+    return tenantCode == null || TenantContext.ROOT.equals(tenantCode)
+        ? TenantContext.PLATFORM
+        : tenantCode;
   }
 
   private void save(ApplicationLog applicationLog) {

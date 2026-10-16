@@ -98,6 +98,7 @@ public final class UserConstants {
   // API Paths
   public static final String PUBLIC_ID_PATH = "/{publicId}";
   public static final String UPDATE_PASSWORD_PATH = "/update-password";
+  public static final String TENANT_DISABLED_MESSAGE = "The account's organization is disabled";
   public static final String ENABLE_USER_PATH = "/{id}/enable";
   public static final String DISABLE_USER_PATH = "/{id}/disable";
 

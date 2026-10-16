@@ -76,6 +76,8 @@ public interface UserRepository extends BaseRepository<User> {
      */
     Boolean existsByUsername(String username);
 
+    boolean existsByEmail(String email);
+
     /**
      * Check if user exists by username or email.
      *

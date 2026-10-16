@@ -1,5 +1,10 @@
 package com.kavun.backend.service.impl;
 
+import com.kavun.backend.persistent.domain.tenant.Tenant;
+import com.kavun.backend.persistent.repository.TenantRepository;
+import java.util.Optional;
+import org.mockito.ArgumentMatchers;
+import org.springframework.security.authentication.DisabledException;
 import com.kavun.TestUtils;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.shared.util.UserUtils;
@@ -17,6 +22,8 @@ class UserDetailsServiceImplTest extends TestUtils {
 
   @Mock private transient UserRepository userRepository;
 
+  @Mock private transient TenantRepository tenantRepository;
+
   @InjectMocks private transient UserDetailsServiceImpl userDetailsService;
 
   private transient String email;
@@ -33,7 +40,21 @@ class UserDetailsServiceImplTest extends TestUtils {
       Mockito.when(userRepository.findByUsernameAndDeletedFalse(testInfo.getDisplayName()))
           .thenReturn(user);
       Mockito.when(userRepository.findByEmailAndDeletedFalse(user.getEmail())).thenReturn(user);
+      Mockito.when(tenantRepository.findByCode(ArgumentMatchers.any()))
+          .thenReturn(Optional.of(new Tenant()));
     }
+  }
+
+  @Test
+  void testShouldRejectUserOfDisabledTenant(TestInfo testInfo) {
+    var disabled = new Tenant();
+    disabled.setEnabled(false);
+    Mockito.when(tenantRepository.findByCode(ArgumentMatchers.any()))
+        .thenReturn(Optional.of(disabled));
+
+    Assertions.assertThrows(
+        DisabledException.class,
+        () -> userDetailsService.loadUserByUsername(testInfo.getDisplayName()));
   }
 
   @Test

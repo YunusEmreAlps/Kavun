@@ -7,6 +7,7 @@ import com.kavun.backend.persistent.context.MethodLogContext;
 import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.StringUtils;
+import com.kavun.shared.util.core.TenantContext;
 
 import java.util.Locale;
 import java.util.Map;
@@ -99,6 +100,7 @@ public class MethodLogger {
         }
       } else {
         applicationLogService.persistMethodLog(new MethodLogContext(
+            TenantContext.current(),
             method,
             resolveLogType(),
             durationMs,

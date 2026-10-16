@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.Role;
 import com.kavun.backend.persistent.domain.user.User;
+import com.kavun.enums.RoleType;
 import com.kavun.backend.persistent.repository.RoleRepository;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
@@ -51,6 +52,19 @@ public class RoleService extends AbstractService<RoleRequest, Role, RoleDto, Rol
   @Override
   protected Set<String> filterableFields() {
     return Set.of("name", "label", "description", "createdAt");
+  }
+
+  /** Creates the built-in roles (ROLE_ADMIN, ROLE_USER) the current tenant does not have yet. */
+  public void ensureBuiltInRoles() {
+    for (RoleType roleType : RoleType.values()) {
+      if (findByName(roleType.getName()) == null) {
+        create(RoleRequest.builder()
+            .name(roleType.getName())
+            .label(roleType.getLabel())
+            .description(roleType.getDescription())
+            .build());
+      }
+    }
   }
 
   // Built-in roles are checked before the request is applied, while the entity still has its

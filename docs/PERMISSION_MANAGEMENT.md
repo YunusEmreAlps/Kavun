@@ -11,6 +11,7 @@ decides which permission applies.
 - [The permission catalog](#the-permission-catalog)
 - [How a request is authorized](#how-a-request-is-authorized)
 - [Escalation guards](#escalation-guards)
+- [Granting permissions to a role](#granting-permissions-to-a-role)
 - [Tokens and sessions](#tokens-and-sessions)
 - [Adding a new module](#adding-a-new-module)
 - [Frontend integration](#frontend-integration)
@@ -171,9 +172,37 @@ services, whichever endpoint is used:
 - Only administrators can change, enable/disable, delete or re-role administrator accounts (a user
   manager could otherwise take an admin account over by changing its email).
 - Only administrators can change, delete or restore the built-in roles (`ROLE_ADMIN`, `ROLE_USER`).
+- Only page actions the caller holds itself can be granted (administrators can grant any), in the
+  permission matrix and through the Permission API alike: a permission manager cannot hand out, or
+  give itself through a role it holds, more than it has.
+- In the permission matrix, the grants of `ROLE_ADMIN` cannot be changed (the catalog keeps them
+  complete, so administrators cannot lock themselves out) and those of the other built-in roles only
+  by administrators.
 
-Granting permissions (`PERMISSIONS:*`) is inherently powerful: whoever holds it can grant any page
-action except the admin role. Give it to administrators only.
+## Granting permissions to a role
+
+The permission matrix of a role shows every page the tenant may use (platform-only pages only to the
+platform) with a cell per page action, and saves the checked cells in one request:
+
+```http
+GET /api/v1/permission/role/{roleId}         # PERMISSIONS:VIEW
+PUT /api/v1/permission/role/{roleId}         # PERMISSIONS:EDIT
+{ "pageActionIds": [19, 20, 31] }
+```
+
+The response lists the action columns and the pages in menu order (`level` is the depth in the page
+tree). Each cell has its `pageActionId`, the role's `state` (`GRANTED`, `DENIED` or `NONE`; expired
+records count as `NONE`), `expiresAt`, and `grantable` (whether the caller may grant it). Saving only
+writes the cells whose state changes:
+
+- a checked cell that is not granted is granted, reusing the role's existing record of the page
+  action (a soft-deleted, expired or denying one) because records are unique per role and page
+  action;
+- an unchecked granted cell is soft deleted;
+- a denial stays until its cell is checked.
+
+User-level permissions, denials and expiry dates are set through the Permission API
+(`/api/v1/permission`).
 
 ## Tokens and sessions
 
@@ -195,7 +224,7 @@ token expires. A refresh continues a session that only timed out; a session that
    other non-standard actions explicitly.
 4. Start the application (or run the integration tests): the validator lists anything missing, and
    the synchronizer creates the pages and grants them to `ROLE_ADMIN`.
-5. Grant the new page actions to other roles through the Permission API.
+5. Grant the new page actions to other roles in their permission matrix.
 
 ## Frontend integration
 

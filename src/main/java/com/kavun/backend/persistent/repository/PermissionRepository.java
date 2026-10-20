@@ -1,6 +1,7 @@
 package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Permission;
+import com.kavun.enums.EntityType;
 import com.kavun.shared.dto.PermissionGrantDto;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface PermissionRepository extends BaseRepository<Permission> {
+
+    // Includes soft-deleted records: there is at most one per holder and page action.
+    List<Permission> findAllByEntityTypeAndEntityId(EntityType entityType, Long entityId);
 
     @Query("SELECT p FROM Permission p WHERE p.pageAction.id = :pageActionId " +
            "AND p.entityType = 'USER' AND p.entityId = :userId " +

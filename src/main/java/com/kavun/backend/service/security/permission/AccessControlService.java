@@ -8,7 +8,9 @@ import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.shared.util.core.TenantContext;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -112,6 +114,65 @@ public class AccessControlService {
   public void checkCanModifyRole(Role role) {
     if (SYSTEM_ROLE_NAMES.contains(role.getName()) && !isAdmin(SecurityUtils.getAuthentication())) {
       throw new AccessDeniedException("Only administrators can change built-in roles");
+    }
+  }
+
+  /**
+   * Whether the current caller may change the grants of a role in the permission matrix. Those of
+   * {@code ROLE_ADMIN} are not changed there at all: the permission catalog keeps them complete, so
+   * administrators cannot lock themselves out. Those of the other built-in roles only by
+   * administrators.
+   *
+   * @param role the role
+   * @return true if the caller may change the role's grants
+   */
+  public boolean canEditPermissionsOf(Role role) {
+    if (ADMIN_AUTHORITY.equals(role.getName())) {
+      return false;
+    }
+    return !SYSTEM_ROLE_NAMES.contains(role.getName()) || isAdmin(SecurityUtils.getAuthentication());
+  }
+
+  /**
+   * Requires {@link #canEditPermissionsOf(Role)}.
+   *
+   * @param role the role
+   * @throws AccessDeniedException if the caller may not change the role's grants
+   */
+  public void checkCanEditPermissionsOf(Role role) {
+    if (!canEditPermissionsOf(role)) {
+      throw new AccessDeniedException("The permissions of " + role.getName() + " cannot be changed");
+    }
+  }
+
+  /**
+   * The page actions the current caller may grant: any for administrators, otherwise only those it
+   * holds itself, so that a permission manager cannot hand out, or give itself, more than it has.
+   *
+   * @return a test on page action ids
+   */
+  public Predicate<Long> grantablePageActions() {
+    Authentication authentication = SecurityUtils.getAuthentication();
+    if (isAdmin(authentication)) {
+      return pageActionId -> true;
+    }
+    if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsBuilder user)) {
+      return pageActionId -> false;
+    }
+    return permissionCheckService.findPermittedPageActionIds(user.getId())::contains;
+  }
+
+  /**
+   * Requires the current caller to be allowed to grant every given page action.
+   *
+   * @param pageActionIds the page actions about to be granted
+   * @throws AccessDeniedException if the caller does not hold one of them and is not an admin
+   */
+  public void checkCanGrant(Collection<Long> pageActionIds) {
+    Predicate<Long> grantable = grantablePageActions();
+    List<Long> refused = pageActionIds.stream().filter(grantable.negate()).toList();
+    if (!refused.isEmpty()) {
+      throw new AccessDeniedException("Cannot grant page actions the caller does not hold: " + refused);
     }
   }
 

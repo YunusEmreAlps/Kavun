@@ -84,7 +84,7 @@ permission catalog. They are:
 
 - granted only to the platform's `ROLE_ADMIN` by the catalog synchronizer,
 - refused to users of other tenants even if granted or with the admin bypass on,
-- not grantable inside other tenants through the Permission API.
+- neither shown in the permission matrix of other tenants nor grantable there (matrix or Permission API).
 
 ## Upgrading an existing database
 

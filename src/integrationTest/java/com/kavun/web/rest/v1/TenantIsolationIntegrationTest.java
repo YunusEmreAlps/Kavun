@@ -6,6 +6,7 @@ import com.kavun.backend.persistent.repository.ApplicationLogRepository;
 import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.enums.RoleType;
 import com.kavun.shared.dto.UserDto;
+import com.kavun.shared.request.RoleRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.TenantContext;
 import java.util.List;
@@ -130,6 +131,37 @@ class TenantIsolationIntegrationTest extends IntegrationTestUtils {
                             "granted", true))),
             acme.admin())
         .andExpect(MockMvcResultMatchers.status().isForbidden());
+  }
+
+  @Test
+  void permissionMatrixShowsOnlyTheTenantsOwnRolesAndPages() throws Exception {
+    Long acmeRoleId =
+        TenantContext.callAs(
+                acme.code(),
+                () -> roleService.create(RoleRequest.builder().name("ROLE_CLERK").label("Clerk").build()))
+            .getId();
+    Long tenantsViewId =
+        pageActionRepository.findActionByPageCodeAndActionCode(Pages.TENANTS, "VIEW").orElseThrow().getId();
+    String matrixUrl = "/api/v1/permission/role/" + acmeRoleId;
+
+    String matrix =
+        perform(MockMvcRequestBuilders.get(matrixUrl), acme.admin())
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    List<String> pages = JsonPath.read(matrix, "$.data.pages[*].code");
+    Assertions.assertTrue(pages.contains(Pages.USERS));
+    Assertions.assertFalse(pages.contains(Pages.TENANTS));
+
+    perform(
+            MockMvcRequestBuilders.put(matrixUrl)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(Map.of("pageActionIds", List.of(tenantsViewId)))),
+            acme.admin())
+        .andExpect(MockMvcResultMatchers.status().isConflict());
+    perform(MockMvcRequestBuilders.get(matrixUrl), globex.admin())
+        .andExpect(MockMvcResultMatchers.status().isNotFound());
   }
 
   @Test

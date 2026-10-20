@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -42,4 +43,8 @@ public class UserDevice extends TenantScopedEntity implements Serializable {
 
     @Column(name = "user_agent", columnDefinition = "text")
     private String userAgent;
+
+    /** When the user last signed in from this device. */
+    @Column(name = "last_seen_at", nullable = false)
+    private LocalDateTime lastSeenAt;
 }

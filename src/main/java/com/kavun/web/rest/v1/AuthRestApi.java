@@ -788,7 +788,7 @@ public class AuthRestApi {
     if (deviceId == null || deviceId.isBlank()) {
       LOG.info("Missing Device ID header for user: {}", userId);
     } else {
-      userDeviceService.createDevice(userId, deviceId, request);
+      userDeviceService.recordSignIn(userId, deviceId, request);
     }
     return;
   }

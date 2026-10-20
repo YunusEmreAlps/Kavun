@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -59,7 +60,7 @@ public class UserReportRestApi {
     @GetMapping(value = "/devices", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<UserDeviceDto> getUserDevices(
             @RequestParam Map<String, String> parameterMap,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "lastSeenAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         return userDeviceService.findAll(parameterMap, pageable);
     }

@@ -18,12 +18,13 @@ import java.util.Optional;
 @Repository
 public interface UserDeviceRepository extends BaseRepository<UserDevice> {
     /**
-     * Finds a user device by its device ID.
+     * Finds a user's record of a device. A browser used by several users has one record per user.
      *
-     * @param deviceId the unique identifier of the device
-     * @return an Optional containing the UserDevice if found, or empty if not found
+     * @param userId the user
+     * @param deviceId the identifier the client sends for the device
+     * @return the device record, if the user has signed in from it before
      */
-    Optional<UserDevice> findByDeviceId(String deviceId);
+    Optional<UserDevice> findByUserIdAndDeviceId(Long userId, String deviceId);
 
     // Device usage rate analytics for all user devices.
     @Query(value = """

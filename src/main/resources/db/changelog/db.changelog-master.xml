@@ -19,5 +19,6 @@
   <property name="type.text" value="VARCHAR" dbms="h2"/>
 
   <include file="changes/001-baseline.xml" relativeToChangelogFile="true"/>
+  <include file="changes/002-user-devices-last-seen.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

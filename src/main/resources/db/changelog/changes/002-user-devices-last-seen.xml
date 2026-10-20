@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Devices are recorded per user and remember when they were last used: before, a browser shared by
+  two users had a single record, and its "last seen" (updated_at) only moved when the browser or
+  operating system changed.
+-->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="002-user-devices-last-seen-at" author="kavun">
+    <addColumn tableName="user_devices">
+      <column name="last_seen_at" type="TIMESTAMP"/>
+    </addColumn>
+    <!-- The best value known for existing devices. -->
+    <update tableName="user_devices">
+      <column name="last_seen_at" valueComputed="COALESCE(updated_at, created_at)"/>
+    </update>
+    <addNotNullConstraint tableName="user_devices" columnName="last_seen_at"
+        columnDataType="TIMESTAMP"/>
+  </changeSet>
+
+  <changeSet id="002-user-devices-unique-user-device" author="kavun">
+    <addUniqueConstraint tableName="user_devices" columnNames="user_id, device_id"
+        constraintName="uk_user_devices_user_device"/>
+  </changeSet>
+
+</databaseChangeLog>

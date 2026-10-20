@@ -326,6 +326,8 @@ The project is structured in a layered architecture with the following layers:
 
 ## Database Schema
 
+The schema is created and migrated by Liquibase on startup; see [Database Migrations](docs/DATABASE_MIGRATIONS.md).
+
 ![img.png](docs/images/erd.png)
 
 > **Note**: In Permission entity, the entityId field represents the ID of either a Role or a User, depending on the EntityType. This design allows for flexible permission assignments, enabling both role-based and user-specific permissions within the system.

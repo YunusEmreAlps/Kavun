@@ -27,17 +27,9 @@ import org.hibernate.annotations.TenantId;
 @MappedSuperclass
 public abstract class TenantScopedEntity extends BaseEntity<Long> {
 
-  /**
-   * The owning tenant's code. The column default only exists so that rows created before tenancy
-   * was introduced become platform data when the column is added; the application always sets it.
-   */
+  /** The owning tenant's code, set on insert; the column has no default. */
   @TenantId
-  @Column(
-      name = "tenant_code",
-      nullable = false,
-      updatable = false,
-      length = 50,
-      columnDefinition = "varchar(50) default '" + TenantContext.PLATFORM + "'")
+  @Column(name = "tenant_code", nullable = false, updatable = false, length = 50)
   private String tenantCode;
 
   @PrePersist

@@ -88,11 +88,15 @@ permission catalog. They are:
 
 ## Upgrading an existing database
 
-With `ddl-auto=update` (development), the `tenant_code` columns are added with the default
-`platform`, so existing data becomes platform data and the default admin becomes a platform
-administrator. One manual step is needed: role names used to be unique across the table, now they
-are unique per tenant, and Hibernate does not drop the old constraints. Until they are dropped,
-provisioning a tenant fails on its `ROLE_ADMIN`:
+New databases get the tenant columns and the per-tenant role name constraint from the Liquibase
+baseline. A database created earlier by Hibernate's `ddl-auto` is accepted as it is (see
+`docs/DATABASE_MIGRATIONS.md`), with two things to check:
+
+- It must have the `tenant_code` columns, which `ddl-auto=update` added when the application first
+  ran with tenancy. Without them the startup fails, naming the missing column; recreate such a
+  development database.
+- Role names used to be unique across the table and are now unique per tenant. Drop the old
+  constraint, otherwise provisioning a tenant fails on its `ROLE_ADMIN`:
 
 ```sql
 -- PostgreSQL: find the unique constraints on role.name ...
@@ -103,5 +107,3 @@ WHERE con.conrelid = 'role'::regclass AND con.contype = 'u';
 -- ... and drop the ones defined only on (name), keeping (tenant_code, name)
 ALTER TABLE role DROP CONSTRAINT <constraint_name>;
 ```
-
-The Liquibase baseline (planned) will define the schema, including these constraints, explicitly.

@@ -1,7 +1,7 @@
 # Adding a Resource
 
 A resource (e.g. `Product`) with list, get, create, update, soft delete and restore endpoints takes
-seven small files. The generic pieces (`AbstractService`, `AbstractCrudRestApi`,
+eight small files. The generic pieces (`AbstractService`, `AbstractCrudRestApi`,
 `FilterSpecification`) do the rest.
 
 ## 1. Entity
@@ -30,14 +30,40 @@ tenant and new rows are stamped with it (see `docs/MULTI_TENANCY.md`). Extend `B
 only for data shared by all tenants. Both provide the id, `publicId`, version, audit fields, soft
 delete flag and the entity identity (`equals`/`hashCode`); do not add your own.
 
-## 2. Repository
+## 2. Changeset
+
+Hibernate does not create tables; add `src/main/resources/db/changelog/changes/NNN-products.xml`
+and include it at the end of `db.changelog-master.xml` (see `docs/DATABASE_MIGRATIONS.md`):
+
+```xml
+<changeSet id="002-products" author="kavun">
+  <createTable tableName="products">
+    <column name="id" type="BIGINT" autoIncrement="true">
+      <constraints primaryKey="true" primaryKeyName="pk_products" nullable="false"/>
+    </column>
+    <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+    <column name="name" type="VARCHAR(200)"><constraints nullable="false"/></column>
+    <column name="price" type="NUMERIC(38, 2)"><constraints nullable="false"/></column>
+    <column name="category_id" type="BIGINT">
+      <constraints foreignKeyName="fk_products_category"
+          referencedTableName="categories" referencedColumnNames="id"/>
+    </column>
+    <!-- BaseEntity columns: copy them from any table in 001-baseline.xml -->
+  </createTable>
+</changeSet>
+```
+
+`./gradlew integrationTest` fails with the missing table or column if the changeset and the entity
+disagree.
+
+## 3. Repository
 
 ```java
 @Repository
 public interface ProductRepository extends BaseRepository<Product> {}
 ```
 
-## 3. Request, DTO and mapper
+## 4. Request, DTO and mapper
 
 ```java
 @Data
@@ -64,7 +90,7 @@ public interface ProductMapper extends BaseMapper<ProductRequest, Product, Produ
 
 Put validation on the request: the generic endpoints validate it with `@Valid`.
 
-## 4. Service
+## 5. Service
 
 ```java
 @Service
@@ -86,7 +112,7 @@ public class ProductService
 Only the listed fields can be filtered (see [Filtering](#filtering)). Never list sensitive fields.
 Business rules go into the hooks (`beforeCreate`, `afterUpdate`, ...) or into extra methods.
 
-## 5. Controller
+## 6. Controller
 
 ```java
 @RestController
@@ -118,7 +144,7 @@ This exposes, with the permissions they require:
 
 Add resource-specific endpoints as ordinary methods of the controller (see `RoleRestApi`).
 
-## 6. Permission catalog
+## 7. Permission catalog
 
 Declare the page in a `PermissionCatalogContributor` (see `docs/PERMISSION_MANAGEMENT.md`):
 

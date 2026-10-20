@@ -9,7 +9,7 @@ Kavun is an opinionated, production-ready Spring Boot 3.5 starter (Java 21). It 
 ## Build, run, and test commands
 
 ```bash
-# Run the app (development profile, H2 in-memory DB)
+# Run the app (development profile, PostgreSQL on localhost:5432/kavun - see docker-compose)
 ./gradlew bootRun
 
 # Hot reload while developing
@@ -82,7 +82,11 @@ See `docs/MULTI_TENANCY.md`. One schema, a `tenant_code` column on every tenant-
 
 Entity identity is defined once in `BaseEntity`: `equals`/`hashCode` are `final`, compare the persistent class (Hibernate-proxy aware) and `publicId`, which is assigned on construction. Do not add `equals`/`hashCode` or Lombok `@EqualsAndHashCode` to entities (it will not compile); compare business keys explicitly where needed (see `User.isSameRole`).
 
-Domain services generally implement soft-delete semantics (`delete`/`restore` in `BaseService`) rather than hard deletes; auditing of CRUD operations is handled via Hibernate Envers. When adding a new resource, follow `docs/ENDPOINT.md`: entity → repository → request/DTO/mapper → service extending `AbstractService` → controller extending `web/rest/AbstractCrudRestApi` (standard CRUD endpoints) with `@RequirePermission(page = ...)` → page in a permission catalog contributor.
+Domain services generally implement soft-delete semantics (`delete`/`restore` in `BaseService`) rather than hard deletes; auditing of CRUD operations is handled via Hibernate Envers. When adding a new resource, follow `docs/ENDPOINT.md`: entity → Liquibase changeset → repository → request/DTO/mapper → service extending `AbstractService` → controller extending `web/rest/AbstractCrudRestApi` (standard CRUD endpoints) with `@RequirePermission(page = ...)` → page in a permission catalog contributor.
+
+### Database schema
+
+See `docs/DATABASE_MIGRATIONS.md`. Liquibase owns the schema in every profile (`src/main/resources/db/changelog`, master file includes `changes/NNN-*.xml` in order) and Hibernate only validates it (`ddl-auto=validate`), so every entity change needs a new changeset in the same commit — never edit an applied changeset. Use `${type.text}` for unbounded text columns (H2 turns `TEXT` into a CLOB the validation rejects), plain `VARCHAR` without CHECK constraints for enums, and `tenant_code VARCHAR(50) NOT NULL` without a default on tenant-owned tables. Reference data (roles, permission catalog, platform tenant, default admin) is seeded by the application, not by changesets.
 
 ## Testing conventions
 

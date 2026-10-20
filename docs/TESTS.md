@@ -53,7 +53,8 @@ profiles which are `integration-test` and `integration-test-ci`
 ./gradlew clean build # Profile will be set to integration-test if none is provided
 ```
 
-This will run liquibase migration script against H2 in memory database running in Postgres Mode
+Liquibase creates the schema in an H2 in-memory database running in PostgreSQL mode, and Hibernate
+validates it against the entities, so a missing changeset fails the build.
 
 
 ### Docker based (Test Container) Postgres Database Integration Test

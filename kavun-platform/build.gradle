@@ -1,0 +1,246 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
+plugins {
+  id 'java-library'
+  id 'maven-publish'
+  id 'io.spring.dependency-management'
+  id 'org.owasp.dependencycheck'
+  id 'com.diffplug.spotless'
+  id 'eclipse'
+  id 'jacoco'
+  id 'idea'
+}
+
+description = 'The Kavun platform, the library applications are built on'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+  // You can uncomment this to include javadoc jar generation
+  // withJavadocJar()
+
+  // You can comment this line to exclude source jar
+  withSourcesJar()
+}
+
+// A library: Spring Boot's dependency versions without the Spring Boot plugin's executable jar.
+dependencyManagement {
+  imports {
+    mavenBom SpringBootPlugin.BOM_COORDINATES
+  }
+}
+
+configurations {
+  compileOnly {
+    extendsFrom annotationProcessor
+  }
+}
+
+ext {
+  set('jjwtVersion', '0.12.6')
+  set('springDocVersion', '2.8.4')
+  set('javadocScribeVersion', '0.15.0')
+  set('mapstructVersion', '1.6.3')
+  set('awsSdkS3Version', '2.30.15')
+  set('clamavClientVersion', '2.1.2')
+  set('bucket4jVersion', '8.1.0')
+  set('resilience4jVersion', '2.3.0')
+}
+
+dependencies {
+  // What an application's own code compiles against when it follows docs/ENDPOINT.md
+  api 'org.springframework.boot:spring-boot-starter-web'
+  api 'org.springframework.boot:spring-boot-starter-security'
+  api 'org.springframework.boot:spring-boot-starter-data-jpa'
+  api 'org.springframework.boot:spring-boot-starter-validation'
+  api 'org.hibernate.orm:hibernate-envers'
+  api "org.mapstruct:mapstruct:${mapstructVersion}"
+  api "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springDocVersion}"
+
+  implementation 'org.springframework:spring-jcl'
+  implementation 'org.springframework.boot:spring-boot-starter-mail'
+  implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+  implementation 'org.springframework.boot:spring-boot-starter-actuator'
+  implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+  implementation 'org.springframework.boot:spring-boot-starter-logging'
+  implementation 'io.micrometer:micrometer-registry-prometheus'
+  implementation 'ch.qos.logback:logback-classic'
+
+  // Dev Tools
+  compileOnly 'org.projectlombok:lombok'
+  annotationProcessor 'org.projectlombok:lombok'
+  annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+  implementation 'org.ehcache:ehcache'
+  implementation 'org.hibernate.orm:hibernate-jcache'
+  implementation 'org.ehcache:ehcache-transactions:3.10.8'
+  implementation 'org.codehaus.janino:janino'
+  implementation 'com.github.ben-manes.caffeine:caffeine'
+
+  // Utilities
+  implementation 'org.jsoup:jsoup:1.18.3'
+  implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+  runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+  runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+  implementation 'commons-io:commons-io:2.18.0'
+  implementation 'com.github.ua-parser:uap-java:1.6.1'
+  implementation 'net.datafaker:datafaker:2.4.2'
+  implementation 'com.google.code.gson:gson:2.12.1'
+  implementation 'commons-validator:commons-validator:1.9.0'
+  implementation "xyz.capybara:clamav-client:${clamavClientVersion}"
+
+  // Documentation and API Tools
+  implementation "org.springdoc:springdoc-openapi-starter-common:${springDocVersion}"
+  annotationProcessor "com.github.therapi:therapi-runtime-javadoc-scribe:${javadocScribeVersion}"
+  runtimeOnly "com.github.therapi:therapi-runtime-javadoc:${javadocScribeVersion}"
+
+  // Database and File Storage Tools
+  implementation 'com.h2database:h2'
+  runtimeOnly 'org.postgresql:postgresql'
+  implementation 'org.liquibase:liquibase-core'
+  implementation "software.amazon.awssdk:s3:${awsSdkS3Version}"
+  implementation "software.amazon.awssdk:regions:${awsSdkS3Version}"
+
+  // MapStruct for Object Mapping
+  annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+  // Rate Limiting
+  implementation "com.bucket4j:bucket4j-core:${bucket4jVersion}"
+
+  // Circuit Breaker / Resilience
+  implementation 'org.springframework.boot:spring-boot-starter-aop'
+  implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
+
+  // Webjars
+  implementation 'org.webjars:jquery:3.7.1'
+  implementation 'org.webjars:bootstrap:5.3.3'
+  implementation 'org.webjars:jquery-ui:1.14.1'
+  implementation 'org.webjars:datatables:2.1.8'
+  implementation 'org.webjars:font-awesome:6.7.2'
+  implementation 'org.webjars:webjars-locator:0.52'
+}
+
+testing {
+  //noinspection GroovyAssignabilityCheck
+  suites {
+    configureEach {
+      useJUnitJupiter()
+
+      dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        implementation 'io.findify:s3mock_2.13:0.2.6'
+        implementation 'com.icegreen:greenmail-junit5:2.1.3'
+        implementation 'com.jparams:to-string-verifier:1.4.8'
+        implementation 'nl.jqno.equalsverifier:equalsverifier:3.18.2'
+        implementation 'org.springframework.security:spring-security-test'
+        implementation 'org.springframework.boot:spring-boot-starter-test'
+        runtimeOnly 'org.junit.platform:junit-platform-launcher'
+      }
+    }
+    //noinspection GroovyAssignabilityCheck
+    integrationTest(JvmTestSuite) {
+      sources.java.srcDirs = ['src/integrationTest/java']
+      sources.resources.srcDirs = ['src/integrationTest/resources']
+      dependencies {
+        implementation project()
+        implementation sourceSets.test.output
+
+        // The example application in src/integrationTest (com.example.notes) has its own mapper.
+        annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+        implementation 'org.springframework.boot:spring-boot-testcontainers'
+        implementation "software.amazon.awssdk:s3:${awsSdkS3Version}"
+        implementation 'org.testcontainers:junit-jupiter'
+        implementation 'org.testcontainers:postgresql'
+      }
+      targets {
+        configureEach {
+          testTask.configure {
+            shouldRunAfter(test)
+            finalizedBy 'jacocoTestReport'
+            // Fail the 'test' task on the first test failure
+            failFast = true
+            // If no active profile is set, use integration-test is the active profile
+            environment 'SPRING_PROFILES_ACTIVE', System.getenv("SPRING_PROFILES_ACTIVE") ?: "integration-test"
+          }
+        }
+      }
+    }
+  }
+}
+
+configurations {
+  integrationTestImplementation.extendsFrom testImplementation
+}
+
+tasks.named('check') {
+  dependsOn(testing.suites.integrationTest)
+}
+
+tasks.withType(JavaCompile).configureEach {
+  // -parameters is what the Spring Boot plugin adds to applications: Spring MVC and Spring Data
+  // read the names of method parameters (e.g. @PathVariable Long id) from the compiled classes.
+  options.compilerArgs += ['-Xlint:deprecation', '-parameters']
+  dependsOn 'spotlessApply'
+}
+
+// Published with the versions it was built and tested with, for applications in other
+// repositories: ./gradlew :kavun-platform:publishToMavenLocal (see docs/APPLICATIONS.md).
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+      versionMapping {
+        usage('java-api') {
+          fromResolutionOf('runtimeClasspath')
+        }
+        usage('java-runtime') {
+          fromResolutionResult()
+        }
+      }
+    }
+  }
+}
+
+jacocoTestReport {
+  executionData(fileTree(layout.buildDirectory).include("jacoco/*.exec"))
+  reports {
+    xml.required = true
+    html.required = true
+    csv.required = true
+  }
+
+  afterEvaluate {
+    classDirectories.setFrom(files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: [
+          "**/exception/*",
+          "**/enums/*",
+          "**/constant/*",
+          "**/config/*",
+          "**/backend/bootstrap/*",
+          "**/Mock*.class",
+          "**/*DtoMapperImpl.class",
+      ])
+    }))
+  }
+}
+
+spotless {
+  format 'misc', {
+    target '*.gradle'
+    trimTrailingWhitespace()
+    leadingTabsToSpaces()
+    endWithNewline()
+  }
+
+  java {
+
+    // define the steps to apply to those files
+    trimTrailingWhitespace()
+    leadingTabsToSpaces()
+    endWithNewline()
+    removeUnusedImports()
+  }
+}

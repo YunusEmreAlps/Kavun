@@ -6,6 +6,8 @@
 
 Welcome to the **Kavun** project! It is a modern, opinionated, and production-ready starter for Spring Boot projects. It is designed to help developers get started with Spring Boot projects quickly and efficiently. The project includes a wide range of features and tools to help developers build robust and scalable applications. It is built using the latest technologies and best practices to ensure high performance, security, and maintainability.
 
+Kavun is a platform library (`kavun-platform`) that applications depend on instead of forking it; `kavun-app` runs it on its own. See [Building an Application on Kavun](docs/APPLICATIONS.md).
+
 ## Meaning of Kavun
 
 It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turkey and other countries. It is known for its refreshing taste and high nutritional value. The name **Kavun** is chosen to represent the project's goal of providing a fresh, modern, and healthy start for developers working on Spring Boot projects.
@@ -51,7 +53,6 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 - [Spring Data JPA](https://docs.spring.io/spring-boot/docs/2.6.7/reference/htmlsingle/#boot-features-jpa-and-spring-data)
 - [Validation](https://docs.spring.io/spring-boot/docs/2.6.7/reference/htmlsingle/#boot-features-validation)
 - [Spring Boot DevTools](https://docs.spring.io/spring-boot/docs/2.6.7/reference/htmlsingle/#using-boot-devtools)
-- [Spring Data Jpa DataTables](https://github.com/darrachequesne/spring-data-jpa-datatables)
 - [Test Containers](https://java.testcontainers.org/)
 - [ClamAV](https://www.clamav.net/) - Open Source Antivirus Engine
 
@@ -59,7 +60,7 @@ It is a melon in Turkish. It is a sweet and juicy fruit that is popular in Turke
 
 - [Form and Rest Api Authentication based](docs/AUTHENTICATION.MD)
 - [JWT Access and Refresh Tokens Support](docs/AUTHENTICATION.MD)
-- [DataTables with Spring Data JPA](docs/DATATABLES.md)
+- [Building Applications on the Platform](docs/APPLICATIONS.md)
 - [OpenApi3 Swagger](docs/SWAGGER.md)
 - [Form Validation](https://formvalidation.io/)
 - [Last Successful Login](docs/AUTHENTICATION.MD)
@@ -138,7 +139,7 @@ curl http://localhost:8080/
 ./gradlew integrationTest
 
 # Run all tests
-./gradlew testAll
+./gradlew check
 
 # Rebuild the project
 ./gradlew clean build
@@ -152,6 +153,9 @@ curl http://localhost:8080/
 
 # Run owasp dependency check
 ./gradlew dependencyCheckAnalyze --info
+
+# Install the platform in the local Maven repository, for applications in other repositories
+./gradlew :kavun-platform:publishToMavenLocal
 
 # When you add a new dependency, run the following command to refresh the dependencies
 ./gradlew build --refresh-dependencies
@@ -276,52 +280,54 @@ The project is structured in a layered architecture with the following layers:
 │   └── images
 ├── libs                              # Holds special libraries used by the application.
 │   └── newrelic
-└── src
-    ├── integrationTest               # Integration test suites separated from unit tests.
-    │   ├── java
-    │   │   └── com
-    │   │       └── kavun
-    │   │           ├── backend
-    │   │           ├── task
-    │   │           └── web
-    │   └── resources
-    ├── main
-    │   ├── java
-    │   │   └── com
-    │   │       └── kavun
-    │   │           ├── annotation     # All custom annotations used in the application
-    │   │           ├── backend        # Business Logic and Data Access implementation
-    │   │           ├── config         # Configuration classes and properties
-    │   │           ├── constant       # Constants used in the application
-    │   │           ├── enums          # Enums used in the application
-    │   │           ├── exception      # Custom exceptions used in the application
-    │   │           ├── shared         # Resources like dto, utils, etc. used in the application
-    │   │           ├── task           # Scheduled tasks and cron jobs used in the application
-    │   │           └── web            # Web layer implementation
-    │   ├── resources
-    │   │   ├── i18n                   # I18n property files, comes with 'en', 'fr', 'es' and 'zn_CN'
-    │   │   ├── static
-    │   │   │   ├── css
-    │   │   │   ├── fonts
-    │   │   │   ├── images
-    │   │   │   └── js
-    │   │   │       └── form-validation
-    │   │   └── templates
-    │   │       ├── common
-    │   │       │   └── email
-    │   │       ├── email
-    │   │       ├── error
-    │   │       └── user
-    │   └── scripts                     # Scripts used in the application as part of docker build, etc.
-    └── test
-        ├── java
-        │   └── com
-        │       └── kavun
-        │           ├── backend
-        │           ├── config
-        │           ├── shared
-        │           └── web
-        └── resources
+├── kavun-app                         # Runs the platform on its own: main class, application.properties, scripts
+└── kavun-platform                    # The platform library that applications depend on
+    └── src
+        ├── integrationTest               # Integration test suites separated from unit tests.
+        │   ├── java
+        │   │   └── com
+        │   │       ├── example/notes      # The example application the integration tests run in
+        │   │       └── kavun
+        │   │           ├── backend
+        │   │           ├── task
+        │   │           └── web
+        │   └── resources
+        ├── main
+        │   ├── java
+        │   │   └── com
+        │   │       └── kavun
+        │   │           ├── annotation     # All custom annotations used in the application
+        │   │           ├── backend        # Business Logic and Data Access implementation
+        │   │           ├── config         # Configuration classes and properties
+        │   │           ├── constant       # Constants used in the application
+        │   │           ├── enums          # Enums used in the application
+        │   │           ├── exception      # Custom exceptions used in the application
+        │   │           ├── shared         # Resources like dto, utils, etc. used in the application
+        │   │           ├── task           # Scheduled tasks and cron jobs used in the application
+        │   │           └── web            # Web layer implementation
+        │   ├── resources
+        │   │   ├── i18n                   # The platform's messages (kavun*.properties), English and Turkish
+        │   │   ├── static
+        │   │   │   ├── css
+        │   │   │   ├── fonts
+        │   │   │   ├── images
+        │   │   │   └── js
+        │   │   │       └── form-validation
+        │   │   └── templates
+        │   │       ├── common
+        │   │       │   └── email
+        │   │       ├── email
+        │   │       ├── error
+        │   │       └── user
+        └── test
+            ├── java
+            │   └── com
+            │       └── kavun
+            │           ├── backend
+            │           ├── config
+            │           ├── shared
+            │           └── web
+            └── resources
 ```
 
 ## Database Schema

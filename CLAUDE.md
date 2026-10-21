@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Kavun is an opinionated, production-ready Spring Boot 3.5 starter (Java 21). It combines a Thymeleaf/Bootstrap admin web UI with a versioned REST API (`/api/v1`), JWT auth, dynamic role/permission management, and enterprise concerns (auditing, rate limiting, virus scanning, S3 storage, i18n).
+Kavun is an opinionated, production-ready Spring Boot 3.5 platform (Java 21) that applications are built on. It combines a Thymeleaf/Bootstrap admin web UI with a versioned REST API (`/api/v1`), JWT auth, multi-tenancy, dynamic role/permission management, and enterprise concerns (auditing, rate limiting, virus scanning, S3 storage, i18n).
+
+Two Gradle modules (see `docs/APPLICATIONS.md`):
+
+- `kavun-platform` — the library: all code, the Liquibase changelog, messages, templates, the platform's configuration defaults and the unit and integration tests. Published with `./gradlew :kavun-platform:publishToMavenLocal`.
+- `kavun-app` — runs the platform on its own: `com.kavun.app.KavunApplication` (`@SpringBootApplication @Import(KavunPlatform.class)`), `application.properties` (profile, name) and `application-local.properties`. An application with its own features is built the same way in its own repository; nothing in the platform may depend on `kavun-app`.
 
 ## Build, run, and test commands
 
@@ -15,7 +20,7 @@ Kavun is an opinionated, production-ready Spring Boot 3.5 starter (Java 21). It 
 # Hot reload while developing
 ./gradlew bootRun --continuous --quiet
 
-# Unit tests only
+# Unit tests only (both modules)
 ./gradlew test
 
 # Integration tests only (defaults to the `integration-test` profile, H2 in Postgres mode)
@@ -24,12 +29,12 @@ Kavun is an opinionated, production-ready Spring Boot 3.5 starter (Java 21). It 
 # Integration tests against a real Postgres via Testcontainers
 SPRING_PROFILES_ACTIVE=integration-test-ci ./gradlew clean build
 
-# Everything (unit + integration)
-./gradlew testAll
+# Everything (unit + integration + formatting check)
+./gradlew check
 
-# Run a single test class / method
-./gradlew test --tests "com.kavun.web.rest.v1.UserRestApiTest"
-./gradlew test --tests "com.kavun.web.rest.v1.UserRestApiTest.getUserByUsername"
+# Run a single test class / method (name the module: a filter that matches nothing in a module fails it)
+./gradlew :kavun-platform:test --tests "com.kavun.web.rest.v1.UserRestApiTest"
+./gradlew :kavun-platform:test --tests "com.kavun.web.rest.v1.UserRestApiTest.getUserByUsername"
 
 # Full clean build (spotless formatting runs automatically before compile via a JavaCompile dependsOn hook)
 ./gradlew clean build
@@ -42,15 +47,20 @@ SPRING_PROFILES_ACTIVE=integration-test-ci ./gradlew clean build
 
 # Refresh dependencies after editing build.gradle
 ./gradlew build --refresh-dependencies
+
+# Install the platform in the local Maven repository for applications in other repositories
+./gradlew :kavun-platform:publishToMavenLocal
 ```
 
-`docker-compose up -d` starts Postgres/supporting services before running the app locally. Active Spring profiles are `development` (default), `docker`, `test`, `production`, plus the two integration-test profiles above. `application-local.properties` is not a profile of its own - it is an overlay of machine-specific overrides (devtools, personal datasource) and must be activated last, e.g. `SPRING_PROFILES_ACTIVE=development,local`; nothing in the code or in `logback-spring.xml` is bound to the `local` profile name.
+`docker-compose up -d` starts Postgres/supporting services before running the app locally. Active Spring profiles are `development` (default), `docker`, `test`, `production`, plus the two integration-test profiles above. The platform's configuration lives in `kavun-platform/src/main/resources/kavun-defaults.properties` and `kavun-defaults-{profile}.properties`, added below the application's own files by `KavunDefaultsEnvironmentPostProcessor` (registered in `META-INF/spring.factories`): put platform settings there, not in an `application*.properties`, which belongs to the application (a library's `application.properties` would be hidden by the application's). Only `spring.profiles.*` and `spring.config.*` cannot be defaults. `application-local.properties` (in `kavun-app`) is not a profile of its own - it is an overlay of machine-specific overrides (devtools, personal datasource) and must be activated last, e.g. `SPRING_PROFILES_ACTIVE=development,local`; nothing in the code or in `logback-spring.xml` is bound to the `local` profile name.
 
 Local URLs once running: app at `:8080`, H2 console at `:8080/console`, Swagger UI at `:8080/swagger-ui/index.html`, Actuator health at `:8080/actuator/health`.
 
 ## Architecture
 
-Layered, package-by-concern structure under `src/main/java/com/kavun/`:
+Layered, package-by-concern structure under `kavun-platform/src/main/java/com/kavun/`:
+
+- `KavunPlatform` — what an application imports: component scan of `com.kavun`, its entities/repositories (`@AutoConfigurationPackage`) and scheduling. Never add `@EntityScan`/`@EnableJpaRepositories` with base packages: they would hide the application's entities and repositories.
 
 - `backend/persistent/domain/**` — JPA entities, split by bounded area (`user`, `security`, `email`, `upload`, `siem`, `base`). `base/BaseEntity` provides the common id/auditing/soft-delete fields all entities extend.
 - `backend/persistent/repository` / `backend/persistent/specification` — Spring Data JPA repositories, and `FilterSpecification`, the single generic builder that turns list filters (`name=..`, `createdAtFrom=..`, `parentId=..`) into queries over the fields a service allows. Do not write per-entity `Specification` classes.
@@ -86,12 +96,12 @@ Domain services generally implement soft-delete semantics (`delete`/`restore` in
 
 ### Database schema
 
-See `docs/DATABASE_MIGRATIONS.md`. Liquibase owns the schema in every profile (`src/main/resources/db/changelog`, master file includes `changes/NNN-*.xml` in order) and Hibernate only validates it (`ddl-auto=validate`), so every entity change needs a new changeset in the same commit — never edit an applied changeset. Use `${type.text}` for unbounded text columns (H2 turns `TEXT` into a CLOB the validation rejects), plain `VARCHAR` without CHECK constraints for enums, and `tenant_code VARCHAR(50) NOT NULL` without a default on tenant-owned tables. Reference data (roles, permission catalog, platform tenant, default admin) is seeded by the application, not by changesets.
+See `docs/DATABASE_MIGRATIONS.md`. Liquibase owns the schema in every profile (`kavun-platform/src/main/resources/db/changelog`, `kavun-changelog.xml` includes `changes/NNN-*.xml` in order; an application's own changelog includes `kavun-changelog.xml` first). Never move or rename a changeset file: its path is part of its identity and Hibernate only validates it (`ddl-auto=validate`), so every entity change needs a new changeset in the same commit — never edit an applied changeset. Use `${type.text}` for unbounded text columns (H2 turns `TEXT` into a CLOB the validation rejects), plain `VARCHAR` without CHECK constraints for enums, and `tenant_code VARCHAR(50) NOT NULL` without a default on tenant-owned tables. Reference data (roles, permission catalog, platform tenant, default admin) is seeded by the application, not by changesets.
 
 ## Testing conventions
 
-- Unit tests: JUnit 5 + Mockito, in `src/test/java`, mirroring the main package structure.
-- Integration tests live in the separate `src/integrationTest` source set (not under `src/test`), using Testcontainers/Postgres or H2-as-Postgres depending on profile.
+- Unit tests: JUnit 5 + Mockito, in `kavun-platform/src/test/java`, mirroring the main package structure.
+- Integration tests live in the separate `kavun-platform/src/integrationTest` source set (not under `src/test`), using Testcontainers/Postgres or H2-as-Postgres depending on profile. They run the platform inside an example application, `com.example.notes.NotesApplication` (one resource with its own changeset, page and messages; its `application.properties` and changelog are in `src/integrationTest/resources`), so they also cover extending the platform from another package. Its page is in the catalog, so don't assert the exact set of pages.
 - `equals`/`hashCode` on entities are tested with EqualsVerifier; `toString` with jparams `ToStringVerifier`. Follow the patterns in `docs/TESTS.md` rather than hand-rolling these tests.
 - S3 interactions in tests are backed by the `s3mock` library, not real AWS — see `docs/TESTS.md` for the test `AmazonS3` bean.
 - Coverage (JaCoCo) intentionally excludes `exception`, `enums`, `constant`, `config`, `backend/bootstrap`, mock classes, and generated MapStruct `*DtoMapperImpl` classes — don't chase coverage there.

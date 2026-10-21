@@ -1,1 +1,11 @@
 rootProject.name = 'kavun'
+
+// kavun-platform is the library applications are built on (docs/APPLICATIONS.md);
+// kavun-app runs it on its own.
+include 'kavun-platform', 'kavun-app'
+
+dependencyResolutionManagement {
+  repositories {
+    mavenCentral()
+  }
+}

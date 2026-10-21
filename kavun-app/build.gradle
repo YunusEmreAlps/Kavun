@@ -1,0 +1,57 @@
+// Runs the platform on its own. An application with its own features has the same build, with
+// the platform as a dependency from a Maven repository (see docs/APPLICATIONS.md).
+plugins {
+  id 'java'
+  id 'org.springframework.boot'
+  id 'io.spring.dependency-management'
+  id 'com.diffplug.spotless'
+}
+
+description = 'Runs the Kavun platform on its own'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+dependencies {
+  implementation project(':kavun-platform')
+
+  // An optional Hibernate add-on, configured in application.properties
+  runtimeOnly files(rootProject.file('libs/hypersistence-optimizer-2.6.3-jakarta.jar'))
+
+  developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
+}
+
+tasks.named('bootBuildImage') {
+  builder = 'paketobuildpacks/builder-jammy-base:latest'
+}
+
+tasks.withType(JavaCompile).configureEach {
+  options.compilerArgs += ['-Xlint:deprecation']
+  dependsOn 'spotlessApply'
+}
+
+spotless {
+  format 'misc', {
+    target '*.gradle'
+    trimTrailingWhitespace()
+    leadingTabsToSpaces()
+    endWithNewline()
+  }
+
+  java {
+    trimTrailingWhitespace()
+    leadingTabsToSpaces()
+    endWithNewline()
+    removeUnusedImports()
+  }
+}

@@ -20,10 +20,10 @@ build:
   stage: build
   image: $GRADLE_BASE_IMAGE
   script:
-    - ./gradlew clean build -x test -x integrationTest 
+    - ./gradlew clean build -x test -x integrationTest
   artifacts:
     paths:
-      - build/libs/
+      - kavun-app/build/libs/
 
 test:
   stage: test
@@ -33,9 +33,9 @@ test:
   artifacts:
     when: always
     paths:
-      - build/test-results/test/
+      - kavun-*/build/test-results/test/
     reports:
-      junit: build/test-results/test/*.xml
+      junit: kavun-*/build/test-results/test/*.xml
 
 package:
   stage: package
@@ -44,7 +44,7 @@ package:
     - ./gradlew bootJar
   artifacts:
     paths:
-      - build/libs/*.jar
+      - kavun-app/build/libs/*.jar
 
 docker-build:
   stage: deploy

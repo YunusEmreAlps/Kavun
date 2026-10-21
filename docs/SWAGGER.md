@@ -1,5 +1,5 @@
 The Open API Specification (OAS) is a [JSON Schema](https://json-schema.org/).
-Configuration can be found [here](/src/main/java/com/kavun/config/OpenApi30Config.java)
+Configuration can be found [here](/kavun-platform/src/main/java/com/kavun/config/OpenApi30Config.java)
 
 * Access OpenAPI Specification: - **http://localhost:8080/v3/api-docs**
 * Access Swagger UI - **http://localhost:8080/swagger-ui/index.html**
@@ -17,4 +17,3 @@ Configuration can be found [here](/src/main/java/com/kavun/config/OpenApi30Confi
         ADMIN_PASSWORD=password
 
 * Copy and paste the **accessToken** into to *Authorize* button.
-

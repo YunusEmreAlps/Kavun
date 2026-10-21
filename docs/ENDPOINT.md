@@ -32,8 +32,9 @@ delete flag and the entity identity (`equals`/`hashCode`); do not add your own.
 
 ## 2. Changeset
 
-Hibernate does not create tables; add `src/main/resources/db/changelog/changes/NNN-products.xml`
-and include it at the end of `db.changelog-master.xml` (see `docs/DATABASE_MIGRATIONS.md`):
+Hibernate does not create tables; add a changeset file and include it at the end of the changelog
+(see `docs/DATABASE_MIGRATIONS.md`): in the platform `changes/NNN-products.xml` in
+`kavun-changelog.xml`, in an application its own folder and changelog (see `docs/APPLICATIONS.md`):
 
 ```xml
 <changeSet id="002-products" author="kavun">

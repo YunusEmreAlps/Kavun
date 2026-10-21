@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="notes-001-notes" author="notes">
+    <createTable tableName="notes">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_notes" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="title" type="VARCHAR(200)"><constraints nullable="false"/></column>
+      <column name="content" type="${type.text}"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_notes_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+</databaseChangeLog>

@@ -156,7 +156,7 @@ the standard envelope:
 
 - **401** `UNAUTHORIZED`: no valid token.
 - **403** `FORBIDDEN`: valid token, missing permission. The message is localized from the
-  `Accept-Language` header (`error.access.denied` in `i18n/messages*.properties`).
+  `Accept-Language` header (`error.access.denied` in `i18n/kavun*.properties`).
 
 For checks inside business logic, call `AccessControlService.checkPermission(page, action)`; it
 throws `AccessDeniedException`, which the global handler turns into the same 403 response.

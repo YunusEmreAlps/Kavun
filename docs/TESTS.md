@@ -42,6 +42,11 @@ class UserTest {
 
 ## Integration Tests
 
+The integration tests (`kavun-platform/src/integrationTest`) run the platform inside an example
+application, `com.example.notes.NotesApplication`, the way a real application uses it: its own
+package, a `Note` resource with its own changeset, page and messages, and its own
+`application.properties`. `NotesIntegrationTest` checks that these work next to the platform's.
+
 ### Default (H2 in memory)
 
 Integration tests can be run in two (2)

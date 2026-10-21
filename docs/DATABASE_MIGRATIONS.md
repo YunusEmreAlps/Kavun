@@ -1,16 +1,20 @@
 # Database Migrations
 
 Liquibase owns the database schema. It runs on startup in every profile and applies the changesets
-under `src/main/resources/db/changelog`; Hibernate only validates (`ddl-auto=validate`) that the
+under `kavun-platform/src/main/resources/db/changelog`; Hibernate only validates (`ddl-auto=validate`) that the
 entities match the tables and refuses to start otherwise. Nothing creates or alters tables behind
 your back, so the schema a developer runs is the schema production gets.
 
 ```text
 db/changelog/
-├── db.changelog-master.xml   # includes the files below, in order
+├── kavun-changelog.xml       # includes the files below, in order
 └── changes/
-    └── 001-baseline.xml      # the schema when Liquibase took over, one changeset per table
+    ├── 001-baseline.xml      # the schema when Liquibase took over, one changeset per table
+    └── 002-...
 ```
+
+Liquibase identifies a changeset by its id, author and file path (`db/changelog/changes/...`), so a
+changeset file must never be moved or renamed either: it would run again.
 
 ## Changing the schema
 
@@ -18,7 +22,7 @@ Every entity change needs a changeset, in the same commit:
 
 1. Change the entity.
 2. Add a file `changes/NNN-short-description.xml` (next number) with one changeset per logical
-   change, and include it at the end of `db.changelog-master.xml`.
+   change, and include it at the end of `kavun-changelog.xml`.
 3. Run `./gradlew integrationTest`: the changesets run on H2 and Hibernate validates the result.
    Starting the application against PostgreSQL validates it there too.
 
@@ -47,6 +51,21 @@ SPRING_APPLICATION_JSON='{"spring.jpa.properties.jakarta.persistence.schema-gene
 ```
 
 The DDL (PostgreSQL dialect) ends up in `build/schema.sql`.
+
+## Applications
+
+An application built on the platform (`docs/APPLICATIONS.md`) has a changelog of its own that
+includes the platform's first, and points `spring.liquibase.change-log` to it:
+
+```xml
+<include file="db/changelog/kavun-changelog.xml"/>
+<include file="jeweler/001-products.xml" relativeToChangelogFile="true"/>
+```
+
+Its changesets live in a folder of their own (`db/changelog/jeweler/`), never in
+`db/changelog/changes/`, where a file with the platform's name would hide the platform's. The
+platform's new changesets always run before the application's. The example application of the
+integration tests does exactly this (`kavun-platform/src/integrationTest/resources/db/changelog`).
 
 ## Conventions
 

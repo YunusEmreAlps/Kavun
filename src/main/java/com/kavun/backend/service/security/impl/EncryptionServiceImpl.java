@@ -49,15 +49,13 @@ public class EncryptionServiceImpl implements EncryptionService {
   private static final int ITERATION_COUNT = 65536;
   private static final int KEY_LENGTH = 256;
   private final transient SecureRandom RANDOM = new SecureRandom();
-  private final transient String password;
-  private final transient String salt;
+  private final transient SecretKey secretKey;
 
   public EncryptionServiceImpl(
       @Value("${encryption.secret.password}") String password,
       @Value("${encryption.secret.salt}") String salt) {
 
-    this.password = password;
-    this.salt = salt;
+    this.secretKey = getKeyFromPassword(password, salt);
   }
 
   /**
@@ -77,7 +75,7 @@ public class EncryptionServiceImpl implements EncryptionService {
 
       Cipher cipher = Cipher.getInstance(ENCRYPT_ALGORITHM);
       GCMParameterSpec ivSpec = new GCMParameterSpec(GCM_TAG_LENGTH * Byte.SIZE, iv);
-      cipher.init(Cipher.ENCRYPT_MODE, getKeyFromPassword(), ivSpec);
+      cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
 
       byte[] ciphertext = cipher.doFinal(text.getBytes(StandardCharsets.UTF_8));
       byte[] encrypted = new byte[iv.length + ciphertext.length];
@@ -114,7 +112,7 @@ public class EncryptionServiceImpl implements EncryptionService {
 
       Cipher cipher = Cipher.getInstance(ENCRYPT_ALGORITHM);
       GCMParameterSpec ivSpec = new GCMParameterSpec(GCM_TAG_LENGTH * Byte.SIZE, iv);
-      cipher.init(Cipher.DECRYPT_MODE, getKeyFromPassword(), ivSpec);
+      cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
 
       byte[] ciphertext = cipher.doFinal(decoded, GCM_IV_LENGTH, decoded.length - GCM_IV_LENGTH);
 
@@ -147,7 +145,7 @@ public class EncryptionServiceImpl implements EncryptionService {
     return UriUtils.decode(encodedTest, StandardCharsets.UTF_8.name());
   }
 
-  private SecretKey getKeyFromPassword() {
+  private static SecretKey getKeyFromPassword(final String password, final String salt) {
     try {
       SecretKeyFactory factory = SecretKeyFactory.getInstance(DERIVATION_FUNCTION);
       byte[] saltBytes = salt.getBytes(StandardCharsets.UTF_8);

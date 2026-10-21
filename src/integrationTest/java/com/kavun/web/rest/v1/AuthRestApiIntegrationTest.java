@@ -2,6 +2,7 @@ package com.kavun.web.rest.v1;
 
 import com.kavun.IntegrationTestUtils;
 import com.kavun.TestUtils;
+import com.kavun.backend.persistent.repository.UserSessionRepository;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.enums.TokenType;
 import com.kavun.shared.dto.UserDto;
@@ -9,22 +10,23 @@ import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.JwtUtils;
 import com.kavun.shared.util.core.JwtUtils.JwtTokenType;
 import com.kavun.web.payload.request.LoginRequest;
-import com.kavun.web.payload.response.JwtResponseBuilder;
+import com.jayway.jsonpath.JsonPath;
 import java.time.Duration;
+import java.util.Date;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -32,19 +34,22 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 @TestInstance(Lifecycle.PER_CLASS)
 class AuthRestApiIntegrationTest extends IntegrationTestUtils {
 
+  private static final String ACCESS_TOKEN_PATH = "$.data.access_token";
+
   private transient String loginUri;
   private transient String logoutUri;
   private transient String refreshUri;
   private transient String loginRequestJson;
   private transient UserDto storedUser;
-  private transient Duration refreshTokenDuration;
+
+  @Autowired private transient UserSessionRepository userSessionRepository;
 
   @BeforeAll
   void beforeAll() {
     var userDto = UserUtils.createUserDto(true);
     storedUser = createAndAssertAdmin(userDto);
 
-    var loginRequest = new LoginRequest(storedUser.getUsername(), userDto.getPassword());
+    var loginRequest = new LoginRequest(storedUser.getUsername(), userDto.getPassword(), null, null);
     loginRequestJson = TestUtils.toJson(loginRequest);
 
     String delimiter = "/";
@@ -55,20 +60,26 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
     refreshUri =
         String.join(
             delimiter, SecurityConstants.API_V1_AUTH_ROOT_URL, SecurityConstants.REFRESH_TOKEN);
-    refreshTokenDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
   }
 
   @Test
-  void loginPathWithValidCredentialsReturnsAccessToken() throws Exception {
+  void loginWithValidCredentialsReturnsAccessTokenAndRefreshCookie() throws Exception {
+    var refreshTokenDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
+
     MvcResult mvcResult =
-        performRequest(MockMvcRequestBuilders.post(loginUri))
-            .andExpectAll(expectedResponseDetails(storedUser))
+        performRequest(MockMvcRequestBuilders.post(loginUri), loginRequestJson)
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.jsonPath(ACCESS_TOKEN_PATH).exists())
+            .andExpect(MockMvcResultMatchers.cookie().exists(TokenType.REFRESH.getName()))
+            .andExpect(MockMvcResultMatchers.cookie().httpOnly(TokenType.REFRESH.getName(), true))
+            .andExpect(
+                MockMvcResultMatchers.cookie()
+                    .maxAge(
+                        TokenType.REFRESH.getName(),
+                        Math.toIntExact(refreshTokenDuration.toSeconds())))
             .andReturn();
 
-    String contentAsString = mvcResult.getResponse().getContentAsString();
-    JwtResponseBuilder jwtResponse = TestUtils.parse(contentAsString, JwtResponseBuilder.class);
-
-    String encryptedAccessToken = jwtResponse.getAccessToken();
+    String encryptedAccessToken = accessTokenOf(mvcResult);
     Assertions.assertFalse(jwtService.isValidJwtToken(encryptedAccessToken));
 
     String originalAccessToken = encryptionService.decrypt(encryptedAccessToken);
@@ -76,13 +87,13 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
   }
 
   @Test
-  void loginPathWithInvalidCredentialsReturnsUnauthorized(TestInfo testInfo) throws Exception {
+  void loginWithInvalidCredentialsReturnsUnauthorized(TestInfo testInfo) throws Exception {
+    var loginRequest =
+        new LoginRequest(storedUser.getUsername(), testInfo.getDisplayName(), null, null);
 
-    var loginRequest = new LoginRequest(storedUser.getUsername(), testInfo.getDisplayName());
-    var invalidLoginRequestJson = TestUtils.toJson(loginRequest);
-
-    performRequest(MockMvcRequestBuilders.post(loginUri), invalidLoginRequestJson)
-        .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+    performRequest(MockMvcRequestBuilders.post(loginUri), TestUtils.toJson(loginRequest))
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.status").value(401));
   }
 
   /**
@@ -92,41 +103,71 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
    */
   @Test
   void validRefreshTokenReturnsNewAccessToken() throws Exception {
-
-    var jwtToken = jwtService.generateJwtToken(storedUser.getUsername());
-    var encryptedJwtToken = encryptionService.encrypt(jwtToken);
-    var cookie = cookieService.createTokenCookie(encryptedJwtToken, TokenType.REFRESH);
+    var session = userSessionService.createSession(storedUser.getId(), new MockHttpServletRequest());
+    var jwtToken = refreshTokenFor(session.getId());
 
     MvcResult mvcResult =
-        performRequest(
-                MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie)))
+        performRequest(refreshRequest(jwtToken), StringUtils.EMPTY)
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andReturn();
 
-    String contentAsString = mvcResult.getResponse().getContentAsString();
-    JwtResponseBuilder jwtResponse = TestUtils.parse(contentAsString, JwtResponseBuilder.class);
+    String originalAccessToken = encryptionService.decrypt(accessTokenOf(mvcResult));
 
-    String encryptedAccessToken = jwtResponse.getAccessToken();
-    // Assert that the access token returned by the refresh token is valid
-    Assertions.assertFalse(jwtService.isValidJwtToken(encryptedAccessToken));
-
-    String originalAccessToken = encryptionService.decrypt(encryptedAccessToken);
-
-    // Assert that the access token returned by the refresh token is different from the original
+    Assertions.assertTrue(jwtService.isValidJwtToken(originalAccessToken));
     Assertions.assertNotEquals(jwtToken, originalAccessToken);
   }
 
   @Test
-  void invalidEncryptedRefreshTokenThrowsException(TestInfo testInfo) throws Exception {
+  void refreshTokenOfTimedOutSessionResumesIt() throws Exception {
+    var session = userSessionService.createSession(storedUser.getId(), new MockHttpServletRequest());
+    session.expire();
+    userSessionRepository.save(session);
+
+    performRequest(refreshRequest(refreshTokenFor(session.getId())), StringUtils.EMPTY)
+        .andExpect(MockMvcResultMatchers.status().isOk());
+    Assertions.assertTrue(userSessionService.isActive(session.getId(), storedUser.getId()));
+  }
+
+  @Test
+  void refreshTokenOfLoggedOutSessionIsRejected() throws Exception {
+    var session = userSessionService.createSession(storedUser.getId(), new MockHttpServletRequest());
+    userSessionService.logout(session.getId());
+
+    performRequest(refreshRequest(refreshTokenFor(session.getId())), StringUtils.EMPTY)
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+  }
+
+  @Test
+  void refreshTokenWithoutSessionIsRejected() throws Exception {
+    var jwtToken = jwtService.generateJwtToken(storedUser.getUsername());
+
+    performRequest(refreshRequest(jwtToken), StringUtils.EMPTY)
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+  }
+
+  private String refreshTokenFor(Long sessionId) {
+    var expiration = DateUtils.addDays(new Date(), SecurityConstants.DEFAULT_TOKEN_DURATION);
+    return jwtService.generateJwtToken(storedUser.getUsername(), expiration, sessionId.toString());
+  }
+
+  private MockHttpServletRequestBuilder refreshRequest(String jwtToken) {
+    var cookie =
+        cookieService.createTokenCookie(encryptionService.encrypt(jwtToken), TokenType.REFRESH);
+    return MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie));
+  }
+
+  @Test
+  void invalidEncryptedRefreshTokenIsRejected(TestInfo testInfo) throws Exception {
     var cookie = cookieService.createTokenCookie(testInfo.getDisplayName(), TokenType.REFRESH);
 
     performRequest(
-            MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie)))
+            MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie)),
+            StringUtils.EMPTY)
         .andExpect(MockMvcResultMatchers.status().is4xxClientError());
   }
 
   @Test
-  void invalidDecryptedJwtRefreshTokenThrowsException(TestInfo testInfo) throws Exception {
+  void refreshTokenWithBadSignatureIsRejected(TestInfo testInfo) throws Exception {
     var jwt = jwtService.generateJwtToken(testInfo.getDisplayName());
     var badSignatureJwtToken = JwtUtils.generateTestJwtToken(jwt, JwtTokenType.BAD_SIGNATURE);
     var encryptedJwtToken = encryptionService.encrypt(badSignatureJwtToken);
@@ -134,72 +175,29 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
     var cookie = cookieService.createTokenCookie(encryptedJwtToken, TokenType.REFRESH);
 
     performRequest(
-            MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie)))
+            MockMvcRequestBuilders.get(refreshUri).cookie(cookieService.createCookie(cookie)),
+            StringUtils.EMPTY)
         .andExpect(MockMvcResultMatchers.status().is4xxClientError());
   }
 
   @Test
-  void loginLogoutReturnsResponseWithoutRefreshToken() throws Exception {
-    // login
-    performRequest(MockMvcRequestBuilders.post(loginUri))
-        .andExpectAll(expectedResponseDetails(storedUser))
-        .andReturn();
-
-    // logout
-    performRequest(MockMvcRequestBuilders.delete(logoutUri))
+  void logoutClearsRefreshCookie() throws Exception {
+    performRequest(
+            MockMvcRequestBuilders.delete(logoutUri)
+                .header(HttpHeaders.AUTHORIZATION, bearerTokenFor(storedUser)),
+            StringUtils.EMPTY)
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.cookie().exists(TokenType.REFRESH.getName()))
         .andExpect(
-            MockMvcResultMatchers.cookie().value(TokenType.REFRESH.getName(), StringUtils.EMPTY))
-        .andReturn();
+            MockMvcResultMatchers.cookie().value(TokenType.REFRESH.getName(), StringUtils.EMPTY));
   }
 
-  /**
-   * Performs mockMvc request with the specified request details and content.
-   *
-   * @param request the request
-   * @return the result actions
-   */
-  private ResultActions performRequest(MockHttpServletRequestBuilder request) throws Exception {
-    return performRequest(request, loginRequestJson);
+  private ResultActions performRequest(MockHttpServletRequestBuilder request, String content)
+      throws Exception {
+    return mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON).content(content));
   }
 
-  /**
-   * Performs mockMvc request with the specified request details and content.
-   *
-   * @param request the request
-   * @return the result actions
-   */
-  private ResultActions performRequest(
-      MockHttpServletRequestBuilder request, String loginRequestJson) throws Exception {
-
-    return mockMvc.perform(
-        request
-            .with(SecurityMockMvcRequestPostProcessors.csrf())
-            .header(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, HttpMethod.POST)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(loginRequestJson));
-  }
-
-  /**
-   * Returns the expected response details.
-   *
-   * @param userDto the userDto
-   * @return the result matchers
-   */
-  private ResultMatcher[] expectedResponseDetails(UserDto userDto) {
-    long value = refreshTokenDuration.toSeconds();
-    return new ResultMatcher[] {
-      MockMvcResultMatchers.status().isOk(),
-      MockMvcResultMatchers.cookie().exists(TokenType.REFRESH.getName()),
-      MockMvcResultMatchers.cookie().httpOnly(TokenType.REFRESH.getName(), true),
-      MockMvcResultMatchers.cookie().maxAge(TokenType.REFRESH.getName(), Math.toIntExact(value)),
-      MockMvcResultMatchers.jsonPath("$").isMap(),
-      MockMvcResultMatchers.jsonPath("$.username").value(userDto.getUsername()),
-      MockMvcResultMatchers.jsonPath("$.publicId").value(userDto.getPublicId()),
-      MockMvcResultMatchers.jsonPath("$.email").value(userDto.getEmail()),
-      MockMvcResultMatchers.jsonPath("$.roles").value(UserUtils.getRoles(userDto.getUserRoles())),
-      MockMvcResultMatchers.jsonPath("$.accessToken").exists()
-    };
+  private static String accessTokenOf(MvcResult mvcResult) throws Exception {
+    return JsonPath.read(mvcResult.getResponse().getContentAsString(), ACCESS_TOKEN_PATH);
   }
 }

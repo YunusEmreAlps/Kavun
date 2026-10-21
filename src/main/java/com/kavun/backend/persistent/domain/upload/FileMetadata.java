@@ -68,7 +68,7 @@ public class FileMetadata extends BaseEntity<Long> implements Serializable {
 
     @NotBlank(message = "Object key is required")
     @Size(max = 512, message = "Object key cannot exceed 512 characters")
-    @Column(name = "object_key", nullable = false)
+    @Column(name = "object_key", nullable = false, length = 512)
     private String objectKey;
 
     @NotBlank(message = "File name is required")

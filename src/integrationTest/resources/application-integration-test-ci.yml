@@ -28,6 +28,3 @@ spring:
     username: ${EMAIL_USERNAME:admin}
     password: ${EMAIL_PASSWORD:admin}
     protocol: smtp
-
-  liquibase:
-    enabled: true

@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -50,8 +51,12 @@ public abstract class BaseEntity<T extends Serializable> {
   @JdbcTypeCode(SqlTypes.BIGINT)
   private T id;
 
+  /**
+   * Assigned on construction (not on persist) so that equals/hashCode are stable for the whole
+   * lifecycle of the entity, including before it is saved.
+   */
   @Column(unique = true, nullable = false, updatable = false)
-  private String publicId;
+  private String publicId = UUID.randomUUID().toString();
 
   @Version
   @Column(nullable = false)
@@ -92,19 +97,29 @@ public abstract class BaseEntity<T extends Serializable> {
     }
   }
 
+  /**
+   * Entity identity is the publicId of the same persistent class. Final so that every entity
+   * shares one consistent contract; getters are used so Hibernate proxies resolve correctly.
+   */
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof BaseEntity<?> that) || !that.canEqual(this)) return false;
-    return Objects.equals(publicId, that.publicId);
+  public final boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof BaseEntity<?> other) || persistentClass(this) != persistentClass(other)) {
+      return false;
+    }
+    return Objects.equals(getPublicId(), other.getPublicId());
   }
 
-  protected boolean canEqual(Object other) {
-    return other instanceof BaseEntity;
+  @Override
+  public final int hashCode() {
+    return Objects.hashCode(getPublicId());
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(publicId);
+  private static Class<?> persistentClass(Object entity) {
+    return entity instanceof HibernateProxy proxy
+        ? proxy.getHibernateLazyInitializer().getPersistentClass()
+        : entity.getClass();
   }
 }

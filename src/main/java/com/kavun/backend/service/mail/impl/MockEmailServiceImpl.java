@@ -1,25 +1,23 @@
 package com.kavun.backend.service.mail.impl;
 
-import com.kavun.constant.EnvConstants;
 import com.kavun.constant.email.EmailConstants;
 import com.kavun.web.payload.request.mail.EmailRequest;
 import com.kavun.web.payload.request.mail.HtmlEmailRequest;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.stereotype.Service;
 
 /**
  * Class simulates the operation of email sending without a real time call.
+ *
+ * <p>Not a component: {@code DockerConfig} registers it explicitly as the docker profile's
+ * {@code EmailService}.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
  * @since 1.0
  */
 @Slf4j
-@Service
-@Profile(EnvConstants.INTEGRATION_TEST)
 public class MockEmailServiceImpl extends AbstractEmailServiceImpl {
 
   /**

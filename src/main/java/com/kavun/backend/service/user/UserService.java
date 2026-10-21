@@ -8,10 +8,12 @@ import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.domain.user.UserRole;
 import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.backend.persistent.repository.UserRoleRepository;
-import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
+import com.kavun.backend.service.security.permission.AccessControlService;
 import com.kavun.constant.CacheConstants;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.dto.mapper.UserMapper;
@@ -28,6 +30,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -39,11 +42,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -63,24 +64,30 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Transactional
 public class UserService
-    extends AbstractService<UserRequest, User, UserDto, UserRepository, UserMapper, UserSpecification> {
+    extends AbstractService<UserRequest, User, UserDto, UserRepository, UserMapper> {
 
   private final Clock clock;
   private final RoleService roleService;
   private final PasswordEncoder passwordEncoder;
   private final UserRoleRepository userRoleRepository;
+  private final AccessControlService accessControlService;
 
-  public UserService(UserMapper mapper, UserRepository repository, UserSpecification specification,
-      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository) {
-    super(mapper, repository, specification);
+  public UserService(UserMapper mapper, UserRepository repository,
+      Clock clock, RoleService roleService, PasswordEncoder passwordEncoder, UserRoleRepository userRoleRepository,
+      AccessControlService accessControlService) {
+    super(mapper, repository);
     this.clock = clock;
     this.roleService = roleService;
     this.passwordEncoder = passwordEncoder;
     this.userRoleRepository = userRoleRepository;
+    this.accessControlService = accessControlService;
   }
 
-  public Specification<User> search(Map<String, Object> parameterMap) {
-    return specification.search(parameterMap);
+  @Override
+  protected Set<String> filterableFields() {
+    return Set.of(
+        "publicId", "username", "email", "firstName", "lastName", "phone", "enabled",
+        "deletedAt", "createdAt");
   }
 
   public Integer count() {
@@ -155,12 +162,14 @@ public class UserService
   /**
    * Returns a user for the given id or null if a user could not be found.
    *
+   * <p>Not cached, like {@link #findByUsername}: Spring caches are not tenant-aware and would hand
+   * a user looked up for one tenant to another.
+   *
    * @param id The Long associated to the user to find
    * @return a user for the given id or null if a user could not be found.
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Transactional(readOnly = true)
-  @Cacheable(CacheConstants.USERS)
   public UserDto findById(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
@@ -176,7 +185,6 @@ public class UserService
    * @throws NullPointerException in case the given entity is {@literal null}
    */
   @Transactional(readOnly = true)
-  @Cacheable(CacheConstants.USERS)
   public UserDto findByUsername(final String username) {
     Validate.notNull(username, UserConstants.BLANK_USERNAME);
 
@@ -268,6 +276,7 @@ public class UserService
     // Fetch user
     User existingUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(existingUser);
 
     // Validate uniqueness only if changed
     if (!existingUser.getUsername().equals(request.getUsername())) {
@@ -317,6 +326,7 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(storedUser);
 
     LOG.debug("Enabling user {}", storedUser.getUsername());
     storedUser.setEnabled(true);
@@ -335,6 +345,7 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(storedUser);
 
     LOG.debug("Disabling user {}", storedUser.getUsername());
     storedUser.setEnabled(false);
@@ -353,6 +364,7 @@ public class UserService
 
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
+    checkCanManage(storedUser);
 
     var authenticatedUser = SecurityUtils.getAuthenticatedUserDetails();
     storedUser.setDeleted(true);
@@ -373,6 +385,9 @@ public class UserService
   public void deleteUser(final Long id) {
     Validate.notNull(id, UserConstants.USER_ID_MUST_NOT_BE_NULL);
 
+    // Cascading the removal would only soft delete the role assignments (@SQLDelete) and leave
+    // rows referencing the user, so they are physically removed first.
+    userRoleRepository.hardDeleteAllByUserId(id);
     repository.deleteById(id);
     LOG.debug("Permanently deleted user with id {}", id);
   }
@@ -401,7 +416,6 @@ public class UserService
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
-
     if (!passwordEncoder.matches(oldPassword, storedUser.getPassword())) {
       throw new IllegalArgumentException(UserConstants.PASSWORD_UPDATED_FAILED);
     }
@@ -420,28 +434,10 @@ public class UserService
     User storedUser = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException(UserConstants.USER_NOT_FOUND));
 
-
     storedUser.setPassword(passwordEncoder.encode(newPassword));
     repository.save(storedUser);
 
     return true;
-  }
-
-  /**
-   * Transfers user details to a user object then persist to a database.
-   *
-   * @param userDto     the userDto
-   * @param roleTypes   the roleTypes
-   * @param historyType the user history type
-   * @param isUpdate    if the operation is an update
-   * @return the userDto
-   */
-  private UserDto persistUser(
-      final UserDto userDto,
-      final Set<RoleType> roleTypes,
-      final UserHistoryType historyType,
-      final boolean isUpdate) {
-    return persistUser(userDto, roleTypes, historyType, isUpdate, false);
   }
 
   /**
@@ -507,6 +503,18 @@ public class UserService
         throw new EntityNotFoundException("Role not found with id: " + roleId);
       }
     }
+    checkCanManage(user);
+
+    // Re-sending the roles a user already has (e.g. a full update) needs no assign permission.
+    Set<Long> currentRoleIds = user.getUserRoles().stream()
+        .map(ur -> ur.getRole().getId())
+        .collect(Collectors.toSet());
+    if (!currentRoleIds.equals(requestedRoleIds)) {
+      checkCanAssign(requestedRoleIds.stream()
+          .filter(roleId -> !currentRoleIds.contains(roleId))
+          .map(rolesById::get)
+          .toList());
+    }
 
     // Soft-delete active roles not in the request (orphanRemoval=true + @SQLDelete)
     user.getUserRoles().removeIf(ur -> !requestedRoleIds.contains(ur.getRole().getId()));
@@ -541,6 +549,28 @@ public class UserService
 
     repository.save(user);
     LOG.info("Updated roles for user {} - requested: {}", userId, requestedRoleIds.size());
+  }
+
+  /**
+   * Requires the current caller to be allowed to hand out the given roles: the ROLES:ASSIGN
+   * permission, and administrator rights for the admin role.
+   *
+   * @param roleIds the ids of the roles to be assigned
+   * @throws org.springframework.security.access.AccessDeniedException if the caller may not
+   */
+  @Transactional(readOnly = true)
+  public void checkCanAssignRoles(Collection<Long> roleIds) {
+    checkCanAssign(roleService.findAllByIds(Set.copyOf(roleIds)));
+  }
+
+  private void checkCanAssign(Collection<Role> roles) {
+    accessControlService.checkPermission(Pages.ROLES, Actions.ASSIGN);
+    roles.forEach(accessControlService::checkCanAssign);
+  }
+
+  // Only administrators may change administrator accounts.
+  private void checkCanManage(User user) {
+    accessControlService.checkCanManageUserWithRoles(UserUtils.getRoles(user.getUserRoles()));
   }
 
   // Generates a secure temporary password.

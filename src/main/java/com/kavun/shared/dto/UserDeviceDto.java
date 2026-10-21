@@ -1,5 +1,6 @@
 package com.kavun.shared.dto;
 
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -10,4 +11,5 @@ public class UserDeviceDto extends BaseDto {
     private String deviceType;
     private String operatingSystem;
     private String browser;
+    private LocalDateTime lastSeenAt;
 }

@@ -1,15 +1,14 @@
 package com.kavun.backend.service.user;
 
+import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.kavun.backend.persistent.domain.user.UserDevice;
 import com.kavun.backend.persistent.repository.UserDeviceRepository;
-import com.kavun.backend.persistent.specification.UserDeviceSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.constant.LoggingConstants;
@@ -23,8 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Service for managing user sessions.
- * Handles session creation, updates, and termination.
+ * Records the devices users sign in from.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -34,51 +32,47 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Transactional
 public class UserDeviceService extends
-        AbstractService<UserDeviceRequest, UserDevice, UserDeviceDto, UserDeviceRepository, UserDeviceMapper, UserDeviceSpecification> {
+        AbstractService<UserDeviceRequest, UserDevice, UserDeviceDto, UserDeviceRepository, UserDeviceMapper> {
 
     private final DeviceDetectionService deviceDetectionService;
 
     public UserDeviceService(DeviceDetectionService deviceDetectionService, UserDeviceMapper mapper,
-            UserDeviceRepository repository, UserDeviceSpecification specification) {
-        super(mapper, repository, specification);
+            UserDeviceRepository repository) {
+        super(mapper, repository);
         this.deviceDetectionService = deviceDetectionService;
     }
 
-    public void createDevice(Long userId, String deviceId, HttpServletRequest request) {
-        String userAgent = request.getHeader(LoggingConstants.USER_AGENT_HEADER);
-        DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
-
-        // Check if device already exists
-        Optional<UserDevice> existingDevice = repository.findByDeviceId(deviceId);
-
-        if (existingDevice.isPresent()) {
-            UserDevice device = existingDevice.get();
-
-            // Update existing device information (browser, OS might change with updates)
-            device.setDeviceType(deviceInfo.getDeviceType());
-            device.setOperatingSystem(deviceInfo.getOperatingSystem());
-            device.setBrowser(deviceInfo.getBrowser());
-            device.setUserAgent(userAgent);
-
-            repository.save(device);
-            LOG.info("Updated device ID {} for user: {}", deviceId, userId);
-        } else {
-            // Create new device record
-            UserDevice userDevice = new UserDevice();
-            userDevice.setUserId(userId);
-            userDevice.setDeviceId(deviceId);
-            userDevice.setDeviceType(deviceInfo.getDeviceType());
-            userDevice.setOperatingSystem(deviceInfo.getOperatingSystem());
-            userDevice.setBrowser(deviceInfo.getBrowser());
-            userDevice.setUserAgent(userAgent);
-
-            repository.save(userDevice);
-            LOG.info("Registered new device ID {} for user: {}", deviceId, userId);
-        }
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of("userId", "deviceId", "deviceType", "operatingSystem", "browser", "lastSeenAt",
+                "createdAt");
     }
 
-    public Specification<UserDevice> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    /**
+     * Records a sign-in: refreshes the user's record of the device, or creates it on the first
+     * sign-in from that device. The same browser used by two users gives two records.
+     *
+     * @param userId the user who signed in
+     * @param deviceId the identifier the client sent for the device
+     * @param request the sign-in request, for the browser and operating system
+     */
+    public void recordSignIn(Long userId, String deviceId, HttpServletRequest request) {
+        UserDevice device = repository.findByUserIdAndDeviceId(userId, deviceId).orElseGet(() -> {
+            var newDevice = new UserDevice();
+            newDevice.setUserId(userId);
+            newDevice.setDeviceId(deviceId);
+            LOG.info("Registered new device ID {} for user: {}", deviceId, userId);
+            return newDevice;
+        });
+
+        // Browser and operating system versions change with updates.
+        DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.detect(request);
+        device.setDeviceType(deviceInfo.getDeviceType());
+        device.setOperatingSystem(deviceInfo.getOperatingSystem());
+        device.setBrowser(deviceInfo.getBrowser());
+        device.setUserAgent(request.getHeader(LoggingConstants.USER_AGENT_HEADER));
+        device.setLastSeenAt(LocalDateTime.now());
+        repository.save(device);
     }
 
     public Map<String, Long> getDeviceUsageAnalytics() {

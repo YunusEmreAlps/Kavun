@@ -3,12 +3,11 @@ package com.kavun;
 import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.shared.util.UserUtils;
 import com.google.gson.Gson;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import net.datafaker.Faker;
-import org.apache.commons.lang3.ArrayUtils;
+import nl.jqno.equalsverifier.EqualsVerifier;
+import nl.jqno.equalsverifier.Warning;
+import nl.jqno.equalsverifier.api.SingleTypeEqualsVerifierApi;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,27 +27,22 @@ public class TestUtils {
   public static final String ANONYMOUS_ROLE = "ROLE_ANONYMOUS";
   public static final String ROLE_USER = "ROLE_USER";
   protected static final Faker FAKER = new Faker();
-  private static final String[] IGNORED_FIELDS = {
-    "id", "createdAt", "createdBy", "updatedAt", "updatedBy"
-  };
-  private static final String[] BASE_EQUALS_AND_HASH_CODE_FIELDS = {"version", "publicId"};
-  private static final String[] USER_EQUALS_FIELDS = {"publicId", "username", "email"};
+  private static final String ENTITY_IDENTITY_FIELD = "publicId";
 
-  public static Collection<String> getBaseEqualsAndHashCodeFields() {
-    return List.of(BASE_EQUALS_AND_HASH_CODE_FIELDS);
-  }
-
-  public static Collection<String> getIgnoredFields() {
-    return Collections.unmodifiableCollection(Arrays.asList(IGNORED_FIELDS));
-  }
-
-  public static String[] getEntityEqualsFields(String... fields) {
-    return ArrayUtils.addAll(getBaseEqualsAndHashCodeFields().toArray(new String[0]), fields);
-  }
-
-  public static Collection<String> getUserEqualsFields() {
-    var userEquals = ArrayUtils.addAll(BASE_EQUALS_AND_HASH_CODE_FIELDS, USER_EQUALS_FIELDS);
-    return List.of(userEquals);
+  /**
+   * Returns an EqualsVerifier configured for the identity contract every entity inherits from
+   * {@link com.kavun.backend.persistent.domain.base.BaseEntity}: equal when they share the same
+   * persistent class and publicId.
+   *
+   * @param entityClass the entity class to verify
+   * @param <T> the entity type
+   * @return the configured verifier, ready for extra prefab values
+   */
+  public static <T> SingleTypeEqualsVerifierApi<T> entityIdentityVerifier(Class<T> entityClass) {
+    return EqualsVerifier.forClass(entityClass)
+        .usingGetClass()
+        .withOnlyTheseFields(ENTITY_IDENTITY_FIELD)
+        .suppress(Warning.NONFINAL_FIELDS);
   }
 
   /**

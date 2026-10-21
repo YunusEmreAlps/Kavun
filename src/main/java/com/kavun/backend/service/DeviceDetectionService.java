@@ -1,5 +1,14 @@
 package com.kavun.backend.service;
 
+import static com.kavun.constant.LoggingConstants.DEVICE_TYPE_HEADER;
+import static com.kavun.constant.LoggingConstants.SEC_CH_UA_MOBILE_HEADER;
+import static com.kavun.constant.LoggingConstants.USER_AGENT_HEADER;
+
+import com.kavun.enums.DeviceType;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,10 +28,37 @@ import ua_parser.Parser;
 @Service
 public class DeviceDetectionService {
 
+    private static final Set<DeviceType> CLIENT_REPORTABLE_TYPES =
+            Set.of(DeviceType.DESKTOP, DeviceType.TABLET, DeviceType.MOBILE, DeviceType.TV);
+
+    private static final List<String> NATIVE_HTTP_CLIENT_MARKERS = List.of(
+            // Android
+            "okhttp", "retrofit", "volley", "androidasynchttp", "dalvik",
+            // iOS
+            "alamofire", "afnetworking", "nsurlsession", "cfnetwork",
+            // Flutter
+            "dart/", "dart:io");
+
     private final Parser uaParser;
 
     public DeviceDetectionService() {
         this.uaParser = new Parser();
+    }
+
+    /**
+     * Detects device information from an HTTP request. Besides the User-Agent, this honours
+     * the client-supplied {@code X-Device-Type} header and the {@code Sec-CH-UA-Mobile} client
+     * hint, which are the only ways to recognise devices whose User-Agent hides the form factor
+     * (iPadOS Safari reports itself as a Mac, Chrome on Android sends a reduced User-Agent).
+     *
+     * @param request the HTTP request
+     * @return DeviceInfo object containing parsed information
+     */
+    public DeviceInfo detect(HttpServletRequest request) {
+        return parse(
+                request.getHeader(USER_AGENT_HEADER),
+                request.getHeader(DEVICE_TYPE_HEADER),
+                request.getHeader(SEC_CH_UA_MOBILE_HEADER));
     }
 
     /**
@@ -32,6 +68,10 @@ public class DeviceDetectionService {
      * @return DeviceInfo object containing parsed information
      */
     public DeviceInfo parseUserAgent(String userAgent) {
+        return parse(userAgent, null, null);
+    }
+
+    private DeviceInfo parse(String userAgent, String deviceTypeHint, String secChUaMobile) {
         if (userAgent == null || userAgent.isBlank()) {
             return DeviceInfo.unknown();
         }
@@ -39,11 +79,14 @@ public class DeviceDetectionService {
         try {
             Client client = uaParser.parse(userAgent);
 
-            String deviceType = determineDeviceType(client);
+            DeviceType deviceType = parseDeviceTypeHint(deviceTypeHint);
+            if (deviceType == null) {
+                deviceType = determineDeviceType(client, userAgent, secChUaMobile);
+            }
             String os = formatOperatingSystem(client);
             String browser = formatBrowser(client);
 
-            return new DeviceInfo(deviceType, os, browser);
+            return new DeviceInfo(deviceType.name(), os, browser);
         } catch (Exception e) {
             LOG.warn("Failed to parse User-Agent: {}", e.getMessage());
             return DeviceInfo.unknown();
@@ -51,73 +94,71 @@ public class DeviceDetectionService {
     }
 
     /**
-     * Determines device type based on parsed client information.
+     * Accepts only the form factors a client may legitimately report about itself; anything
+     * else is ignored so the header cannot inject arbitrary values into the logs.
      */
-    private String determineDeviceType(Client client) {
-        String deviceFamily = client.device.family;
-
-        if (deviceFamily == null || "Other".equalsIgnoreCase(deviceFamily)) {
-            // Check for mobile HTTP clients (OkHttp, Retrofit, etc.)
-            if (isMobileHttpClient(client)) {
-                return "MOBILE";
-            }
-
-            // Check OS for mobile indicators
-            String osFamily = client.os.family;
-            if (osFamily != null) {
-                String lowerOs = osFamily.toLowerCase();
-                if (lowerOs.contains("android") || lowerOs.contains("ios")) {
-                    return "MOBILE";
-                }
-            }
-            return "WEB";
+    private DeviceType parseDeviceTypeHint(String hint) {
+        if (hint == null || hint.isBlank()) {
+            return null;
         }
-
-        String lowerDevice = deviceFamily.toLowerCase();
-
-        if (lowerDevice.contains("spider") || lowerDevice.contains("bot")) {
-            return "BOT";
+        try {
+            DeviceType type = DeviceType.valueOf(hint.trim().toUpperCase(Locale.ROOT));
+            return CLIENT_REPORTABLE_TYPES.contains(type) ? type : null;
+        } catch (IllegalArgumentException e) {
+            return null;
         }
-        if (lowerDevice.contains("tablet") || lowerDevice.contains("ipad")) {
-            return "TABLET";
-        }
-        if (lowerDevice.contains("mobile") || lowerDevice.contains("phone") ||
-            lowerDevice.contains("iphone") || lowerDevice.contains("android")) {
-            return "MOBILE";
-        }
-        if (lowerDevice.contains("tv") || lowerDevice.contains("console")) {
-            return "TV";
-        }
-
-        return "WEB";
     }
 
     /**
-     * Checks if the user agent represents a mobile HTTP client library.
+     * Determines device type based on parsed client information.
+     *
+     * <p>The device family alone is not reliable: Chrome on Android sends a reduced
+     * User-Agent with the model replaced by {@code "K"}, and most Android devices report a
+     * bare model number such as {@code "SM-X710"}. On Android the presence of the
+     * {@code Mobile} token is what separates phones from tablets.
      */
-    private boolean isMobileHttpClient(Client client) {
-        if (client.userAgent == null || client.userAgent.family == null) {
-            return false;
+    private DeviceType determineDeviceType(Client client, String userAgent, String secChUaMobile) {
+        String family = lower(client.device == null ? null : client.device.family);
+        String os = lower(client.os == null ? null : client.os.family);
+        String ua = userAgent.toLowerCase(Locale.ROOT);
+
+        if (family.contains("spider") || family.contains("bot")) {
+            return DeviceType.BOT;
         }
-
-        String userAgentFamily = client.userAgent.family.toLowerCase();
-
-        // Android HTTP clients
-        if (userAgentFamily.contains("okhttp") ||
-            userAgentFamily.contains("retrofit") ||
-            userAgentFamily.contains("volley") ||
-            userAgentFamily.contains("androidasynchttp")) {
-            return true;
+        if (isNativeHttpClient(ua)) {
+            return DeviceType.MOBILE;
         }
-
-        // iOS HTTP clients
-        if (userAgentFamily.contains("alamofire") ||
-            userAgentFamily.contains("afnetworking") ||
-            userAgentFamily.contains("nsurlsession")) {
-            return true;
+        if (family.contains("ipad") || family.contains("tablet") || ua.contains("tablet")) {
+            return DeviceType.TABLET;
         }
+        if (os.contains("android")) {
+            if ("?1".equals(secChUaMobile)) {
+                return DeviceType.MOBILE;
+            }
+            return ua.contains("mobile") ? DeviceType.MOBILE : DeviceType.TABLET;
+        }
+        if (os.equals("ios") || family.contains("iphone") || family.contains("ipod")) {
+            return DeviceType.MOBILE;
+        }
+        if (family.contains("tv") || ua.contains("smart-tv") || ua.contains("smarttv")) {
+            return DeviceType.TV;
+        }
+        if (family.contains("phone") || ua.contains("mobile")) {
+            return DeviceType.MOBILE;
+        }
+        return DeviceType.DESKTOP;
+    }
 
-        return false;
+    /**
+     * Checks if the user agent belongs to a native mobile HTTP client library rather than a
+     * browser. Checked against the raw header because UAParser does not recognise these.
+     */
+    private boolean isNativeHttpClient(String ua) {
+        return NATIVE_HTTP_CLIENT_MARKERS.stream().anyMatch(ua::contains);
+    }
+
+    private static String lower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -176,7 +217,7 @@ public class DeviceDetectionService {
         }
 
         public static DeviceInfo unknown() {
-            return new DeviceInfo("UNKNOWN", "Unknown", "Unknown");
+            return new DeviceInfo(DeviceType.UNKNOWN.name(), "Unknown", "Unknown");
         }
 
         @Override

@@ -2,9 +2,13 @@ package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Action;
 
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+import java.util.Optional;
+
 import org.springframework.stereotype.Repository;
 
 @Repository
-@RepositoryRestResource(exported = false)
-public interface ActionRepository extends BaseRepository<Action> {}
+public interface ActionRepository extends BaseRepository<Action> {
+
+    // Includes soft-deleted actions, so a deleted action is not recreated.
+    Optional<Action> findByCode(String code);
+}

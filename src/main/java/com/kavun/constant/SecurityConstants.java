@@ -20,8 +20,11 @@ public final class SecurityConstants {
   public static final String BEARER_PREFIX = "Bearer ";
   public static final String X_XSRF_TOKEN = "x-xsrf-token";
   public static final String H2_CONSOLE_URL_MAPPING = "/console/*";
+  public static final String JSESSIONID = "JSESSIONID";
+  public static final String LOGIN_LOGOUT = "/login?logout";
   public static final String LOGOUT = "/logout";
   public static final String LOGIN = "/login";
+  public static final String LOGIN_FAILURE_URL = "/login?error";
   public static final String REFRESH_TOKEN = "/refresh-token";
   public static final String FORGOT_PASSWORD = "/forgot-password";
   public static final String RESET_PASSWORD = "/reset-password";

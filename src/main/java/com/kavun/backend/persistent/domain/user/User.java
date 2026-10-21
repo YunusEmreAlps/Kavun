@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OtpDeliveryMethod;
@@ -40,7 +40,7 @@ import org.hibernate.envers.NotAudited;
 @Audited
 @Table(name = "users")
 @ToString(callSuper = true)
-public class User extends BaseEntity<Long> implements Serializable {
+public class User extends TenantScopedEntity implements Serializable {
   @Serial private static final long serialVersionUID = 7538542321562810251L;
 
   @Column(unique = true, nullable = false)
@@ -63,7 +63,10 @@ public class User extends BaseEntity<Long> implements Serializable {
   private String lastName;
   private String phone;
   private String profileImage;
+
+  @Column(length = 512)
   private String verificationToken;
+
   private String title;
 
   @Column(columnDefinition = "TEXT")
@@ -91,36 +94,13 @@ public class User extends BaseEntity<Long> implements Serializable {
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
   private Set<UserHistory> userHistories = new HashSet<>();
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof User user) || !super.equals(o)) {
-      return false;
-    }
-    return Objects.equals(getPublicId(), user.getPublicId())
-        && Objects.equals(getUsername(), user.getUsername())
-        && Objects.equals(getEmail(), user.getEmail());
-  }
-
-  protected boolean canEqual(Object other) {
-    return other instanceof User;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), getPublicId(), getUsername(), getEmail());
-  }
-
   /**
    * Add userRole to this User.
    *
    * @param role the role
    */
   public void addUserRole(final Role role) {
-    boolean alreadyAssigned = userRoles.stream()
-        .anyMatch(ur -> Objects.equals(ur.getRole().getId(), role.getId()));
+    boolean alreadyAssigned = userRoles.stream().anyMatch(ur -> isSameRole(ur.getRole(), role));
     if (alreadyAssigned) {
       return;
     }
@@ -135,9 +115,16 @@ public class User extends BaseEntity<Long> implements Serializable {
    * @param role the role
    */
   public void removeUserRole(final Role role) {
-    var userRole = new UserRole(this, role);
-    userRoles.remove(userRole);
-    userRole.setUser(null);
+    // orphanRemoval + @SQLDelete on UserRole turn the removal into a soft delete
+    userRoles.removeIf(userRole -> isSameRole(userRole.getRole(), role));
+  }
+
+  // Roles are compared by id once persisted, otherwise by their unique name.
+  private static boolean isSameRole(final Role left, final Role right) {
+    if (Objects.nonNull(left.getId()) && Objects.nonNull(right.getId())) {
+      return Objects.equals(left.getId(), right.getId());
+    }
+    return Objects.equals(left.getName(), right.getName());
   }
 
   /**

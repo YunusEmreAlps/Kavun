@@ -1,6 +1,6 @@
 package com.kavun.backend.persistent.domain.user;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,7 +9,6 @@ import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
@@ -31,8 +30,11 @@ import org.hibernate.annotations.SQLDelete;
 })
 @Getter @Setter
 @SQLDelete(sql = "UPDATE user_sessions SET deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public class UserSession extends BaseEntity<Long> implements Serializable {
+public class UserSession extends TenantScopedEntity implements Serializable {
+
+    public static final String LOGOUT_TYPE_MANUAL = "MANUAL";
+    public static final String LOGOUT_TYPE_TIMEOUT = "TIMEOUT";
+    public static final String LOGOUT_TYPE_FORCED = "FORCED";
 
     @Column(nullable = false)
     private Long userId;
@@ -71,7 +73,7 @@ public class UserSession extends BaseEntity<Long> implements Serializable {
     private String refreshTokenHash;
 
     @Column(name = "logout_type", length = 20)
-    private String logoutType; // MANUAL, TIMEOUT, FORCED
+    private String logoutType; // one of the LOGOUT_TYPE_* constants
 
     public UserSession() {
         this.loginAt = LocalDateTime.now();
@@ -92,7 +94,7 @@ public class UserSession extends BaseEntity<Long> implements Serializable {
     public void logout() {
         this.logoutAt = LocalDateTime.now();
         this.isActive = false;
-        this.logoutType = "MANUAL";
+        this.logoutType = LOGOUT_TYPE_MANUAL;
     }
 
     /**
@@ -101,7 +103,7 @@ public class UserSession extends BaseEntity<Long> implements Serializable {
     public void expire() {
         this.logoutAt = LocalDateTime.now();
         this.isActive = false;
-        this.logoutType = "TIMEOUT";
+        this.logoutType = LOGOUT_TYPE_TIMEOUT;
     }
 
     /**
@@ -110,7 +112,17 @@ public class UserSession extends BaseEntity<Long> implements Serializable {
     public void forceLogout() {
         this.logoutAt = LocalDateTime.now();
         this.isActive = false;
-        this.logoutType = "FORCED";
+        this.logoutType = LOGOUT_TYPE_FORCED;
+    }
+
+    /**
+     * Reactivates the session and records activity, e.g. after a token refresh.
+     */
+    public void resume() {
+        this.isActive = true;
+        this.logoutAt = null;
+        this.logoutType = null;
+        updateActivity();
     }
 
     /**

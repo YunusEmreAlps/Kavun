@@ -8,8 +8,6 @@ import com.kavun.shared.util.UserUtils;
 
 import java.util.List;
 import java.util.Optional;
-import nl.jqno.equalsverifier.EqualsVerifier;
-import nl.jqno.equalsverifier.Warning;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,12 +74,5 @@ class ApplicationAuditorAwareTest {
 
     var applicationAuditorAware = new ApplicationAuditorAware(userRepository);
     Assertions.assertEquals(Optional.of(42L), applicationAuditorAware.getCurrentAuditor());
-  }
-
-  @Test
-  void equalsContract() {
-    EqualsVerifier.forClass(ApplicationAuditorAware.class)
-        .suppress(Warning.NONFINAL_FIELDS)
-        .verify();
   }
 }

@@ -2,9 +2,9 @@ package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,7 +18,6 @@ import java.util.Optional;
  * @since 1.0
  */
 @Repository
-@RepositoryRestResource(exported = false)
 public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
 
     @Query("""
@@ -56,4 +55,10 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
                 AND ur.deleted = false
             """)
     long countActiveRolesByUserId(@Param("userId") Long userId);
+
+    // Bulk JPQL delete bypasses @SQLDelete: physically removes every assignment (including
+    // soft-deleted ones) so the user row itself can be hard deleted.
+    @Modifying
+    @Query("DELETE FROM UserRole ur WHERE ur.user.id = :userId")
+    int hardDeleteAllByUserId(@Param("userId") Long userId);
 }

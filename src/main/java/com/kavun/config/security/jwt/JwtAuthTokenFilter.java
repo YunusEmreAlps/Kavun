@@ -1,7 +1,9 @@
 package com.kavun.config.security.jwt;
 
+import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
+import com.kavun.backend.service.user.UserSessionService;
 import com.kavun.shared.util.core.SecurityUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -11,16 +13,21 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * This is a filter base class used to guarantee a single execution per request dispatch.
- * This filter handles JWT token authentication for non-API endpoints when using local JWT.
- * When Keycloak is enabled, API endpoints (/api/**) are handled by Keycloak's BearerTokenAuthenticationFilter.
+ * Authenticates API requests from the bearer access token in the Authorization header.
+ *
+ * <p>A token is only accepted while its user can still sign in (enabled, not locked, expired or
+ * deleted) and the session it was issued for is still active, so disabling a user or logging out
+ * takes effect immediately instead of when the token expires. Tokens are never read from cookies:
+ * CSRF protection is off for the stateless API, which is only safe for header-borne credentials.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -34,8 +41,9 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
   private final JwtService jwtService;
   private final EncryptionService encryptionService;
   private final UserDetailsService userDetailsService;
+  private final UserSessionService userSessionService;
 
-  @Value("${keycloak.enabled:true}")
+  @Value("${keycloak.enabled:false}")
   private boolean keycloakEnabled;
 
   @Override
@@ -57,13 +65,7 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
       @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
-    // Get the token from the request header
     var jwt = jwtService.getJwtToken(request, false);
-
-    if (StringUtils.isBlank(jwt)) {
-      // if no Authorization token was found from the header, check the cookies.
-      jwt = jwtService.getJwtToken(request, true);
-    }
 
     if (StringUtils.isNotBlank(jwt)) {
       try {
@@ -72,14 +74,32 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
         if (StringUtils.isNotBlank(accessToken) && jwtService.isValidJwtToken(accessToken)) {
           var username = jwtService.getUsernameFromToken(accessToken);
           var userDetails = userDetailsService.loadUserByUsername(username);
-          SecurityUtils.authenticateUser(request, userDetails);
+          var sessionId = jwtService.getSessionIdFromToken(accessToken);
+
+          if (canSignIn(userDetails) && isActiveSession(sessionId, userDetails)) {
+            SecurityUtils.authenticateUser(request, userDetails);
+          } else {
+            LOG.debug("Rejected token of {}: account unusable or session not active", username);
+          }
         }
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         // Invalid or malformed token - log and continue without authentication
         LOG.warn("Failed to decrypt or validate token: {}", e.getMessage());
       }
     }
     filterChain.doFilter(request, response);
+  }
+
+  private static boolean canSignIn(UserDetails userDetails) {
+    return userDetails.isEnabled()
+        && userDetails.isAccountNonLocked()
+        && userDetails.isAccountNonExpired()
+        && userDetails.isCredentialsNonExpired();
+  }
+
+  private boolean isActiveSession(String sessionId, UserDetails userDetails) {
+    return NumberUtils.isDigits(sessionId)
+        && userDetails instanceof UserDetailsBuilder user
+        && userSessionService.isActive(Long.valueOf(sessionId), user.getId());
   }
 }

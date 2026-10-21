@@ -33,6 +33,7 @@ public final class UserDetailsBuilder implements UserDetails {
   @EqualsAndHashCode.Include private String email;
   @EqualsAndHashCode.Include private String publicId;
   @EqualsAndHashCode.Include private String username;
+  private String tenantCode;
   private String firstName;
   private String lastName;
   private String password;
@@ -71,6 +72,7 @@ public final class UserDetailsBuilder implements UserDetails {
         .email(user.getEmail())
         .publicId(user.getPublicId())
         .username(user.getUsername())
+        .tenantCode(user.getTenantCode())
         .password(user.getPassword())
         .firstName(user.getFirstName())
         .lastName(user.getLastName())

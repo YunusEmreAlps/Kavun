@@ -1,31 +1,30 @@
 package com.kavun.backend.service.base;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
 import com.kavun.shared.dto.BaseDto;
 import com.kavun.shared.request.BaseRequest;
+import java.util.List;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-
-import java.util.List;
 
 /**
  * Base service interface defining common CRUD operations.
- * Uses separate request types for create and update operations.
  *
- * @param <CREATE_REQUEST> Request type for create operations
- * @param <UPDATE_REQUEST> Request type for update operations
+ * <p>List queries take filters as plain parameters (see {@link
+ * com.kavun.backend.persistent.specification.FilterSpecification}). Soft deleted records are left
+ * out unless {@code deleted=true} is passed.
+ *
+ * @param <REQUEST> Request type for create and update operations
  * @param <DTO> Data Transfer Object type for responses
- * @param <ENTITY> Entity type
  */
-public interface BaseService<REQUEST extends BaseRequest, DTO extends BaseDto, ENTITY extends BaseEntity<Long>> {
+public interface BaseService<REQUEST extends BaseRequest, DTO extends BaseDto> {
 
   /**
    * Find an entity by its ID.
    *
    * @param id the entity ID
    * @return the entity DTO
-   * @throws EntityNotFoundException if entity not found
+   * @throws jakarta.persistence.EntityNotFoundException if entity not found
    */
   DTO findById(Long id);
 
@@ -44,17 +43,17 @@ public interface BaseService<REQUEST extends BaseRequest, DTO extends BaseDto, E
    * @param id the entity ID
    * @param request the update request
    * @return the updated entity DTO
-   * @throws EntityNotFoundException if entity not found
+   * @throws jakarta.persistence.EntityNotFoundException if entity not found
    * @throws IllegalArgumentException if request is null
    * @throws IllegalStateException if entity is deleted
    */
-  DTO update(Long id,  REQUEST request);
+  DTO update(Long id, REQUEST request);
 
   /**
    * Soft delete an entity.
    *
    * @param id the entity ID
-   * @throws EntityNotFoundException if entity not found
+   * @throws jakarta.persistence.EntityNotFoundException if entity not found
    * @throws IllegalStateException if entity is already deleted
    */
   void delete(Long id);
@@ -64,27 +63,27 @@ public interface BaseService<REQUEST extends BaseRequest, DTO extends BaseDto, E
    *
    * @param id the entity ID
    * @return the restored entity DTO
-   * @throws EntityNotFoundException if entity not found
+   * @throws jakarta.persistence.EntityNotFoundException if entity not found
    * @throws IllegalStateException if entity is not deleted
    */
   DTO restore(Long id);
 
   /**
-   * Find all entities matching the specification with pagination.
+   * Find the entities matching the filters, one page at a time.
    *
-   * @param specification the search specification
+   * @param filters the filter parameters
    * @param pageable pagination information
    * @return page of entity DTOs
    */
-  Page<DTO> findAll(Specification<ENTITY> specification, Pageable pageable);
+  Page<DTO> findAll(Map<String, ?> filters, Pageable pageable);
 
   /**
-   * Find all entities matching the specification without pagination.
+   * Find all entities matching the filters.
    *
-   * @param specification the search specification
+   * @param filters the filter parameters
    * @return list of entity DTOs
    */
-  List<DTO> findAll(Specification<ENTITY> specification);
+  List<DTO> findAll(Map<String, ?> filters);
 
   /**
    * Check if an entity exists by ID.
@@ -95,10 +94,10 @@ public interface BaseService<REQUEST extends BaseRequest, DTO extends BaseDto, E
   boolean existsById(Long id);
 
   /**
-   * Count entities matching the specification.
+   * Count the entities matching the filters.
    *
-   * @param specification the search specification
+   * @param filters the filter parameters
    * @return number of matching entities
    */
-  long count(Specification<ENTITY> specification);
+  long count(Map<String, ?> filters);
 }

@@ -1,6 +1,8 @@
 package com.kavun.exception;
 
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 /**
  * Exception thrown when a virus or malware is detected in an uploaded file.
@@ -10,6 +12,7 @@ import lombok.Getter;
  * @since 1.0
  */
 @Getter
+@ResponseStatus(value = HttpStatus.BAD_REQUEST, reason = "Uploaded file was rejected")
 public class VirusDetectedException extends RuntimeException {
 
     private final String fileName;

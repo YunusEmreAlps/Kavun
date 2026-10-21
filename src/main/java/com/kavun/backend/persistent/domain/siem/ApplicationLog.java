@@ -1,10 +1,9 @@
 package com.kavun.backend.persistent.domain.siem;
 
-import com.kavun.backend.persistent.domain.base.BaseEntity;
+import com.kavun.backend.persistent.domain.base.TenantScopedEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,8 +32,7 @@ import java.io.Serializable;
         @Index(name = "idx_app_log_created_at", columnList = "created_at")
 })
 @ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public class ApplicationLog extends BaseEntity<Long> implements Serializable {
+public class ApplicationLog extends TenantScopedEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 

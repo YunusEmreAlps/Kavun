@@ -6,15 +6,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kavun.backend.persistent.domain.user.WebPage;
 import com.kavun.backend.persistent.repository.PageRepository;
-import com.kavun.backend.persistent.specification.PageSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.PageDto;
 import com.kavun.shared.dto.mapper.PageMapper;
 import com.kavun.shared.request.PageRequest;
 
-import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Map;
+import java.util.Set;
 /**
 * Page service to provide implementation for the definitions about a page.
 *
@@ -25,14 +23,16 @@ import java.util.Map;
 @Service
 @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 public class PageService
-        extends AbstractService<PageRequest, WebPage, PageDto, PageRepository, PageMapper, PageSpecification> {
+        extends AbstractService<PageRequest, WebPage, PageDto, PageRepository, PageMapper> {
 
-    public PageService(PageMapper mapper, PageRepository repository, PageSpecification specification) {
-        super(mapper, repository, specification);
+    public PageService(PageMapper mapper, PageRepository repository) {
+        super(mapper, repository);
     }
 
-    public Specification<WebPage> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of(
+            "code", "name", "url", "icon", "description", "parent", "navigable",
+            "showInMenu", "createdAt");
     }
-
 }

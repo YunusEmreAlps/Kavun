@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Scheduled service for cleaning up expired authentication-related records.
@@ -32,16 +31,19 @@ public class AuthCleanupScheduler {
    * Cleanup expired OTP records.
    * Runs every 10 minutes.
    * Removes OTP records that have expired more than 1 hour ago.
+   *
+   * <p>Not {@code @Transactional}: the repository method runs in its own transaction, so a
+   * failure caught below is just logged instead of marking an outer transaction rollback-only
+   * and surfacing as an {@code UnexpectedRollbackException} on commit.
    */
   @Scheduled(cron = "0 */10 * * * *") // Every 10 minutes
-  @Transactional
   public void cleanupExpiredOtps() {
     LOG.debug("Starting OTP cleanup task...");
 
     try {
       // Delete OTPs expired more than 1 hour ago
       Instant expiresAtThreshold = Instant.now().minus(1, ChronoUnit.HOURS);
-      Instant createdAtThreshold = Instant.now().minus(1, ChronoUnit.HOURS);
+      LocalDateTime createdAtThreshold = LocalDateTime.now().minusHours(1);
       int deletedCount = otpRepository.cleanupOldOtps(expiresAtThreshold, createdAtThreshold);
 
       if (deletedCount > 0) {
@@ -60,7 +62,6 @@ public class AuthCleanupScheduler {
    * Removes CAPTCHA records that have expired or been used more than 1 hour ago.
    */
   @Scheduled(cron = "0 */15 * * * *") // Every 15 minutes
-  @Transactional
   public void cleanupExpiredCaptchas() {
     LOG.debug("Starting CAPTCHA cleanup task...");
 
@@ -85,14 +86,13 @@ public class AuthCleanupScheduler {
    * Removes all authentication records older than 7 days.
    */
   @Scheduled(cron = "0 0 3 * * *") // Daily at 3 AM
-  @Transactional
   public void deepCleanup() {
     LOG.info("Starting deep cleanup of old authentication records...");
 
     try {
       // Delete OTPs older than 7 days
       Instant expiresAtThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
-      Instant createdAtThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
+      LocalDateTime createdAtThreshold = LocalDateTime.now().minusDays(7);
       int deletedOtps = otpRepository.cleanupOldOtps(expiresAtThreshold, createdAtThreshold);
 
       // Delete CAPTCHAs older than 7 days

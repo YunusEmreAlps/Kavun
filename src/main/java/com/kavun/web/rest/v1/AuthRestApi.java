@@ -1,14 +1,19 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
-import com.kavun.backend.service.user.OtpService;
-import com.kavun.backend.service.user.UserDeviceService;
-import com.kavun.backend.service.user.UserService;
-import com.kavun.backend.service.user.UserSessionService;
+import com.kavun.annotation.PublicEndpoint;
+import com.kavun.backend.persistent.domain.user.Captcha;
+import com.kavun.backend.persistent.domain.user.UserSession;
+import com.kavun.backend.persistent.repository.CaptchaRepository;
+import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.backend.service.mail.EmailService;
 import com.kavun.backend.service.security.CookieService;
 import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
+import com.kavun.backend.service.user.OtpService;
+import com.kavun.backend.service.user.UserDeviceService;
+import com.kavun.backend.service.user.UserService;
+import com.kavun.backend.service.user.UserSessionService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.ErrorConstants;
 import com.kavun.constant.LoggingConstants;
@@ -17,21 +22,21 @@ import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.enums.OtpDeliveryMethod;
 import com.kavun.enums.TokenType;
+import com.kavun.exception.EncryptionException;
+import com.kavun.exception.user.InvalidTokenException;
 import com.kavun.shared.dto.UserDto;
 import com.kavun.shared.util.CaptchaGenerator;
 import com.kavun.shared.util.CaptchaStore;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
-import com.kavun.backend.persistent.domain.user.Captcha;
-import com.kavun.backend.persistent.domain.user.UserSession;
-import com.kavun.backend.persistent.repository.CaptchaRepository;
-import com.kavun.backend.service.impl.UserDetailsBuilder;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
+import com.kavun.web.payload.request.GenerateOtpRequest;
 import com.kavun.web.payload.request.LoginRequest;
 import com.kavun.web.payload.request.OtpVerificationRequest;
 import com.kavun.web.payload.request.ResetPasswordRequest;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.AuthResponse;
+import com.kavun.web.payload.response.CaptchaResponse;
 import com.kavun.web.payload.response.LogoutResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +51,7 @@ import java.util.concurrent.CompletableFuture;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -53,6 +59,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -67,7 +74,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
-import com.kavun.web.payload.response.CaptchaResponse;
 
 /**
  * This class attempt to authenticate with AuthenticationManager bean, add an
@@ -87,7 +93,8 @@ import com.kavun.web.payload.response.CaptchaResponse;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(SecurityConstants.API_V1_AUTH_ROOT_URL)
-@Tag(name = "01. Authentication", description = "APIs for user authentication (Local JWT mode)")
+@Tag(name = "01. Authentication", description = "APIs for user authentication and authorization")
+@PublicEndpoint
 @ConditionalOnProperty(name = "keycloak.enabled", havingValue = "false", matchIfMissing = true)
 public class AuthRestApi {
 
@@ -179,36 +186,27 @@ public class AuthRestApi {
           SecurityConstants.LOGIN);
     }
 
-    try {
-      // Generate captcha code and image
-      String code = CaptchaGenerator.generateCode(5);
-      String imageBase64 = CaptchaGenerator.generateImageBase64(code);
-      String captchaId = CaptchaStore.saveCaptcha(code);
+    // Generate captcha code and image
+    String code = CaptchaGenerator.generateCode(5);
+    String imageBase64 = CaptchaGenerator.generateImageBase64(code);
+    String captchaId = CaptchaStore.saveCaptcha(code);
 
-      CaptchaResponse response = new CaptchaResponse(imageBase64, captchaId);
+    CaptchaResponse response = new CaptchaResponse(imageBase64, captchaId);
 
-      // Save captcha to database for persistence
-      Captcha captchaEntity = new Captcha();
-      captchaEntity.setCaptchaId(captchaId);
-      captchaEntity.setCode(code);
-      captchaEntity.setExpiresAt(LocalDateTime.now().plusMinutes(5));
-      captchaEntity.setUsed(false);
-      captchaEntity.setUsedAt(null);
-      captchaEntity.setIpAddress(request.getRemoteAddr());
-      captchaRepository.save(captchaEntity);
+    // Save captcha to database for persistence
+    Captcha captchaEntity = new Captcha();
+    captchaEntity.setCaptchaId(captchaId);
+    captchaEntity.setCode(code);
+    captchaEntity.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+    captchaEntity.setUsed(false);
+    captchaEntity.setUsedAt(null);
+    captchaEntity.setIpAddress(request.getRemoteAddr());
+    captchaRepository.save(captchaEntity);
 
-      return ApiResponse.success(
-          response,
-          null,
-          SecurityConstants.LOGIN);
-
-    } catch (Exception e) {
-      LOG.error("Error generating CAPTCHA for IP: {}", request.getRemoteAddr(), e);
-      return ApiResponse.error(
-          HttpStatus.INTERNAL_SERVER_ERROR,
-          AuthConstants.CAPTCHA_CREATION_FAILED,
-          SecurityConstants.LOGIN);
-    }
+    return ApiResponse.success(
+        response,
+        null,
+        SecurityConstants.LOGIN);
   }
 
   /**
@@ -241,7 +239,8 @@ public class AuthRestApi {
   @SecurityRequirements
   @PostMapping(value = SecurityConstants.LOGIN)
   public ApiResponse<?> authenticateUser(@CookieValue(required = false) String refreshToken,
-      @Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+      @Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request,
+      HttpServletResponse httpResponse) {
 
     var username = loginRequest.getUsername();
 
@@ -309,13 +308,15 @@ public class AuthRestApi {
           loginRequest.getPassword());
       LOG.info("User {} authenticated successfully from IP: {}", username, request.getRemoteAddr());
       registerDeviceId(user.getId(), request);
-    } catch (Exception e) {
+    } catch (AuthenticationException e) {
+      // Caught locally (rather than left to the global handler) specifically to consume the
+      // per-IP+username throttle bucket as a side effect of the failed attempt.
       ipUsernameBucket.tryConsume(1);
       LOG.warn("Authentication failed for user: {}", username);
       return ApiResponse.error(HttpStatus.UNAUTHORIZED, AuthConstants.INVALID_CREDENTIALS, SecurityConstants.LOGIN);
     }
 
-    var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
+    var decryptedRefreshToken = decryptClientToken(refreshToken);
     var isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
 
     if (isOtpEnabled) {
@@ -326,32 +327,28 @@ public class AuthRestApi {
             AuthConstants.BLANK_OTP_DELIVERY_METHOD, SecurityConstants.LOGIN);
       }
 
-      // Generate and send OTP based on delivery method
+      // Generate and send OTP based on delivery method. SmsServiceException/EmailServiceException
+      // propagate to the global exception handler (mapped to 500 with a clean message) rather than
+      // being caught here.
       Map<String, Object> response;
-      try {
-        if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
-          if (user.getPhone() == null || user.getPhone().isBlank()) {
-            return ApiResponse.error(HttpStatus.BAD_REQUEST,
-                AuthConstants.USER_HAS_NO_PHONE_FOR_OTP, SecurityConstants.LOGIN);
-          }
-          response = otpService.generateAndSendOtpSms(user.getPhone());
-        } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
-          if (user.getEmail() == null || user.getEmail().isBlank()) {
-            return ApiResponse.error(HttpStatus.BAD_REQUEST,
-                AuthConstants.USER_HAS_NO_EMAIL_FOR_OTP, SecurityConstants.LOGIN);
-          }
-          response = otpService.generateAndSendOtpEmail(user.getEmail());
-        } else {
+      if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
+        if (user.getPhone() == null || user.getPhone().isBlank()) {
           return ApiResponse.error(HttpStatus.BAD_REQUEST,
-              AuthConstants.INVALID_OTP_DELIVERY_METHOD, SecurityConstants.LOGIN);
+              AuthConstants.USER_HAS_NO_PHONE_FOR_OTP, SecurityConstants.LOGIN);
         }
-        return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY,
-            SecurityConstants.LOGIN);
-      } catch (Exception e) {
-        LOG.error("Failed to send OTP for user: {}", username, e);
-        return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR,
-            "Failed to send OTP: " + e.getMessage(), SecurityConstants.LOGIN);
+        response = otpService.generateAndSendOtpSms(user.getPhone());
+      } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+          return ApiResponse.error(HttpStatus.BAD_REQUEST,
+              AuthConstants.USER_HAS_NO_EMAIL_FOR_OTP, SecurityConstants.LOGIN);
+        }
+        response = otpService.generateAndSendOtpEmail(user.getEmail());
+      } else {
+        return ApiResponse.error(HttpStatus.BAD_REQUEST,
+            AuthConstants.INVALID_OTP_DELIVERY_METHOD, SecurityConstants.LOGIN);
       }
+      return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY,
+          SecurityConstants.LOGIN);
     } else {
 
       // Create session FIRST to get session ID
@@ -371,6 +368,10 @@ public class AuthRestApi {
         var encryptedRefreshToken = encryptionService.encrypt(newRefreshToken);
         var refreshDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
         cookieService.addCookieToHeaders(responseHeaders, TokenType.REFRESH, encryptedRefreshToken, refreshDuration);
+        // The handler returns the envelope directly, so the cookie must be written to the
+        // servlet response explicitly or it never reaches the client.
+        responseHeaders.forEach(
+            (name, values) -> values.forEach(value -> httpResponse.addHeader(name, value)));
       }
 
       String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
@@ -431,11 +432,11 @@ public class AuthRestApi {
   public ResponseEntity<AuthResponse> refreshToken(
       @CookieValue String refreshToken, HttpServletRequest request) {
 
-    var decryptedRefreshToken = encryptionService.decrypt(refreshToken);
+    var decryptedRefreshToken = decryptClientToken(refreshToken);
     boolean refreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
 
     if (!refreshTokenValid) {
-      throw new IllegalArgumentException(ErrorConstants.INVALID_TOKEN);
+      throw new InvalidTokenException(ErrorConstants.INVALID_TOKEN);
     }
     var username = jwtService.getUsernameFromToken(decryptedRefreshToken);
 
@@ -445,17 +446,15 @@ public class AuthRestApi {
     var userDetails = userDetailsService.loadUserByUsername(username);
 
     SecurityUtils.validateUserDetailsStatus(userDetails);
-    SecurityUtils.authenticateUser(request, userDetails);
 
-    // Update session activity if session ID is present
-    if (sessionId != null && !sessionId.isBlank()) {
-      try {
-        userSessionService.updateActivity(Long.parseLong(sessionId));
-        LOG.debug("Updated activity for session: {}", sessionId);
-      } catch (Exception e) {
-        LOG.warn("Failed to update session activity: {}", e.getMessage());
-      }
+    // A refresh continues the session the token was issued for; once that session was logged out
+    // (manually or by force) the refresh token is dead and the user has to sign in again.
+    var userId = ((UserDetailsBuilder) userDetails).getId();
+    if (!NumberUtils.isDigits(sessionId)
+        || !userSessionService.resumeSession(Long.valueOf(sessionId), userId)) {
+      throw new InvalidTokenException(ErrorConstants.INVALID_TOKEN);
     }
+    SecurityUtils.authenticateUser(request, userDetails);
 
     var expiration = DateUtils.addMinutes(new Date(), accessTokenExpirationInMinutes);
     // Generate new access token with the same session ID
@@ -473,14 +472,14 @@ public class AuthRestApi {
   /**
    * Endpoint to generate OTP for the user.
    *
-   * @param username the username
+   * @param request the generate OTP request
    * @return the response entity
    */
   @SecurityRequirements
   @Loggable(level = "warn")
   @PostMapping(SecurityConstants.GENERATE_OTP)
-  public ApiResponse<?> generateOtp(String username) {
-    UserDto user = userService.findByUsername(username);
+  public ApiResponse<?> generateOtp(@Valid @RequestBody GenerateOtpRequest request) {
+    UserDto user = userService.findByUsername(request.getUsername());
 
     if (user == null) {
       return ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.GENERATE_OTP);
@@ -491,22 +490,18 @@ public class AuthRestApi {
           SecurityConstants.GENERATE_OTP);
     }
 
-    try {
-      Map<String, Object> response;
-      if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
-        response = otpService.generateAndSendOtpSms(user.getPhone());
-      } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
-        response = otpService.generateAndSendOtpEmail(user.getEmail());
-      } else {
-        return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP_DELIVERY_METHOD,
-            SecurityConstants.GENERATE_OTP);
-      }
-      return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY, SecurityConstants.GENERATE_OTP);
-    } catch (Exception e) {
-      LOG.error("Failed to generate OTP for user: {}", username, e);
-      return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate OTP: " + e.getMessage(),
+    // SmsServiceException/EmailServiceException propagate to the global exception handler
+    // (mapped to 500 with a clean message) rather than being caught here.
+    Map<String, Object> response;
+    if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
+      response = otpService.generateAndSendOtpSms(user.getPhone());
+    } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
+      response = otpService.generateAndSendOtpEmail(user.getEmail());
+    } else {
+      return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP_DELIVERY_METHOD,
           SecurityConstants.GENERATE_OTP);
     }
+    return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY, SecurityConstants.GENERATE_OTP);
   }
 
   /**
@@ -524,83 +519,68 @@ public class AuthRestApi {
       @Valid @RequestBody OtpVerificationRequest request,
       HttpServletRequest httpRequest) {
 
-    try {
-      // Validate and normalize target (email or phone)
-      if (request.getTarget() == null || request.getTarget().trim().isEmpty()) {
-        return ResponseEntity.badRequest().body(
-            ApiResponse.error(HttpStatus.BAD_REQUEST, "Target (email or phone) is required",
-                SecurityConstants.VERIFY_OTP));
-      }
-
-      String target = request.getTarget().trim();
-
-      // Validate OTP with normalized target
-      Boolean isOtpValid = otpService.validateOtp(request.getId(), target, request.getCode());
-
-      if (!isOtpValid) {
-        return ResponseEntity.badRequest().body(
-            ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP, SecurityConstants.VERIFY_OTP));
-      }
-
-      UserDto user = target.contains("@") ? userService.findByEmail(target) : userService.findByPhone(target);
-
-      if (user == null) {
-        LOG.warn("User not found for target: {} after successful OTP validation", target);
-        return ResponseEntity.badRequest().body(
-            ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.VERIFY_OTP));
-      }
-
-      // Authenticate user without password
-      SecurityUtils.authenticateUser(userDetailsService.loadUserByUsername(user.getUsername()));
-
-      // Register device ID if provided
-      registerDeviceId(user.getId(), httpRequest);
-
-      // Create session and get the session ID
-      var userSession = userSessionService.createSession(user.getId(), httpRequest);
-      String sessionId = userSession.getId().toString();
-      LOG.info("Created session: {} for user: {} after OTP verification", sessionId, user.getUsername());
-
-      // Check if refresh token is valid
-      String decryptedRefreshToken = encryptionService.decrypt(refreshToken);
-      boolean isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
-
-      // Generate tokens with session ID embedded
-      HttpHeaders responseHeaders = new HttpHeaders();
-      var accessTokenExpiration = DateUtils.addMinutes(new Date(), accessTokenExpirationInMinutes);
-      String newAccessToken = jwtService.generateJwtToken(user.getUsername(), accessTokenExpiration, sessionId);
-
-      // Handle refresh token
-      if (!isRefreshTokenValid) {
-        var refreshExpiration = DateUtils.addDays(new Date(), SecurityConstants.DEFAULT_TOKEN_DURATION);
-        var newRefreshToken = jwtService.generateJwtToken(user.getUsername(), refreshExpiration, sessionId);
-        var encryptedRefreshToken = encryptionService.encrypt(newRefreshToken);
-        var refreshDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
-        cookieService.addCookieToHeaders(responseHeaders, TokenType.REFRESH, encryptedRefreshToken, refreshDuration);
-      }
-
-      String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
-
-      // Convert expiration to seconds for OAuth2 compliance
-      long expiresInSeconds = (long) accessTokenExpirationInMinutes * 60;
-
-      // Build response with user details
-      UserDetailsBuilder userDetails = (UserDetailsBuilder) userDetailsService.loadUserByUsername(user.getUsername());
-      AuthResponse authResponse = AuthResponse.of(encryptedAccessToken, expiresInSeconds, null, userDetails, sessionId);
-
-      return ResponseEntity.ok().headers(responseHeaders)
-          .body(ApiResponse.success(authResponse, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP));
-
-    } catch (IllegalArgumentException e) {
-      // OTP validation failed with specific error message
-      return ResponseEntity.badRequest()
-          .body(ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage(), SecurityConstants.VERIFY_OTP));
-    } catch (Exception e) {
-      LOG.error("OTP verification failed", e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "OTP verification failed: " + e.getMessage(),
+    // Validate and normalize target (email or phone)
+    if (request.getTarget() == null || request.getTarget().trim().isEmpty()) {
+      return ResponseEntity.badRequest().body(
+          ApiResponse.error(HttpStatus.BAD_REQUEST, "Target (email or phone) is required",
               SecurityConstants.VERIFY_OTP));
     }
+
+    String target = request.getTarget().trim();
+
+    // Validate OTP with normalized target. On failure this throws OtpValidationException, which
+    // the global exception handler maps to 400 with the specific failure reason (expired / max
+    // attempts / not verified) - it never returns false, so the result doesn't need checking here.
+    otpService.validateOtp(request.getId(), target, request.getCode());
+
+    UserDto user = target.contains("@") ? userService.findByEmail(target) : userService.findByPhone(target);
+
+    if (user == null) {
+      LOG.warn("User not found for target: {} after successful OTP validation", target);
+      return ResponseEntity.badRequest().body(
+          ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.VERIFY_OTP));
+    }
+
+    // Authenticate user without password
+    SecurityUtils.authenticateUser(userDetailsService.loadUserByUsername(user.getUsername()));
+
+    // Register device ID if provided
+    registerDeviceId(user.getId(), httpRequest);
+
+    // Create session and get the session ID
+    var userSession = userSessionService.createSession(user.getId(), httpRequest);
+    String sessionId = userSession.getId().toString();
+    LOG.info("Created session: {} for user: {} after OTP verification", sessionId, user.getUsername());
+
+    // Check if refresh token is valid
+    String decryptedRefreshToken = decryptClientToken(refreshToken);
+    boolean isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
+
+    // Generate tokens with session ID embedded
+    HttpHeaders responseHeaders = new HttpHeaders();
+    var accessTokenExpiration = DateUtils.addMinutes(new Date(), accessTokenExpirationInMinutes);
+    String newAccessToken = jwtService.generateJwtToken(user.getUsername(), accessTokenExpiration, sessionId);
+
+    // Handle refresh token
+    if (!isRefreshTokenValid) {
+      var refreshExpiration = DateUtils.addDays(new Date(), SecurityConstants.DEFAULT_TOKEN_DURATION);
+      var newRefreshToken = jwtService.generateJwtToken(user.getUsername(), refreshExpiration, sessionId);
+      var encryptedRefreshToken = encryptionService.encrypt(newRefreshToken);
+      var refreshDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
+      cookieService.addCookieToHeaders(responseHeaders, TokenType.REFRESH, encryptedRefreshToken, refreshDuration);
+    }
+
+    String encryptedAccessToken = encryptionService.encrypt(newAccessToken);
+
+    // Convert expiration to seconds for OAuth2 compliance
+    long expiresInSeconds = (long) accessTokenExpirationInMinutes * 60;
+
+    // Build response with user details
+    UserDetailsBuilder userDetails = (UserDetailsBuilder) userDetailsService.loadUserByUsername(user.getUsername());
+    AuthResponse authResponse = AuthResponse.of(encryptedAccessToken, expiresInSeconds, null, userDetails, sessionId);
+
+    return ResponseEntity.ok().headers(responseHeaders)
+        .body(ApiResponse.success(authResponse, AuthConstants.OTP_VERIFIED, SecurityConstants.VERIFY_OTP));
   }
 
   /**
@@ -738,7 +718,10 @@ public class AuthRestApi {
   public ApiResponse<Object> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
     String decodedToken = encryptionService.decode(request.getToken());
-    String decryptedToken = encryptionService.decrypt(decodedToken);
+    String decryptedToken = decryptClientToken(decodedToken);
+    if (decryptedToken == null) {
+      throw new InvalidTokenException(ErrorConstants.INVALID_TOKEN);
+    }
     String message = userService.resetPassword(decryptedToken, request.getNewPassword());
     return ApiResponse.success(message, SecurityConstants.RESET_PASSWORD);
   }
@@ -793,6 +776,17 @@ public class AuthRestApi {
   // UTILITY OPERATIONS
   // =========================================================================
 
+  // Tokens arrive from the client (cookie or body); one that cannot be decrypted is simply invalid,
+  // not a server fault.
+  private String decryptClientToken(String token) {
+    try {
+      return encryptionService.decrypt(token);
+    } catch (EncryptionException e) {
+      LOG.debug("Discarding a token that could not be decrypted: {}", e.getMessage());
+      return null;
+    }
+  }
+
   // Register device if Device ID header is provided
   private void registerDeviceId(Long userId, HttpServletRequest request) {
     String deviceId = request.getHeader(LoggingConstants.DEVICE_ID_HEADER);
@@ -800,7 +794,7 @@ public class AuthRestApi {
     if (deviceId == null || deviceId.isBlank()) {
       LOG.info("Missing Device ID header for user: {}", userId);
     } else {
-      userDeviceService.createDevice(userId, deviceId, request);
+      userDeviceService.recordSignIn(userId, deviceId, request);
     }
     return;
   }

@@ -2,43 +2,43 @@ package com.kavun.backend.service.i18n;
 
 import com.kavun.IntegrationTestUtils;
 import java.util.Locale;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.i18n.LocaleContextHolder;
 
 class I18NServiceIntegrationTest extends IntegrationTestUtils {
 
-  private static final String MESSAGE_TEST_KEY = "message.test";
+  private static final String MESSAGE_KEY = "error.access.denied";
+
+  @AfterEach
+  void tearDown() {
+    LocaleContextHolder.resetLocaleContext();
+    LocaleContextHolder.setDefaultLocale(null);
+  }
 
   @Test
   void getMessage() {
-    String expected = "This is a test message.";
-    LocaleContextHolder.setDefaultLocale(Locale.ENGLISH);
+    LocaleContextHolder.setLocale(Locale.ENGLISH);
 
-    Assertions.assertEquals(expected, i18NService.getMessage(MESSAGE_TEST_KEY));
+    Assertions.assertEquals(
+        "You do not have permission to perform this action.", i18NService.getMessage(MESSAGE_KEY));
   }
 
   @Test
-  void getMessageWithFrenchLocale() {
-    String expected = "Ceci est un message test.";
-    LocaleContextHolder.setDefaultLocale(Locale.FRENCH);
+  void getMessageWithTurkishLocale() {
+    LocaleContextHolder.setLocale(Locale.forLanguageTag("tr-TR"));
 
-    Assertions.assertEquals(expected, i18NService.getMessage(MESSAGE_TEST_KEY));
+    Assertions.assertEquals(
+        "Bu işlemi gerçekleştirmek için izniniz bulunmamaktadır.",
+        i18NService.getMessage(MESSAGE_KEY));
   }
 
   @Test
-  void getMessageWithSpanishLocale() {
-    String expected = "Este es un mensaje de prueba.";
-    LocaleContextHolder.setDefaultLocale(new Locale.Builder().setLanguage("es").build());
+  void getMessageWithUnsupportedLocaleFallsBackToDefault() {
+    LocaleContextHolder.setLocale(Locale.FRENCH);
 
-    Assertions.assertEquals(expected, i18NService.getMessage(MESSAGE_TEST_KEY));
-  }
-
-  @Test
-  void getMessageWithChineseLocale() {
-    String expected = "这是一条测试消息。";
-    LocaleContextHolder.setDefaultLocale(Locale.CHINA);
-
-    Assertions.assertEquals(expected, i18NService.getMessage(MESSAGE_TEST_KEY));
+    Assertions.assertEquals(
+        "You do not have permission to perform this action.", i18NService.getMessage(MESSAGE_KEY));
   }
 }

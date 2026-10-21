@@ -9,16 +9,25 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.data.auditing.CurrentDateTimeProvider;
 
 class UserPruningSchedulerIntegrationTest extends IntegrationTestUtils {
 
   @BeforeEach
   void setUp() {
     auditingHandler.setDateTimeProvider(dateTimeProvider);
+  }
+
+  // The auditing handler is shared by the whole cached test context; restore the real clock so
+  // entities created by later test classes still get their audit timestamps.
+  @AfterEach
+  void tearDown() {
+    auditingHandler.setDateTimeProvider(CurrentDateTimeProvider.INSTANCE);
   }
 
   @Test
@@ -34,7 +43,7 @@ class UserPruningSchedulerIntegrationTest extends IntegrationTestUtils {
 
     var users = userService.findAllNotEnabledAfterAllowedDays();
     Assertions.assertFalse(users.isEmpty());
-    Assertions.assertTrue(users.contains(userDto));
+    Assertions.assertTrue(users.stream().anyMatch(user -> user.getId().equals(userDto.getId())));
 
     // Pruning should remove the user
     userPruningScheduler.pruneUsers();

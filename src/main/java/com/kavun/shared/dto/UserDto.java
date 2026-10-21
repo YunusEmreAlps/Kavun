@@ -36,6 +36,9 @@ public class UserDto extends BaseDto {
   @NotBlank(message = UserConstants.BLANK_USERNAME)
   private String username;
 
+  /** The tenant the user belongs to. */
+  private String tenantCode;
+
   @ToString.Exclude
   @NotBlank(message = UserConstants.BLANK_PASSWORD)
   private String password;

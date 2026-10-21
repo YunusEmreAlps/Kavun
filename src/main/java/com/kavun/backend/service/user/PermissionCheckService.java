@@ -2,8 +2,9 @@ package com.kavun.backend.service.user;
 
 import com.kavun.backend.persistent.domain.user.PageAction;
 import com.kavun.backend.persistent.domain.user.Permission;
-import com.kavun.backend.persistent.domain.user.User;
 import com.kavun.backend.persistent.repository.PermissionRepository;
+import com.kavun.enums.EntityType;
+import com.kavun.shared.dto.PermissionGrantDto;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -38,22 +45,6 @@ public class PermissionCheckService {
     private final PermissionRepository permissionRepository;
 
     /**
-     * Check if a user has permission for a specific page action.
-     *
-     * @param user the user to check
-     * @param pageAction the page action to check
-     * @return true if user has permission, false otherwise
-     */
-    @Transactional(readOnly = true)
-    public boolean hasPermission(User user, PageAction pageAction) {
-        if (user == null || pageAction == null) {
-            return false;
-        }
-
-        return hasPermission(user, pageAction.getId());
-    }
-
-    /**
      * Check if a user has permission for a specific page action by user ID.
      * This method loads the user within the transaction to avoid LazyInitializationException.
      *
@@ -68,22 +59,6 @@ public class PermissionCheckService {
         }
 
         return hasPermission(userId, pageAction.getId());
-    }
-
-    /**
-     * Check if a user has permission for a specific page action ID.
-     *
-     * @param user the user to check
-     * @param pageActionId the page action ID to check
-     * @return true if user has permission, false otherwise
-     */
-    @Transactional(readOnly = true)
-    public boolean hasPermission(User user, Long pageActionId) {
-        if (user == null || pageActionId == null) {
-            return false;
-        }
-
-        return hasPermission(user.getId(), pageActionId);
     }
 
     /**
@@ -181,21 +156,87 @@ public class PermissionCheckService {
     }
 
     /**
-     * Check if a user has permission for multiple page actions.
+     * Resolve every page action the user is allowed to access, using a single query.
+     * Applies the same priority rules as {@link #hasPermission(Long, Long)}: expired records are
+     * ignored, a USER level decision overrides any ROLE level one, and within a level any deny wins.
      *
-     * @param user the user to check
-     * @param pageActionIds the list of page action IDs to check
-     * @return list of page action IDs that the user has permission for
+     * @param userId the user ID
+     * @return IDs of the page actions the user has permission for
      */
     @Transactional(readOnly = true)
-    public List<Long> filterPermittedPageActions(User user, List<Long> pageActionIds) {
-        if (user == null || pageActionIds == null || pageActionIds.isEmpty()) {
-            return List.of();
+    public Set<Long> findPermittedPageActionIds(Long userId) {
+        if (userId == null) {
+            return Set.of();
         }
 
-        return pageActionIds.stream()
-                .filter(pageActionId -> hasPermission(user, pageActionId))
-                .collect(Collectors.toList());
+        LocalDateTime now = LocalDateTime.now();
+        Map<Long, List<PermissionGrantDto>> userGrants = new HashMap<>();
+        Map<Long, List<PermissionGrantDto>> roleGrants = new HashMap<>();
+
+        for (PermissionGrantDto grant : permissionRepository.findPermissionGrantsByUserId(userId)) {
+            if (grant.isExpired(now)) {
+                continue;
+            }
+            var grants = grant.entityType() == EntityType.USER ? userGrants : roleGrants;
+            grants.computeIfAbsent(grant.pageActionId(), id -> new ArrayList<>()).add(grant);
+        }
+
+        Set<Long> candidates = new HashSet<>(userGrants.keySet());
+        candidates.addAll(roleGrants.keySet());
+
+        Set<Long> permitted = new HashSet<>();
+        for (Long pageActionId : candidates) {
+            boolean allowed = decide(userGrants.get(pageActionId))
+                    .or(() -> decide(roleGrants.get(pageActionId)))
+                    .orElse(false);
+            if (allowed) {
+                permitted.add(pageActionId);
+            }
+        }
+
+        LOG.debug("User {} has {} permitted page actions", userId, permitted.size());
+        return permitted;
+    }
+
+    /**
+     * Check whether a user holds a permission identified by its page and action codes, using a
+     * single query. Applies the same priority rules as {@link #hasPermission(Long, Long)}.
+     *
+     * @param userId     the user ID
+     * @param pageCode   the page code
+     * @param actionCode the action code
+     * @return true if the user has the permission, false otherwise
+     */
+    @Transactional(readOnly = true)
+    public boolean hasPermission(Long userId, String pageCode, String actionCode) {
+        if (userId == null || pageCode == null || actionCode == null) {
+            return false;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<PermissionGrantDto> userGrants = new ArrayList<>();
+        List<PermissionGrantDto> roleGrants = new ArrayList<>();
+        for (PermissionGrantDto grant
+                : permissionRepository.findPermissionGrantsByUserIdAndPageAction(userId, pageCode, actionCode)) {
+            if (!grant.isExpired(now)) {
+                (grant.entityType() == EntityType.USER ? userGrants : roleGrants).add(grant);
+            }
+        }
+
+        return decide(userGrants).or(() -> decide(roleGrants)).orElse(false);
+    }
+
+    /**
+     * Decide a single permission level from its non-expired grants.
+     *
+     * @param grants the non-expired grants of one level for one page action
+     * @return empty if the level has no grants, false if any grant denies, true otherwise
+     */
+    private static Optional<Boolean> decide(List<PermissionGrantDto> grants) {
+        if (grants == null || grants.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(grants.stream().allMatch(PermissionGrantDto::granted));
     }
 
 

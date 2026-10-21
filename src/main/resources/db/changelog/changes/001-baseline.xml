@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The schema as it stood when Liquibase took over from Hibernate's ddl-auto, one changeset per
+  table.
+
+  Databases created earlier by ddl-auto already have these tables: a changeset whose table exists
+  is marked as ran without being executed, and Hibernate's validation then checks that the
+  existing tables match the entities.
+
+  Enum columns are plain VARCHAR without CHECK constraints, so adding an enum constant needs no
+  migration.
+-->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="baseline-tenants" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="tenants"/></not>
+    </preConditions>
+    <createTable tableName="tenants">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_tenants" nullable="false"/>
+      </column>
+      <column name="code" type="VARCHAR(50)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_tenants_code"/>
+      </column>
+      <column name="name" type="VARCHAR(200)"><constraints nullable="false"/></column>
+      <column name="enabled" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_tenants_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-users" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="users"/></not>
+    </preConditions>
+    <createTable tableName="users">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_users" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="username" type="VARCHAR(50)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_users_username"/>
+      </column>
+      <column name="email" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_users_email"/>
+      </column>
+      <column name="password" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="first_name" type="VARCHAR(255)"/>
+      <column name="middle_name" type="VARCHAR(255)"/>
+      <column name="last_name" type="VARCHAR(255)"/>
+      <column name="title" type="VARCHAR(255)"/>
+      <column name="phone" type="VARCHAR(255)"/>
+      <column name="address" type="${type.text}"/>
+      <column name="profile_image" type="VARCHAR(255)"/>
+      <column name="verification_token" type="VARCHAR(512)"/>
+      <column name="otp_delivery_method" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="enabled" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="account_non_expired" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="account_non_locked" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="credentials_non_expired" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="failed_login_attempts" type="INT"><constraints nullable="false"/></column>
+      <column name="last_successful_login" type="TIMESTAMP"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_users_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-role" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="role"/></not>
+    </preConditions>
+    <createTable tableName="role">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_role" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="name" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="label" type="VARCHAR(100)"/>
+      <column name="description" type="VARCHAR(500)"/>
+      <column name="is_system_role" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_role_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <addUniqueConstraint tableName="role" columnNames="tenant_code, name"
+        constraintName="uk_role_tenant_code_name"/>
+  </changeSet>
+
+  <changeSet id="baseline-user-role" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="user_role"/></not>
+    </preConditions>
+    <createTable tableName="user_role">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_user_role" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="user_id" type="BIGINT">
+        <constraints nullable="false" foreignKeyName="fk_user_role_user"
+            referencedTableName="users" referencedColumnNames="id"/>
+      </column>
+      <column name="role_id" type="BIGINT">
+        <constraints nullable="false" foreignKeyName="fk_user_role_role"
+            referencedTableName="role" referencedColumnNames="id"/>
+      </column>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_user_role_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <addUniqueConstraint tableName="user_role" columnNames="user_id, role_id"
+        constraintName="uk_user_role"/>
+    <createIndex tableName="user_role" indexName="idx_user_role_user">
+      <column name="user_id"/>
+    </createIndex>
+    <createIndex tableName="user_role" indexName="idx_user_role_role">
+      <column name="role_id"/>
+    </createIndex>
+    <createIndex tableName="user_role" indexName="idx_user_role_deleted">
+      <column name="deleted"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-user-history" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="user_history"/></not>
+    </preConditions>
+    <createTable tableName="user_history">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_user_history" nullable="false"/>
+      </column>
+      <column name="user_id" type="BIGINT">
+        <constraints foreignKeyName="fk_user_history_user"
+            referencedTableName="users" referencedColumnNames="id"/>
+      </column>
+      <column name="user_history_type" type="SMALLINT"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_user_history_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <!-- Hibernate Envers: revisions and the audit table of User (ValidityAuditStrategy). -->
+  <changeSet id="baseline-revinfo" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="revinfo"/></not>
+    </preConditions>
+    <createSequence sequenceName="revinfo_seq" startValue="1" incrementBy="50"/>
+    <createTable tableName="revinfo">
+      <column name="rev" type="INT">
+        <constraints primaryKey="true" primaryKeyName="pk_revinfo" nullable="false"/>
+      </column>
+      <column name="revtstmp" type="BIGINT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-users-audit-log" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="users_audit_log"/></not>
+    </preConditions>
+    <createTable tableName="users_audit_log">
+      <column name="id" type="BIGINT">
+        <constraints primaryKey="true" primaryKeyName="pk_users_audit_log" nullable="false"/>
+      </column>
+      <column name="rev" type="INT">
+        <constraints primaryKey="true" primaryKeyName="pk_users_audit_log" nullable="false"
+            foreignKeyName="fk_users_audit_log_rev"
+            referencedTableName="revinfo" referencedColumnNames="rev"/>
+      </column>
+      <column name="revtype" type="SMALLINT"/>
+      <column name="revend" type="INT">
+        <constraints foreignKeyName="fk_users_audit_log_revend"
+            referencedTableName="revinfo" referencedColumnNames="rev"/>
+      </column>
+      <column name="username" type="VARCHAR(255)"/>
+      <column name="email" type="VARCHAR(255)"/>
+      <column name="password" type="VARCHAR(255)"/>
+      <column name="first_name" type="VARCHAR(255)"/>
+      <column name="middle_name" type="VARCHAR(255)"/>
+      <column name="last_name" type="VARCHAR(255)"/>
+      <column name="title" type="VARCHAR(255)"/>
+      <column name="phone" type="VARCHAR(255)"/>
+      <column name="address" type="${type.text}"/>
+      <column name="profile_image" type="VARCHAR(255)"/>
+      <column name="verification_token" type="VARCHAR(512)"/>
+      <column name="otp_delivery_method" type="VARCHAR(255)"/>
+      <column name="enabled" type="BOOLEAN"/>
+      <column name="account_non_expired" type="BOOLEAN"/>
+      <column name="account_non_locked" type="BOOLEAN"/>
+      <column name="credentials_non_expired" type="BOOLEAN"/>
+      <column name="failed_login_attempts" type="INT"/>
+      <column name="last_successful_login" type="TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-actions" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="actions"/></not>
+    </preConditions>
+    <createTable tableName="actions">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_actions" nullable="false"/>
+      </column>
+      <column name="code" type="VARCHAR(100)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_actions_code"/>
+      </column>
+      <column name="name" type="VARCHAR(200)"><constraints nullable="false"/></column>
+      <column name="type" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_actions_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-pages" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="pages"/></not>
+    </preConditions>
+    <createTable tableName="pages">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_pages" nullable="false"/>
+      </column>
+      <column name="code" type="VARCHAR(100)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_pages_code"/>
+      </column>
+      <column name="name" type="VARCHAR(200)"><constraints nullable="false"/></column>
+      <column name="url" type="VARCHAR(500)"><constraints nullable="false"/></column>
+      <column name="icon" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="description" type="VARCHAR(500)"/>
+      <column name="parent_id" type="BIGINT"/>
+      <column name="navigable" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="show_in_menu" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_pages_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="pages" baseColumnNames="parent_id"
+        constraintName="fk_pages_parent" referencedTableName="pages" referencedColumnNames="id"/>
+    <createIndex tableName="pages" indexName="idx_page_parent">
+      <column name="parent_id"/>
+    </createIndex>
+    <createIndex tableName="pages" indexName="idx_page_code">
+      <column name="code"/>
+    </createIndex>
+    <createIndex tableName="pages" indexName="idx_page_order">
+      <column name="order_index"/>
+    </createIndex>
+    <createIndex tableName="pages" indexName="idx_page_deleted">
+      <column name="deleted"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-page-actions" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="page_actions"/></not>
+    </preConditions>
+    <createTable tableName="page_actions">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_page_actions" nullable="false"/>
+      </column>
+      <column name="page_id" type="BIGINT">
+        <constraints nullable="false" foreignKeyName="fk_page_actions_page"
+            referencedTableName="pages" referencedColumnNames="id"/>
+      </column>
+      <column name="action_id" type="BIGINT">
+        <constraints nullable="false" foreignKeyName="fk_page_actions_action"
+            referencedTableName="actions" referencedColumnNames="id"/>
+      </column>
+      <column name="label" type="VARCHAR(200)"><constraints nullable="false"/></column>
+      <column name="api_endpoint" type="VARCHAR(255)"/>
+      <column name="http_method" type="VARCHAR(255)"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_page_actions_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <addUniqueConstraint tableName="page_actions" columnNames="page_id, action_id"
+        constraintName="uk_page_actions_page_action"/>
+    <createIndex tableName="page_actions" indexName="idx_page_action_page">
+      <column name="page_id"/>
+    </createIndex>
+    <createIndex tableName="page_actions" indexName="idx_page_action_action">
+      <column name="action_id"/>
+    </createIndex>
+    <createIndex tableName="page_actions" indexName="idx_page_action_deleted">
+      <column name="deleted"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-permissions" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="permissions"/></not>
+    </preConditions>
+    <createTable tableName="permissions">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_permissions" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="entity_type" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="entity_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="page_action_id" type="BIGINT">
+        <constraints nullable="false" foreignKeyName="fk_permissions_page_action"
+            referencedTableName="page_actions" referencedColumnNames="id"/>
+      </column>
+      <column name="granted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="expires_at" type="TIMESTAMP"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_permissions_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <addUniqueConstraint tableName="permissions" columnNames="entity_type, entity_id, page_action_id"
+        constraintName="uk_permissions_entity_page_action"/>
+    <createIndex tableName="permissions" indexName="idx_permission_entity">
+      <column name="entity_type"/>
+      <column name="entity_id"/>
+    </createIndex>
+    <createIndex tableName="permissions" indexName="idx_permission_page_action">
+      <column name="page_action_id"/>
+    </createIndex>
+    <createIndex tableName="permissions" indexName="idx_permission_expires">
+      <column name="expires_at"/>
+    </createIndex>
+    <createIndex tableName="permissions" indexName="idx_permission_deleted">
+      <column name="deleted"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-user-sessions" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="user_sessions"/></not>
+    </preConditions>
+    <createTable tableName="user_sessions">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_user_sessions" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="user_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="device_id" type="VARCHAR(255)"/>
+      <column name="device_type" type="VARCHAR(50)"/>
+      <column name="operating_system" type="VARCHAR(100)"/>
+      <column name="browser" type="VARCHAR(100)"/>
+      <column name="user_agent" type="${type.text}"/>
+      <column name="ip_address" type="VARCHAR(45)"/>
+      <column name="refresh_token_hash" type="VARCHAR(255)"/>
+      <column name="is_active" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="login_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="last_activity_at" type="TIMESTAMP"/>
+      <column name="logout_at" type="TIMESTAMP"/>
+      <column name="logout_type" type="VARCHAR(20)"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_user_sessions_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <createIndex tableName="user_sessions" indexName="idx_user_sessions_user_id">
+      <column name="user_id"/>
+    </createIndex>
+    <createIndex tableName="user_sessions" indexName="idx_user_sessions_device_id">
+      <column name="device_id"/>
+    </createIndex>
+    <createIndex tableName="user_sessions" indexName="idx_user_sessions_is_active">
+      <column name="is_active"/>
+    </createIndex>
+    <createIndex tableName="user_sessions" indexName="idx_user_sessions_last_activity">
+      <column name="last_activity_at"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-user-devices" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="user_devices"/></not>
+    </preConditions>
+    <createTable tableName="user_devices">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_user_devices" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="user_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="device_id" type="VARCHAR(255)"/>
+      <column name="device_type" type="VARCHAR(50)"/>
+      <column name="operating_system" type="VARCHAR(100)"/>
+      <column name="browser" type="VARCHAR(100)"/>
+      <column name="user_agent" type="${type.text}"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_user_devices_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-otp" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="otp"/></not>
+    </preConditions>
+    <createTable tableName="otp">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_otp" nullable="false"/>
+      </column>
+      <column name="target" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="code" type="VARCHAR(6)"><constraints nullable="false"/></column>
+      <column name="expires_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+      <column name="used_at" type="TIMESTAMP WITH TIME ZONE"/>
+      <column name="active" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="failed_attempts" type="INT"><constraints nullable="false"/></column>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_otp_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-captcha" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="captcha"/></not>
+    </preConditions>
+    <createTable tableName="captcha">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_captcha" nullable="false"/>
+      </column>
+      <column name="captcha_id" type="VARCHAR(100)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_captcha_captcha_id"/>
+      </column>
+      <column name="code" type="VARCHAR(5)"><constraints nullable="false"/></column>
+      <column name="ip_address" type="VARCHAR(45)"/>
+      <column name="expires_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="used" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="used_at" type="TIMESTAMP"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_captcha_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <createIndex tableName="captcha" indexName="idx_captcha_id">
+      <column name="captcha_id"/>
+    </createIndex>
+    <createIndex tableName="captcha" indexName="idx_used_created">
+      <column name="used"/>
+      <column name="created_at"/>
+    </createIndex>
+    <createIndex tableName="captcha" indexName="idx_expires">
+      <column name="expires_at"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-email" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="email"/></not>
+    </preConditions>
+    <createTable tableName="email">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_email" nullable="false"/>
+      </column>
+      <column name="mail" type="VARCHAR(255)"/>
+      <column name="title" type="VARCHAR(150)"/>
+      <column name="message" type="${type.text}"/>
+      <column name="is_body_html" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="status" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="result" type="${type.text}"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_email_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="baseline-file-metadata" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="file_metadata"/></not>
+    </preConditions>
+    <createTable tableName="file_metadata">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_file_metadata" nullable="false"/>
+      </column>
+      <column name="bucket" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="object_key" type="VARCHAR(512)"><constraints nullable="false"/></column>
+      <column name="file_name" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="file_extension" type="VARCHAR(20)"/>
+      <column name="content_type" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="size" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="checksum" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="file_type" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="entity_type" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="entity_id" type="UUID"/>
+      <column name="upload_status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="error_message" type="VARCHAR(1000)"/>
+      <column name="access_url" type="VARCHAR(1024)"/>
+      <column name="access_url_expires_at" type="TIMESTAMP"/>
+      <column name="access_count" type="INT"><constraints nullable="false"/></column>
+      <column name="last_accessed_at" type="TIMESTAMP"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_file_metadata_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <createIndex tableName="file_metadata" indexName="idx_file_created_by">
+      <column name="created_by"/>
+    </createIndex>
+    <createIndex tableName="file_metadata" indexName="idx_file_object_key">
+      <column name="object_key"/>
+    </createIndex>
+    <createIndex tableName="file_metadata" indexName="idx_file_checksum">
+      <column name="checksum"/>
+    </createIndex>
+    <createIndex tableName="file_metadata" indexName="idx_file_entity">
+      <column name="entity_type"/>
+      <column name="entity_id"/>
+      <column name="deleted"/>
+    </createIndex>
+    <createIndex tableName="file_metadata" indexName="idx_file_type">
+      <column name="file_type"/>
+    </createIndex>
+    <createIndex tableName="file_metadata" indexName="idx_file_status">
+      <column name="upload_status"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="baseline-application-logs" author="kavun">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists tableName="application_logs"/></not>
+    </preConditions>
+    <createTable tableName="application_logs">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" primaryKeyName="pk_application_logs" nullable="false"/>
+      </column>
+      <column name="tenant_code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="log_level" type="VARCHAR(50)"><constraints nullable="false"/></column>
+      <column name="logger_name" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="log_message" type="${type.text}"/>
+      <column name="log_type" type="VARCHAR(100)"/>
+      <column name="thread_name" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="correlation_id" type="VARCHAR(36)"/>
+      <column name="user_id" type="VARCHAR(36)"/>
+      <column name="username" type="VARCHAR(255)"/>
+      <column name="ip" type="VARCHAR(45)"/>
+      <column name="user_ip_address" type="VARCHAR(45)"/>
+      <column name="hostname" type="VARCHAR(255)"/>
+      <column name="request_url" type="VARCHAR(2048)"/>
+      <column name="action" type="VARCHAR(255)"/>
+      <column name="request_params" type="${type.text}"/>
+      <column name="request_body" type="${type.text}"/>
+      <column name="http_status" type="INT"/>
+      <column name="duration_ms" type="BIGINT"/>
+      <column name="device_id" type="VARCHAR(255)"/>
+      <column name="device_type" type="VARCHAR(50)"/>
+      <column name="operating_system" type="VARCHAR(100)"/>
+      <column name="browser" type="VARCHAR(100)"/>
+      <column name="user_agent" type="${type.text}"/>
+      <column name="state_before" type="${type.text}"/>
+      <column name="state_after" type="${type.text}"/>
+      <column name="state_diff" type="${type.text}"/>
+      <column name="public_id" type="VARCHAR(255)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uk_application_logs_public_id"/>
+      </column>
+      <column name="version" type="INT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"/>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="deleted" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="TIMESTAMP"/>
+      <column name="deleted_by" type="BIGINT"/>
+      <column name="order_index" type="INT"/>
+    </createTable>
+    <createIndex tableName="application_logs" indexName="idx_app_log_correlation_id">
+      <column name="correlation_id"/>
+    </createIndex>
+    <createIndex tableName="application_logs" indexName="idx_app_log_username">
+      <column name="username"/>
+    </createIndex>
+    <createIndex tableName="application_logs" indexName="idx_app_log_created_at">
+      <column name="created_at"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

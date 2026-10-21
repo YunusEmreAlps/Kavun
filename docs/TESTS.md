@@ -3,6 +3,10 @@
 ## Equals, Hashcode and ToString
 
 - Equals and Hashcode is tested using [EqualsVerifier](https://github.com/jqno/equalsverifier)
+- Entities never define their own `equals`/`hashCode` (nor Lombok `@EqualsAndHashCode`): `BaseEntity`
+  declares them `final`, based on the persistent class and the `publicId` assigned on construction.
+  Entity tests therefore use the shared `TestUtils.entityIdentityVerifier(...)`, adding prefab values
+  only for self-referencing relations.
 - Sample code is
 
 ```java
@@ -13,10 +17,8 @@ class UserTest {
         User client = UserUtils.createUser();
         User admin = UserUtils.createUser();
 
-        EqualsVerifier.forClass(User.class)
-                .withRedefinedSuperclass()
+        TestUtils.entityIdentityVerifier(User.class)
                 .withPrefabValues(User.class, client, admin)
-                .withOnlyTheseFields(TestUtils.getUserEqualsFields().toArray(new String[0]))
                 .verify();
     }
 }
@@ -51,7 +53,8 @@ profiles which are `integration-test` and `integration-test-ci`
 ./gradlew clean build # Profile will be set to integration-test if none is provided
 ```
 
-This will run liquibase migration script against H2 in memory database running in Postgres Mode
+Liquibase creates the schema in an H2 in-memory database running in PostgreSQL mode, and Hibernate
+validates it against the entities, so a missing changeset fails the build.
 
 
 ### Docker based (Test Container) Postgres Database Integration Test

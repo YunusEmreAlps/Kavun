@@ -1,9 +1,11 @@
 package com.kavun.web.rest.v1;
 
 import com.kavun.annotation.Loggable;
+import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.backend.service.user.UserDeviceService;
 import com.kavun.backend.service.user.UserSessionService;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.constant.base.BaseConstants;
 import com.kavun.shared.dto.ApplicationLogDto;
 import com.kavun.shared.dto.UserDeviceDto;
@@ -19,6 +21,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +38,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping(BaseConstants.API_V1_USERS_ROOT_URL + "/reports")
 @Tag(name = "09. User Reports", description = "APIs for user session reporting and analytics")
+@RequirePermission(page = Pages.USER_REPORTS)
 public class UserReportRestApi {
 
     private final UserDeviceService userDeviceService;
@@ -45,24 +49,20 @@ public class UserReportRestApi {
     @Loggable
     @GetMapping(value = "/sessions", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<UserSessionDto> getUserSessions(
-            @RequestParam Map<String, Object> parameterMap,
+            @RequestParam Map<String, String> parameterMap,
             @PageableDefault(size = 20, sort = "loginAt") Pageable pageable) {
 
-        return userSessionService.findAll(
-                userSessionService.search(parameterMap),
-                pageable);
+        return userSessionService.findAll(parameterMap, pageable);
     }
 
     // Retrieves user devices with dynamic filtering and pagination.
     @Loggable
     @GetMapping(value = "/devices", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<UserDeviceDto> getUserDevices(
-            @RequestParam Map<String, Object> parameterMap,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @RequestParam Map<String, String> parameterMap,
+            @PageableDefault(size = 20, sort = "lastSeenAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        return userDeviceService.findAll(
-                userDeviceService.search(parameterMap),
-                pageable);
+        return userDeviceService.findAll(parameterMap, pageable);
     }
 
     // Retrieves device usage analytics for all user devices.
@@ -84,11 +84,9 @@ public class UserReportRestApi {
     @Loggable
     @GetMapping(value = "/activity-logs", produces = MediaType.APPLICATION_JSON_VALUE)
     public Page<ApplicationLogDto> getUserActivityLogs(
-            @RequestParam Map<String, Object> parameterMap,
+            @RequestParam Map<String, String> parameterMap,
             @PageableDefault(size = 20) Pageable pageable) {
 
-        return applicationLogService.findAll(
-                applicationLogService.search(parameterMap),
-                pageable);
+        return applicationLogService.findAll(parameterMap, pageable);
     }
 }

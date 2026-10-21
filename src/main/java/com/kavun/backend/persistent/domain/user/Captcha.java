@@ -25,13 +25,11 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
 public class Captcha extends BaseEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
     @Column(name = "captcha_id", nullable = false, unique = true, length = 100, updatable = false)
-    @EqualsAndHashCode.Include
     private String captchaId;
 
     @Column(name = "code", nullable = false, length = 5, updatable = false)

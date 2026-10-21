@@ -1,7 +1,6 @@
 package com.kavun.backend.service.security.impl;
 
 import com.kavun.backend.service.security.AuditService;
-import com.kavun.backend.service.user.UserService;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AuditServiceImpl implements AuditService {
 
-  private final UserService userService;
   private final EntityManager entityManager;
 
   /**

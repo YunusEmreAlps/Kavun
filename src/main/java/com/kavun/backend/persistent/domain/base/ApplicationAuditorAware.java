@@ -4,7 +4,6 @@ import com.kavun.backend.persistent.repository.UserRepository;
 import com.kavun.shared.util.core.SecurityUtils;
 import java.util.Optional;
 
-import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.lang.NonNull;
@@ -17,7 +16,6 @@ import org.springframework.lang.NonNull;
  * @version 1.0
  * @since 1.0
  */
-@EqualsAndHashCode
 @RequiredArgsConstructor
 public final class ApplicationAuditorAware implements AuditorAware<Long> {
 

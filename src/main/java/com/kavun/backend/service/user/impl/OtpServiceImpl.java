@@ -8,6 +8,7 @@ import com.kavun.backend.service.user.OtpService;
 import com.kavun.constant.AuthConstants;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.exception.user.EmailServiceException;
+import com.kavun.exception.user.OtpValidationException;
 import com.kavun.exception.user.SmsServiceException;
 
 import java.time.Instant;
@@ -69,10 +70,10 @@ public class OtpServiceImpl implements OtpService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public Boolean validateOtp(Long id, String target, String code) {
         Otp otpEntity = otpRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(AuthConstants.OTP_NOT_FOUND));
+                .orElseThrow(() -> new OtpValidationException(AuthConstants.OTP_NOT_FOUND));
 
         // Check if OTP is valid and matches
         boolean codeMatch = otpEntity.getCode().equals(code);
@@ -104,7 +105,7 @@ public class OtpServiceImpl implements OtpService {
         }
 
         otpRepository.save(otpEntity);
-        throw new IllegalArgumentException(errorMessage);
+        throw new OtpValidationException(errorMessage);
     }
 
     // Generates OTP and sends it via SMS
@@ -154,7 +155,7 @@ public class OtpServiceImpl implements OtpService {
             try {
                 // Send OTP via Email Service
                 emailService.sendOtpEmail(email, otp.getCode(), null);
-                LOG.info("OTP email sent successfully to: {}", email);
+                LOG.info("OTP email queued for: {}", email);
 
             } catch (Exception e) {
                 LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);

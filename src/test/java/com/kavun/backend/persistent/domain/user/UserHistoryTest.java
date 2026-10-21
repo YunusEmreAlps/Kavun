@@ -4,7 +4,6 @@ import com.kavun.TestUtils;
 import com.kavun.shared.util.UserUtils;
 import com.jparams.verifier.tostring.NameStyle;
 import com.jparams.verifier.tostring.ToStringVerifier;
-import nl.jqno.equalsverifier.EqualsVerifier;
 import org.junit.jupiter.api.Test;
 
 class UserHistoryTest {
@@ -15,10 +14,8 @@ class UserHistoryTest {
     User client = UserUtils.createUser();
     User admin = UserUtils.createUser();
 
-    EqualsVerifier.forClass(UserHistory.class)
-        .withRedefinedSuperclass()
+    TestUtils.entityIdentityVerifier(UserHistory.class)
         .withPrefabValues(User.class, client, admin)
-        .withIgnoredFields(TestUtils.getIgnoredFields().toArray(new String[0]))
         .verify();
   }
 

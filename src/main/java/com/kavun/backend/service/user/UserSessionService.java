@@ -2,7 +2,6 @@ package com.kavun.backend.service.user;
 
 import com.kavun.backend.persistent.domain.user.UserSession;
 import com.kavun.backend.persistent.repository.UserSessionRepository;
-import com.kavun.backend.persistent.specification.UserSessionSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.backend.service.DeviceDetectionService.DeviceInfo;
@@ -13,7 +12,6 @@ import com.kavun.shared.request.UserSessionRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.jpa.domain.Specification;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,8 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -37,7 +35,7 @@ import java.util.Optional;
 @Service
 @Transactional
 public class UserSessionService extends
-        AbstractService<UserSessionRequest, UserSession, UserSessionDto, UserSessionRepository, UserSessionMapper, UserSessionSpecification> {
+        AbstractService<UserSessionRequest, UserSession, UserSessionDto, UserSessionRepository, UserSessionMapper> {
 
     @Value("${access-token-expiration-in-minutes:60}")
     private long sessionTimeoutMinutes;
@@ -46,10 +44,16 @@ public class UserSessionService extends
 
     public UserSessionService(UserSessionRepository repository,
                               DeviceDetectionService deviceDetectionService,
-                              UserSessionMapper mapper,
-                              UserSessionSpecification specification) {
-        super(mapper, repository, specification);
+                              UserSessionMapper mapper) {
+        super(mapper, repository);
         this.deviceDetectionService = deviceDetectionService;
+    }
+
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of(
+            "userId", "deviceId", "deviceType", "operatingSystem", "browser", "ipAddress",
+            "isActive", "logoutType", "loginAt", "lastActivityAt");
     }
 
     // Creates a new user session from HTTP request.
@@ -65,7 +69,7 @@ public class UserSessionService extends
         String deviceId = request.getHeader(LoggingConstants.DEVICE_ID_HEADER);
         String ipAddress = extractIpAddress(request);
 
-        DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
+        DeviceInfo deviceInfo = deviceDetectionService.detect(request);
 
         // Check if session already exists for this device
         Optional<UserSession> existingSession = repository
@@ -108,6 +112,38 @@ public class UserSessionService extends
     @Transactional
     public void updateActivity(Long sessionId) {
         repository.updateLastActivity(sessionId, LocalDateTime.now());
+    }
+
+    // Whether an access token bound to this session may still be used.
+    @Transactional(readOnly = true)
+    public boolean isActive(Long sessionId, Long userId) {
+        return sessionId != null && userId != null
+                && repository.existsByIdAndUserIdAndIsActiveTrue(sessionId, userId);
+    }
+
+    /**
+     * Continues a session for a token refresh. A session that only timed out is reactivated, so the
+     * refresh token keeps the user signed in; one ended by a logout (manual or forced) stays closed.
+     *
+     * @param sessionId the session of the refresh token
+     * @param userId    the user of the refresh token
+     * @return true if the session can be used, false if a new login is required
+     */
+    @Transactional
+    public boolean resumeSession(Long sessionId, Long userId) {
+        if (sessionId == null || userId == null) {
+            return false;
+        }
+        return repository.findById(sessionId)
+                .filter(session -> userId.equals(session.getUserId()))
+                .filter(session -> Boolean.TRUE.equals(session.getIsActive())
+                        || UserSession.LOGOUT_TYPE_TIMEOUT.equals(session.getLogoutType()))
+                .map(session -> {
+                    session.resume();
+                    repository.save(session);
+                    return true;
+                })
+                .orElse(false);
     }
 
     // Logs out a specific session (manual logout).
@@ -201,7 +237,4 @@ public class UserSessionService extends
     }
 
     // Search sessions based on dynamic criteria.
-    public Specification<UserSession> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
-    }
 }

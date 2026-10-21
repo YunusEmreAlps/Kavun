@@ -3,11 +3,11 @@ package com.kavun.config.security.jwt;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kavun.web.payload.response.ApiResponse;
+import com.kavun.web.payload.response.ResponseCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -40,19 +40,15 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
       AuthenticationException authException)
       throws IOException {
 
-    LOG.error("Unauthorized error: {}", authException.getMessage());
+    LOG.warn("Unauthorized request to {}: {}", request.getRequestURI(), authException.getMessage());
 
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-    ApiResponse<Object> apiResponse = ApiResponse.builder()
-        .status(HttpStatus.UNAUTHORIZED.value())
-        .code("UNAUTHORIZED")
-        .message(authException.getMessage() != null
-            ? authException.getMessage()
-            : "Full authentication is required to access this resource")
-        .path(request.getRequestURI())
-        .build();
+    ApiResponse<Object> apiResponse = ApiResponse.error(
+        ResponseCode.UNAUTHORIZED,
+        ResponseCode.UNAUTHORIZED.getMessage(),
+        request.getRequestURI());
 
     objectMapper.writeValue(response.getOutputStream(), apiResponse);
   }

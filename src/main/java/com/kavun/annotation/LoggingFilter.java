@@ -1,14 +1,13 @@
 package com.kavun.annotation;
 
 import com.kavun.backend.persistent.context.HttpLogContext;
-import com.kavun.backend.persistent.domain.siem.ApplicationLog;
-import com.kavun.backend.persistent.repository.ApplicationLogRepository;
 import com.kavun.backend.service.DeviceDetectionService;
 import com.kavun.backend.service.siem.ApplicationLogService;
 import com.kavun.shared.util.MaskPasswordUtils;
 import com.kavun.shared.util.core.NetworkUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.shared.util.core.StringUtils;
+import com.kavun.shared.util.core.TenantContext;
 
 import jakarta.persistence.EntityManager;
 import jakarta.servlet.FilterChain;
@@ -52,7 +51,6 @@ import jakarta.persistence.Transient;
 public class LoggingFilter extends OncePerRequestFilter {
 
   private final EntityManager entityManager;
-  private final ApplicationLogRepository applicationLogRepository;
   private final DeviceDetectionService deviceDetectionService;
   private final ApplicationLogService applicationLogService;
 
@@ -68,6 +66,8 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     long startTime = System.currentTimeMillis();
 
+    Map<String, String> previousMdc = MDC.getCopyOfContextMap();
+
     // Generate or extract correlation ID for distributed tracing
     String correlationId = extractOrGenerateCorrelationId(request);
     response.setHeader(CORRELATION_ID_HEADER, correlationId);
@@ -78,28 +78,44 @@ public class LoggingFilter extends OncePerRequestFilter {
         : null;
     HttpServletRequest requestToUse = cachedRequest != null ? cachedRequest : request;
 
+    Throwable failure = null;
     try {
       populateMdc(request, cachedRequest, correlationId);
       filterChain.doFilter(requestToUse, response);
+    } catch (ServletException | IOException | RuntimeException | Error e) {
+      failure = e;
+      throw e;
     } finally {
       long duration = System.currentTimeMillis() - startTime;
-      logAccessAndPersist(request, response, cachedRequest, correlationId, duration);
-      MDC.clear();
+      logAccessAndPersist(request, response, resolveStatus(response, failure), cachedRequest,
+          correlationId, duration);
+      restoreMdc(previousMdc);
     }
   }
 
-  /**
-   * Extracts correlation ID from request headers or generates a new one.
-   */
+  private int resolveStatus(HttpServletResponse response, Throwable failure) {
+    int status = response.getStatus();
+    return failure != null && status < HttpServletResponse.SC_BAD_REQUEST
+        ? HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+        : status;
+  }
+
+  private void restoreMdc(Map<String, String> previousMdc) {
+    if (previousMdc == null) {
+      MDC.clear();
+    } else {
+      MDC.setContextMap(previousMdc);
+    }
+  }
+
   private String extractOrGenerateCorrelationId(HttpServletRequest request) {
-    String correlationId = request.getHeader(CORRELATION_ID_HEADER);
-    if (correlationId == null || correlationId.isBlank()) {
-      correlationId = request.getHeader(REQUEST_ID_HEADER);
+    for (String header : new String[] {CORRELATION_ID_HEADER, REQUEST_ID_HEADER}) {
+      String candidate = request.getHeader(header);
+      if (candidate != null && CORRELATION_ID_PATTERN.matcher(candidate).matches()) {
+        return candidate;
+      }
     }
-    if (correlationId == null || correlationId.isBlank()) {
-      correlationId = UUID.randomUUID().toString();
-    }
-    return correlationId;
+    return UUID.randomUUID().toString();
   }
 
   /**
@@ -113,6 +129,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     MDC.put(MDC_USER_IP, extractUserIp(request));
     MDC.put(MDC_USER, extractUsername());
     MDC.put(MDC_URL, request.getRequestURL().toString());
+    MDC.put(MDC_URI_STEM, request.getRequestURI());
     MDC.put(MDC_ACTION, request.getMethod());
     MDC.put(MDC_QUERY_PARAMS, StringUtils.nullSafe(request.getQueryString()));
 
@@ -127,18 +144,20 @@ public class LoggingFilter extends OncePerRequestFilter {
    * Logs access information and persists to database.
    */
   private void logAccessAndPersist(HttpServletRequest request, HttpServletResponse response,
-      CachedBodyHttpServletRequest cachedRequest,
+      int status, CachedBodyHttpServletRequest cachedRequest,
       String correlationId, long duration) {
     String path = request.getRequestURI();
-    int status = response.getStatus();
+    DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.detect(request);
 
-    // Update MDC with response info
+    // Update MDC with response info; the user may have been authenticated during the request
+    MDC.put(MDC_USER, extractUsername());
     MDC.put(MDC_PROTOCOL, request.getProtocol());
     MDC.put(MDC_STATUS, String.valueOf(status));
     MDC.put(MDC_DURATION, String.valueOf(duration));
     MDC.put(MDC_RESPONSE_SIZE, StringUtils.nullSafe(response.getHeader("Content-Length"), ZERO));
     MDC.put(MDC_REFERER, StringUtils.nullSafe(request.getHeader("Referer"), DEFAULT_VALUE));
-    MDC.put(MDC_USER_AGENT, StringUtils.nullSafe(request.getHeader("User-Agent"), DEFAULT_VALUE));
+    MDC.put(MDC_USER_AGENT, StringUtils.nullSafe(request.getHeader(USER_AGENT_HEADER), DEFAULT_VALUE));
+    MDC.put(MDC_DEVICE_TYPE, deviceInfo.getDeviceType());
 
     // Log access with duration
     if (duration > SLOW_REQUEST_THRESHOLD_MS) {
@@ -150,29 +169,28 @@ public class LoggingFilter extends OncePerRequestFilter {
 
     // Persist to database for API requests
     if (path.startsWith(API_PATH_PREFIX)) {
-      persistApplicationLog(request, response, cachedRequest, correlationId, duration);
+      persistApplicationLog(request, status, deviceInfo, cachedRequest, correlationId, duration);
     }
   }
 
   /**
    * Persists application log to database asynchronously.
    */
-  private void persistApplicationLog(HttpServletRequest request, HttpServletResponse response,
-      CachedBodyHttpServletRequest cachedRequest,
+  private void persistApplicationLog(HttpServletRequest request, int status,
+      DeviceDetectionService.DeviceInfo deviceInfo, CachedBodyHttpServletRequest cachedRequest,
       String correlationId, long duration) {
     try {
       String requestBody = (cachedRequest != null && shouldLogBody(request))
           ? sanitizeBody(cachedRequest.getBody(), request.getRequestURI())
           : null;
 
-      // Parse device information from User-Agent
       String userAgent = request.getHeader(USER_AGENT_HEADER);
-      DeviceDetectionService.DeviceInfo deviceInfo = deviceDetectionService.parseUserAgent(userAgent);
 
       // Get device ID from header if client provided it
       String deviceId = request.getHeader(DEVICE_ID_HEADER);
 
       applicationLogService.persistHttpLog(new HttpLogContext(
+          TenantContext.current(),
           correlationId,
           getClass().getName(),
           buildLogMessage(request.getMethod(), request.getRequestURI(), duration),
@@ -184,12 +202,15 @@ public class LoggingFilter extends OncePerRequestFilter {
           request.getQueryString(),
           requestBody,
           duration,
-          response.getStatus(),
+          status,
           deviceId,
           deviceInfo.getDeviceType(),
           deviceInfo.getOperatingSystem(),
           deviceInfo.getBrowser(),
-          userAgent));
+          userAgent,
+          MDC.get(MDC_STATE_BEFORE),
+          MDC.get(MDC_STATE_AFTER),
+          MDC.get(MDC_STATE_DIFF)));
 
     } catch (Exception e) {
       LOG.warn("Failed to create application log: {}", e.getMessage());
@@ -240,8 +261,8 @@ public class LoggingFilter extends OncePerRequestFilter {
           continue;
         field.setAccessible(true);
         Object value = field.get(entity);
-        if (value instanceof String && field.getName().toLowerCase().contains("password")) {
-          value = "***MASKED***";
+        if (value != null && MaskPasswordUtils.isSensitiveKey(field.getName())) {
+          value = MaskPasswordUtils.MASK;
         }
         snapshot.put(field.getName(), value);
       }
@@ -269,28 +290,6 @@ public class LoggingFilter extends OncePerRequestFilter {
             StringUtils.capitalize(e.getKey()),
             e.getValue()))
         .collect(Collectors.joining(", "));
-  }
-
-  /**
-   * Saves log to database with error handling.
-   */
-  private void saveLogAsync(ApplicationLog applicationLog) {
-    try {
-      applicationLogRepository.save(applicationLog);
-    } catch (Exception e) {
-      LOG.warn("Failed to persist application log: {}", e.getMessage());
-    }
-  }
-
-  /**
-   * Determines log level based on HTTP status code.
-   */
-  private String determineLogLevel(int status) {
-    if (status >= 500)
-      return LOG_LEVEL_ERROR;
-    if (status >= 400)
-      return LOG_LEVEL_WARN;
-    return LOG_LEVEL_INFO;
   }
 
   /**
@@ -337,8 +336,7 @@ public class LoggingFilter extends OncePerRequestFilter {
      */
 
     // Mask passwords and sensitive data
-    Object masked = MaskPasswordUtils.maskPasswordJson(body);
-    String sanitized = masked != null ? masked.toString() : body;
+    String sanitized = MaskPasswordUtils.mask(body);
 
     // Normalize whitespace for single-line logging
     sanitized = sanitized.replaceAll("[\\r\\n]+", " ")
@@ -355,22 +353,7 @@ public class LoggingFilter extends OncePerRequestFilter {
     return String.format("%s %s completed in %d ms", action, path, duration);
   }
 
-  /**
-   * Extracts user IP from request, handling proxies.
-   */
   private String extractUserIp(HttpServletRequest request) {
-    // Check X-Forwarded-For header (standard for proxies/load balancers)
-    String forwardedFor = request.getHeader(X_FORWARDED_FOR_HEADER);
-    if (forwardedFor != null && !forwardedFor.isBlank()) {
-      return forwardedFor.split(",")[0].trim();
-    }
-
-    // Check X-Real-IP header (nginx)
-    String realIp = request.getHeader(X_REAL_IP_HEADER);
-    if (realIp != null && !realIp.isBlank()) {
-      return realIp.trim();
-    }
-
     return request.getRemoteAddr();
   }
 

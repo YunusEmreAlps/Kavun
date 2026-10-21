@@ -1,15 +1,16 @@
 package com.kavun.web.rest.v1;
 
+import com.kavun.annotation.AuthenticatedEndpoint;
 import com.kavun.annotation.Loggable;
 import com.kavun.annotation.RequirePermission;
 import com.kavun.backend.persistent.domain.user.User;
-import com.kavun.backend.persistent.specification.UserSpecification;
 import com.kavun.backend.service.mail.EmailService;
-import com.kavun.backend.service.security.EncryptionService;
 import com.kavun.backend.service.security.JwtService;
 import com.kavun.backend.service.user.UserService;
 import com.kavun.constant.AdminConstants;
 import com.kavun.constant.ErrorConstants;
+import com.kavun.constant.PermissionConstants.Actions;
+import com.kavun.constant.PermissionConstants.Pages;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
 import com.kavun.exception.user.UserAlreadyExistsException;
@@ -18,6 +19,8 @@ import com.kavun.shared.dto.mapper.UserMapper;
 import com.kavun.shared.request.UserRequest;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
+import com.kavun.web.payload.request.UpdatePasswordRequest;
+import com.kavun.web.payload.request.UserRoleRequest;
 import com.kavun.web.payload.response.ApiResponse;
 import com.kavun.web.payload.response.UserResponse;
 import org.springframework.data.domain.Sort;
@@ -32,7 +35,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -44,7 +46,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -61,14 +62,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(AdminConstants.API_V1_USERS_ROOT_URL)
-@Tag(name = "02. User Management", description = "User management APIs")
+@Tag(name = "02. User Management", description = "APIs for managing users")
+@RequirePermission(page = Pages.USERS)
 public class UserRestApi {
 
   private final UserService userService;
   private final JwtService jwtService;
   private final EmailService emailService;
-  private final EncryptionService encryptionService;
-  private final UserSpecification userSpecification;
   private final UserMapper userMapper;
 
   /**
@@ -79,14 +79,14 @@ public class UserRestApi {
    * @return page of matching users
    */
   @Loggable
+  @RequirePermission(action = Actions.VIEW)
   @PostMapping("/search")
   @Operation(summary = "Search users", description = "Search users with dynamic criteria")
   public ResponseEntity<Page<UserResponse>> search(
       @RequestBody Map<String, Object> searchParams,
       @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    Specification<User> spec = userSpecification.search(searchParams);
-    Page<UserDto> userDtos = userService.findAll(spec, pageable);
+    Page<UserDto> userDtos = userService.findAll(searchParams, pageable);
     Page<UserResponse> users = userDtos.map(userDto -> userMapper.toUserResponse(UserUtils.convertToUser(userDto)));
     return ResponseEntity.ok(users);
   }
@@ -114,7 +114,6 @@ public class UserRestApi {
    * @return if the operation is success
    */
   @Loggable
-  @RequirePermission(autoDetect = true)
   @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<OperationStatus> softDeleteUser(@PathVariable Long id) {
     userService.softDeleteUser(id);
@@ -130,7 +129,6 @@ public class UserRestApi {
    */
   @Loggable
   @PostMapping
-  @RequirePermission(autoDetect = true)
   public ApiResponse<?> createUser(@Valid @RequestBody UserRequest request) {
     // Password is required for creation
     if (request.getPassword() == null || request.getPassword().isBlank()) {
@@ -153,18 +151,24 @@ public class UserRestApi {
       throw new UserAlreadyExistsException(UserConstants.EXIST_EMAIL);
     }
 
+    // Fail before creating anything if the caller may not hand out the requested roles.
+    boolean hasRoles = request.getRoles() != null && !request.getRoles().isEmpty();
+    if (hasRoles) {
+      userService.checkCanAssignRoles(
+          request.getRoles().stream().map(UserRoleRequest::getRoleId).toList());
+    }
+
     var userDto = UserUtils.convertToUserDto(request);
 
     var verificationToken = jwtService.generateJwtToken(userDto.getUsername());
     userDto.setVerificationToken(verificationToken);
 
     // If roles are provided in request, skip default ROLE_USER assignment
-    boolean hasRoles = request.getRoles() != null && !request.getRoles().isEmpty();
     var savedUserDto = userService.createUser(userDto, hasRoles);
 
-    var encryptedToken = encryptionService.encrypt(verificationToken);
-    LOG.debug("Encrypted JWT token: {}", encryptedToken);
-    var encodedToken = encryptionService.encode(encryptedToken);
+    // Tracks whether role assignment below succeeded, so the response never claims full success
+    // while silently omitting that part of the operation.
+    boolean rolesAssigned = true;
 
     if (savedUserDto.getId() != null) {
       // Assign roles if provided
@@ -174,6 +178,7 @@ public class UserRestApi {
           LOG.info("Assigned {} roles to user {}", request.getRoles().size(), savedUserDto.getId());
         } catch (Exception e) {
           LOG.error("Failed to assign roles to user: {}", savedUserDto.getEmail(), e);
+          rolesAssigned = false;
         }
       }
 
@@ -185,7 +190,11 @@ public class UserRestApi {
        * request.getPassword().length() > 0 ? request.getPassword() : newPassword);
        */
     }
-    return ApiResponse.success("", UserConstants.USER_CREATED_SUCCESS_MESSAGE, null);
+
+    String message = rolesAssigned
+        ? UserConstants.USER_CREATED_SUCCESS_MESSAGE
+        : UserConstants.USER_CREATED_SUCCESS_MESSAGE + " Warning: role assignment failed, please assign roles manually.";
+    return ApiResponse.success("", message, null);
   }
 
   /**
@@ -198,7 +207,6 @@ public class UserRestApi {
    */
   @Loggable(entityName = "User", entityClass = User.class, queryParamKey = "id")
   @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-  @RequirePermission(autoDetect = true)
   public ApiResponse<?> updateUser(
       @PathVariable Long id,
       @Valid @RequestBody UserRequest request) {
@@ -210,9 +218,9 @@ public class UserRestApi {
 
   // Update the user password for the currently authenticated user.
   @Loggable
+  @AuthenticatedEndpoint
   @PostMapping(value = UserConstants.UPDATE_PASSWORD_PATH, produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<String> updatePassword(
-      @RequestParam String oldPassword, @RequestParam String newPassword) {
+  public ResponseEntity<String> updatePassword(@Valid @RequestBody UpdatePasswordRequest request) {
 
     var userDetails = SecurityUtils.getAuthenticatedUserDetails();
     if (userDetails == null) {
@@ -221,7 +229,8 @@ public class UserRestApi {
     }
 
     // Update the password
-    String result = userService.updatePassword(userDetails.getId(), oldPassword, newPassword);
+    String result = userService.updatePassword(
+        userDetails.getId(), request.getOldPassword(), request.getNewPassword());
 
     return ResponseEntity.ok(result);
   }

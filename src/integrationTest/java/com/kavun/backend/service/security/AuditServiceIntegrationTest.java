@@ -50,7 +50,7 @@ class AuditServiceIntegrationTest extends IntegrationTestUtils {
   void testReturnsAuditLogsForMostRecentEntityWithDeletedEntities() {
     var userDto = createAndAssertUser(UserUtils.createUserDto(false));
 
-    userService.deleteUser(userDto.getPublicId());
+    userService.deleteUser(userDto.getId());
     Assertions.assertFalse(userService.existsByUsername(userDto.getUsername()));
 
     var auditLogs = auditService.getAuditLogs(User.class, true, true);

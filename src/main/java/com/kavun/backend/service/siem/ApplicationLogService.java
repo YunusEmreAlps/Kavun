@@ -1,9 +1,8 @@
 package com.kavun.backend.service.siem;
 
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -13,14 +12,13 @@ import com.kavun.backend.persistent.context.HttpLogContext;
 import com.kavun.backend.persistent.context.MethodLogContext;
 import com.kavun.backend.persistent.domain.siem.ApplicationLog;
 import com.kavun.backend.persistent.repository.ApplicationLogRepository;
-import com.kavun.backend.persistent.specification.ApplicationLogSpecification;
 import com.kavun.backend.service.AbstractService;
 import com.kavun.shared.dto.ApplicationLogDto;
 import com.kavun.shared.dto.mapper.ApplicationLogMapper;
 import com.kavun.shared.request.ApplicationLogRequest;
 import com.kavun.shared.util.core.NetworkUtils;
+import com.kavun.shared.util.core.TenantContext;
 
-import org.slf4j.MDC;
 import lombok.extern.slf4j.Slf4j;
 import static com.kavun.constant.LoggingConstants.*;
 
@@ -36,21 +34,23 @@ import static com.kavun.constant.LoggingConstants.*;
 @Service
 @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
 public class ApplicationLogService extends
-        AbstractService<ApplicationLogRequest, ApplicationLog, ApplicationLogDto, ApplicationLogRepository, ApplicationLogMapper, ApplicationLogSpecification> {
+        AbstractService<ApplicationLogRequest, ApplicationLog, ApplicationLogDto, ApplicationLogRepository, ApplicationLogMapper> {
 
   private static final String CACHED_HOSTNAME = NetworkUtils.resolveHostname();
   private static final String CACHED_IP = NetworkUtils.resolveIp();
 
-
-    public ApplicationLogService(ApplicationLogMapper mapper, ApplicationLogRepository repository,
-            ApplicationLogSpecification specification) {
-        super(mapper, repository, specification);
+    public ApplicationLogService(ApplicationLogMapper mapper, ApplicationLogRepository repository) {
+        super(mapper, repository);
     }
 
-    public Specification<ApplicationLog> search(Map<String, Object> parameterMap) {
-        return specification.search(parameterMap);
+    @Override
+    protected Set<String> filterableFields() {
+        return Set.of(
+            "correlationId", "logLevel", "threadName", "loggerName", "logMessage",
+            "hostname", "ip", "logType", "userIpAddress", "username", "requestUrl", "action",
+            "requestParams", "httpStatus", "deviceId", "deviceType", "operatingSystem",
+            "browser", "createdAt");
     }
-
 
   @Async("taskExecutor")
   public void persistHttpLog(HttpLogContext ctx) {
@@ -67,21 +67,22 @@ public class ApplicationLogService extends
           .userIpAddress(ctx.userIp())
           .username(ctx.username())
           .userId(ctx.userId())
-          .requestUrl(ctx.requestUrl())
+          .requestUrl(fit(ctx.requestUrl(), MAX_REQUEST_URL_LENGTH))
           .action(ctx.action())
           .requestParams(ctx.requestParams())
           .requestBody(ctx.requestBody())
           .durationMs(ctx.durationMs())
           .httpStatus(ctx.httpStatus())
-          .deviceId(ctx.deviceId())
+          .deviceId(fit(ctx.deviceId(), MAX_DEVICE_ID_LENGTH))
           .deviceType(ctx.deviceType())
           .operatingSystem(ctx.operatingSystem())
           .browser(ctx.browser())
           .userAgent(ctx.userAgent())
-          .stateBefore(MDC.get("stateBefore"))
-          .stateAfter(MDC.get("stateAfter"))
-          .stateDiff(MDC.get("stateDiff"))
+          .stateBefore(ctx.stateBefore())
+          .stateAfter(ctx.stateAfter())
+          .stateDiff(ctx.stateDiff())
           .build();
+      log.setTenantCode(owningTenant(ctx.tenantCode()));
 
       save(log);
     } catch (Exception e) {
@@ -107,6 +108,7 @@ public class ApplicationLogService extends
           .stateAfter(ctx.stateAfter())
           .stateDiff(ctx.stateDiff())
           .build();
+      log.setTenantCode(owningTenant(ctx.tenantCode()));
 
       save(log);
     } catch (Exception e) {
@@ -115,12 +117,23 @@ public class ApplicationLogService extends
     }
   }
 
+  // Activity outside any tenant (anonymous requests, scheduled jobs) is visible to the platform.
+  private static String owningTenant(String tenantCode) {
+    return tenantCode == null || TenantContext.ROOT.equals(tenantCode)
+        ? TenantContext.PLATFORM
+        : tenantCode;
+  }
+
   private void save(ApplicationLog applicationLog) {
     try {
       this.repository.save(applicationLog);
     } catch (Exception e) {
       LOG.error("Failed to save application log: {}", e.getMessage());
     }
+  }
+
+  private static String fit(String value, int maxLength) {
+    return value == null || value.length() <= maxLength ? value : value.substring(0, maxLength);
   }
 
   private String determineLogLevel(int status) {

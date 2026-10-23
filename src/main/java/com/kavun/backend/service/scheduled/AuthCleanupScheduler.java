@@ -2,9 +2,7 @@ package com.kavun.backend.service.scheduled;
 
 import com.kavun.backend.persistent.repository.CaptchaRepository;
 import com.kavun.backend.persistent.repository.OtpRepository;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,9 +40,7 @@ public class AuthCleanupScheduler {
 
     try {
       // Delete OTPs expired more than 1 hour ago
-      Instant expiresAtThreshold = Instant.now().minus(1, ChronoUnit.HOURS);
-      LocalDateTime createdAtThreshold = LocalDateTime.now().minusHours(1);
-      int deletedCount = otpRepository.cleanupOldOtps(expiresAtThreshold, createdAtThreshold);
+      int deletedCount = otpRepository.cleanupOldOtps(LocalDateTime.now().minusHours(1));
 
       if (deletedCount > 0) {
         LOG.info("Cleaned up {} expired OTP records", deletedCount);
@@ -91,9 +87,7 @@ public class AuthCleanupScheduler {
 
     try {
       // Delete OTPs older than 7 days
-      Instant expiresAtThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
-      LocalDateTime createdAtThreshold = LocalDateTime.now().minusDays(7);
-      int deletedOtps = otpRepository.cleanupOldOtps(expiresAtThreshold, createdAtThreshold);
+      int deletedOtps = otpRepository.cleanupOldOtps(LocalDateTime.now().minusDays(7));
 
       // Delete CAPTCHAs older than 7 days
       LocalDateTime captchaThreshold = LocalDateTime.now().minusDays(7);

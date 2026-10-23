@@ -2,7 +2,10 @@ package com.kavun.web.rest.v1;
 
 import com.kavun.IntegrationTestUtils;
 import com.kavun.TestUtils;
+import com.kavun.backend.persistent.repository.OtpRepository;
 import com.kavun.backend.persistent.repository.UserSessionRepository;
+import com.kavun.backend.service.user.OtpService;
+import com.kavun.constant.AuthConstants;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.enums.TokenType;
 import com.kavun.shared.dto.UserDto;
@@ -10,6 +13,7 @@ import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.JwtUtils;
 import com.kavun.shared.util.core.JwtUtils.JwtTokenType;
 import com.kavun.web.payload.request.LoginRequest;
+import com.kavun.web.payload.request.OtpVerificationRequest;
 import com.jayway.jsonpath.JsonPath;
 import java.time.Duration;
 import java.util.Date;
@@ -39,10 +43,13 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
   private transient String loginUri;
   private transient String logoutUri;
   private transient String refreshUri;
+  private transient String verifyOtpUri;
   private transient String loginRequestJson;
   private transient UserDto storedUser;
 
   @Autowired private transient UserSessionRepository userSessionRepository;
+  @Autowired private transient OtpService otpService;
+  @Autowired private transient OtpRepository otpRepository;
 
   @BeforeAll
   void beforeAll() {
@@ -60,6 +67,7 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
     refreshUri =
         String.join(
             delimiter, SecurityConstants.API_V1_AUTH_ROOT_URL, SecurityConstants.REFRESH_TOKEN);
+    verifyOtpUri = SecurityConstants.API_V1_AUTH_ROOT_URL + SecurityConstants.VERIFY_OTP;
   }
 
   @Test
@@ -94,6 +102,54 @@ class AuthRestApiIntegrationTest extends IntegrationTestUtils {
     performRequest(MockMvcRequestBuilders.post(loginUri), TestUtils.toJson(loginRequest))
         .andExpect(MockMvcResultMatchers.status().isUnauthorized())
         .andExpect(MockMvcResultMatchers.jsonPath("$.status").value(401));
+  }
+
+  // The answer must not tell an attacker which usernames exist.
+  @Test
+  void loginWithUnknownUsernameLooksLikeAWrongPassword(TestInfo testInfo) throws Exception {
+    var loginRequest = new LoginRequest("unknown-user", testInfo.getDisplayName(), null, null);
+
+    performRequest(MockMvcRequestBuilders.post(loginUri), TestUtils.toJson(loginRequest))
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.message").value(AuthConstants.INVALID_CREDENTIALS));
+  }
+
+  @Test
+  void signInCodeCompletesTheLoginOnlyOnce() throws Exception {
+    var challenge = otpService.sendSignInCode(storedUser);
+    var verification = TestUtils.toJson(new OtpVerificationRequest(challenge.id(), codeOf(challenge.id())));
+
+    performRequest(MockMvcRequestBuilders.post(verifyOtpUri), verification)
+        .andExpect(MockMvcResultMatchers.status().isOk())
+        .andExpect(MockMvcResultMatchers.jsonPath(ACCESS_TOKEN_PATH).exists());
+
+    performRequest(MockMvcRequestBuilders.post(verifyOtpUri), verification)
+        .andExpect(MockMvcResultMatchers.status().isBadRequest());
+  }
+
+  // Failed attempts must be stored even though each one ends in an error response.
+  @Test
+  void wrongSignInCodesUseUpTheChallenge() throws Exception {
+    var challenge = otpService.sendSignInCode(storedUser);
+    var code = codeOf(challenge.id());
+    var wrongCode = code.equals("000000") ? "111111" : "000000";
+
+    for (int attempt = 0; attempt < SecurityConstants.OTP_MAX_ATTEMPTS; attempt++) {
+      performRequest(
+              MockMvcRequestBuilders.post(verifyOtpUri),
+              TestUtils.toJson(new OtpVerificationRequest(challenge.id(), wrongCode)))
+          .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    }
+
+    performRequest(
+            MockMvcRequestBuilders.post(verifyOtpUri),
+            TestUtils.toJson(new OtpVerificationRequest(challenge.id(), code)))
+        .andExpect(MockMvcResultMatchers.status().isBadRequest())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.message").value(AuthConstants.OTP_MAX_ATTEMPTS));
+  }
+
+  private String codeOf(String challengeId) {
+    return otpRepository.findByPublicId(challengeId).orElseThrow().getCode();
   }
 
   /**

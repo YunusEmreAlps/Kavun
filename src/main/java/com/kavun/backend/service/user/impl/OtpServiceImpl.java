@@ -6,24 +6,27 @@ import com.kavun.backend.service.mail.EmailService;
 import com.kavun.backend.service.sms.SmsService;
 import com.kavun.backend.service.user.OtpService;
 import com.kavun.constant.AuthConstants;
+import com.kavun.constant.EnvConstants;
 import com.kavun.constant.SecurityConstants;
-import com.kavun.exception.user.EmailServiceException;
+import com.kavun.enums.OtpDeliveryMethod;
 import com.kavun.exception.user.OtpValidationException;
-import com.kavun.exception.user.SmsServiceException;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import com.kavun.shared.dto.UserDto;
+import com.kavun.web.payload.response.OtpChallengeResponse;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
+import org.apache.commons.lang3.EnumUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 
 /**
  * The OtpServiceImpl class is an implementation for the OtpService Interface.
+ *
+ * <p>A code is stored with the username it was issued to, not the address it was sent to, and is
+ * looked up by its random public id, so a code can only ever complete the sign-in it was sent for.
  *
  * @author Yunus Emre Alpu
  * @version 1.0
@@ -35,157 +38,92 @@ import org.springframework.beans.factory.annotation.Value;
 @Transactional(readOnly = true)
 public class OtpServiceImpl implements OtpService {
 
-    @Value("${app.test-otp-code:190303}")
-    private String testOtpCode;
+  private static final int VISIBLE_PHONE_DIGITS = 4;
+  private static final String TEST_OTP_CODE = "app.test-otp-code";
 
-    private final transient Environment environment;
-    private final transient OtpRepository otpRepository;
-    private final transient EmailService emailService;
-    private final transient SmsService smsService;
+  private final transient Environment environment;
+  private final transient OtpRepository otpRepository;
+  private final transient EmailService emailService;
+  private final transient SmsService smsService;
 
-    /**
-     * Generates the otp code for the user with the given email or sms.
-     *
-     * @param target the target to email or sms
-     * @return the generated otp code
-     */
-    @Override
-    @Transactional
-    public Otp generateOtp(String target) {
-        Otp otpEntity = new Otp();
-
-        otpEntity.setTarget(target);
-        boolean isDevOrTest = isDevOrTestEnvironment();
-        if (isDevOrTest) {
-            otpEntity.setCode(testOtpCode);
-            LOG.info("Using test OTP code for development/test environment: {}", testOtpCode);
-        } else {
-            otpEntity.setCode(Otp.generateOtp());
-        }
-
-        otpEntity.setActive(true);
-        otpRepository.save(otpEntity);
-
-        return otpEntity;
+  @Override
+  @Transactional
+  public OtpChallengeResponse sendSignInCode(UserDto user) {
+    OtpDeliveryMethod method =
+        EnumUtils.getEnum(OtpDeliveryMethod.class, user.getOtpDeliveryMethod());
+    if (method == null) {
+      throw new OtpValidationException(
+          StringUtils.isBlank(user.getOtpDeliveryMethod())
+              ? AuthConstants.BLANK_OTP_DELIVERY_METHOD
+              : AuthConstants.INVALID_OTP_DELIVERY_METHOD);
     }
 
-    @Override
-    @Transactional(noRollbackFor = IllegalArgumentException.class)
-    public Boolean validateOtp(Long id, String target, String code) {
-        Otp otpEntity = otpRepository.findById(id)
-                .orElseThrow(() -> new OtpValidationException(AuthConstants.OTP_NOT_FOUND));
-
-        // Check if OTP is valid and matches
-        boolean codeMatch = otpEntity.getCode().equals(code);
-        boolean targetMatch = otpEntity.getTarget().equals(target);
-        boolean isValid = otpEntity.isValid();
-
-        if (codeMatch && targetMatch && isValid) {
-            LOG.info("OTP validation successful! Marking as used.");
-            otpEntity.setUsedAt(Instant.now());
-            otpEntity.setActive(false);
-            otpRepository.save(otpEntity);
-            return true;
-        }
-
-        // Handle validation failure
-        LOG.warn("OTP validation failed!");
-        otpEntity.setFailedAttempts(otpEntity.getFailedAttempts() + 1);
-
-        // Determine failure reason before saving
-        String errorMessage;
-        if (otpEntity.isExpired()) {
-            otpEntity.setActive(false);
-            errorMessage = AuthConstants.OTP_EXPIRED;
-        } else if (otpEntity.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
-            otpEntity.setActive(false);
-            errorMessage = AuthConstants.OTP_MAX_ATTEMPTS;
-        } else {
-            errorMessage = AuthConstants.OTP_NOT_VERIFIED;
-        }
-
-        otpRepository.save(otpEntity);
-        throw new OtpValidationException(errorMessage);
+    boolean sms = method == OtpDeliveryMethod.SMS;
+    String destination = sms ? user.getPhone() : user.getEmail();
+    if (StringUtils.isBlank(destination)) {
+      throw new OtpValidationException(
+          sms ? AuthConstants.USER_HAS_NO_PHONE_FOR_OTP : AuthConstants.USER_HAS_NO_EMAIL_FOR_OTP);
     }
 
-    // Generates OTP and sends it via SMS
-    @Override
-    @Transactional
-    public Map<String, Object> generateAndSendOtpSms(String phoneNumber) {
-        LOG.info("Generating and sending OTP via SMS for phone: {}", phoneNumber);
+    // Development and test have no mail server or SMS provider: they use the fixed code
+    // app.test-otp-code and send nothing.
+    boolean devOrTest =
+        environment.acceptsProfiles(Profiles.of(EnvConstants.DEVELOPMENT, EnvConstants.TEST));
 
-        // Generate OTP entity
-        Otp otp = generateOtp(phoneNumber);
+    Otp otp = new Otp();
+    otp.setTarget(user.getUsername());
+    otp.setCode(devOrTest ? environment.getRequiredProperty(TEST_OTP_CODE) : Otp.generateOtp());
+    otpRepository.save(otp);
 
-        // Skip SMS sending in dev/test environments
-        if (!isDevOrTestEnvironment()) {
-            try {
-                // Send OTP via SMS Service
-                smsService.sendOtpSms(phoneNumber, otp.getCode());
-                LOG.info("OTP SMS sent successfully to: {}", phoneNumber);
-
-            } catch (Exception e) {
-                LOG.error("Failed to send OTP SMS: {}", e.getMessage(), e);
-                otp.setActive(false);
-                otpRepository.save(otp);
-                throw new SmsServiceException("Failed to send OTP SMS: " + e.getMessage(), e);
-            }
-        } else {
-            LOG.info("Skipping SMS sending in development/test environment. OTP code: {}", otp.getCode());
-            LOG.info("Skipping SMS sending in development/test environment");
-        }
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", otp.getId());
-        params.put("target", otp.getTarget());
-
-        return params;
+    if (devOrTest) {
+      LOG.info("Sign-in code for {} not sent; use the test code {}", user.getUsername(), otp.getCode());
+    } else if (sms) {
+      smsService.sendOtpSms(destination, otp.getCode());
+    } else {
+      emailService.sendOtpEmail(destination, otp.getCode(), user.getFirstName());
     }
 
-    // Generates OTP and sends it via Email.
-    @Override
-    @Transactional
-    public Map<String, Object> generateAndSendOtpEmail(String email) {
-        LOG.info("Generating and sending OTP via Email for: {}", email);
+    return new OtpChallengeResponse(otp.getPublicId(), mask(destination, sms));
+  }
 
-        // Generate OTP entity
-        Otp otp = generateOtp(email.trim());
+  // A failed attempt is counted even though the method throws, so the transaction must commit.
+  @Override
+  @Transactional(noRollbackFor = OtpValidationException.class)
+  public String verifySignInCode(String challengeId, String code) {
+    Otp otp =
+        otpRepository
+            .findByPublicId(challengeId)
+            .orElseThrow(() -> new OtpValidationException(AuthConstants.OTP_NOT_FOUND));
 
-        if(!isDevOrTestEnvironment()) {
-            try {
-                // Send OTP via Email Service
-                emailService.sendOtpEmail(email, otp.getCode(), null);
-                LOG.info("OTP email queued for: {}", email);
-
-            } catch (Exception e) {
-                LOG.error("Failed to send OTP Email: {}", e.getMessage(), e);
-                otp.setActive(false);
-                otpRepository.save(otp);
-                throw new EmailServiceException("Failed to send OTP Email: " + e.getMessage(), e);
-            }
-        } else {
-            LOG.info("Skipping Email sending in development/test environment. OTP code: {}", otp.getCode());
-        }
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", otp.getId());
-        params.put("target", otp.getTarget());
-
-        return params;
+    if (otp.isValid() && otp.getCode().equals(code)) {
+      otp.setUsedAt(LocalDateTime.now());
+      otp.setActive(false);
+      return otp.getTarget();
     }
 
-    /**
-     * Checks if the current environment is development or test.
-     *
-     * @return true if running in development or test profile
-     */
-    private boolean isDevOrTestEnvironment() {
-        String[] activeProfiles = environment.getActiveProfiles();
-        for (String profile : activeProfiles) {
-            if ("development".equalsIgnoreCase(profile) || "test".equalsIgnoreCase(profile)) {
-                return true;
-            }
-        }
-        return false;
+    otp.setFailedAttempts(otp.getFailedAttempts() + 1);
+    String errorMessage;
+    if (otp.isExpired()) {
+      otp.setActive(false);
+      errorMessage = AuthConstants.OTP_EXPIRED;
+    } else if (otp.getFailedAttempts() >= SecurityConstants.OTP_MAX_ATTEMPTS) {
+      otp.setActive(false);
+      errorMessage = AuthConstants.OTP_MAX_ATTEMPTS;
+    } else {
+      errorMessage = AuthConstants.OTP_NOT_VERIFIED;
     }
+    LOG.warn("Sign-in code rejected for {}: {}", otp.getTarget(), errorMessage);
+    throw new OtpValidationException(errorMessage);
+  }
+
+  // Shows enough for the user to recognise the address without disclosing it.
+  private static String mask(String destination, boolean phone) {
+    if (phone) {
+      int visible = destination.length() > VISIBLE_PHONE_DIGITS ? VISIBLE_PHONE_DIGITS : 0;
+      int hidden = destination.length() - visible;
+      return "*".repeat(hidden) + destination.substring(hidden);
+    }
+    int at = destination.indexOf('@');
+    return at > 0 ? destination.charAt(0) + "***" + destination.substring(at) : "***";
+  }
 }

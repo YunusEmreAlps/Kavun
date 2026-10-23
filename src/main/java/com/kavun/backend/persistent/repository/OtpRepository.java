@@ -1,9 +1,8 @@
 package com.kavun.backend.persistent.repository;
 
 import com.kavun.backend.persistent.domain.user.Otp;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.datatables.repository.DataTablesRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,64 +18,23 @@ import org.springframework.transaction.annotation.Transactional;
 public interface OtpRepository extends DataTablesRepository<Otp, Long> {
 
   /**
-   * Find otp by target.
+   * Find an otp by the public id handed to the client as its challenge id.
    *
-   * @param target the target to email or sms
-   * @return Otp found.
+   * @param publicId the public id
+   * @return the otp, if any
    */
-  Otp findByTarget(String target);
-
-  /**
-   * Find otp by target and code.
-   *
-   * @param target the target to email or sms
-   * @param code the otp code to validate
-   * @return Otp found.
-   */
-  Otp findByTargetAndCode(String target, String code);
-
-  /**
-   * Get active codes for the target.
-   *
-   * @param target the target to email or sms
-   * @param status the status of the otp
-   * @return Otp found.
-   */
-  List<Otp> findByTargetAndActive(String target, Boolean status);
-
-  /**
-   * Get active codes for the target.
-   *
-   * @param target the target to email or sms
-   * @param expiresAt the expiration date of the otp
-   * @param status the status of the otp
-   * @return Otp found.
-   */
-  List<Otp> findByTargetAndExpiresAtAfterAndActive(
-      String target, Instant expiresAt, Boolean status);
-
-  /**
-   * Check if there's an active, unexpired OTP for the target
-   *
-   * @param target the target to email or sms
-   * @param code the otp code to validate
-   * @param expiresAt the expiration date of the otp
-   * @param status the status of the otp
-   * @return Otp found.
-   */
-  Otp findByTargetAndCodeAndExpiresAtAfterAndActive(
-      String target, String code, Instant expiresAt, Boolean status);
+  Optional<Otp> findByPublicId(String publicId);
 
   /**
    * Delete expired OTP records.
    *
-   * @param threshold the threshold instant before which to delete records
+   * @param threshold the time before which to delete records
    * @return the number of deleted records
    */
   @Modifying
   @Transactional
   @Query("DELETE FROM Otp o WHERE o.expiresAt < :threshold")
-  int deleteExpired(Instant threshold);
+  int deleteExpired(LocalDateTime threshold);
 
   /**
    * Delete inactive OTP records that have expired.
@@ -92,15 +50,11 @@ public interface OtpRepository extends DataTablesRepository<Otp, Long> {
   /**
    * Cleanup old OTP records (expired or inactive).
    *
-   * <p>{@code createdAt} is inherited from {@code BaseEntity} as a {@link LocalDateTime}, while
-   * {@code expiresAt} is an {@link Instant}, so the two thresholds have different types.
-   *
-   * @param expiresAtThreshold delete records that expired before this instant
-   * @param createdAtThreshold delete inactive records created before this time
+   * @param threshold delete records that expired, or were deactivated and created, before this time
    * @return the number of deleted records
    */
   @Modifying
   @Transactional
-  @Query("DELETE FROM Otp o WHERE o.expiresAt < :expiresAtThreshold OR (o.active = false AND o.createdAt < :createdAtThreshold)")
-  int cleanupOldOtps(Instant expiresAtThreshold, LocalDateTime createdAtThreshold);
+  @Query("DELETE FROM Otp o WHERE o.expiresAt < :threshold OR (o.active = false AND o.createdAt < :threshold)")
+  int cleanupOldOtps(LocalDateTime threshold);
 }

@@ -28,7 +28,6 @@ public final class SecurityConstants {
   public static final String ROOT_PATH = "/";
   public static final String SAME_SITE = "strict";
   public static final String OTP = "/otp";
-  public static final String GENERATE_OTP = "/generate-otp";
   public static final String VERIFY_OTP = "/verify-otp";
 
   public static final int OTP_LENGTH = 6;

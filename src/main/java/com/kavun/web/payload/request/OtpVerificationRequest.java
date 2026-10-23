@@ -1,7 +1,6 @@
 package com.kavun.web.payload.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,11 +20,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class OtpVerificationRequest {
 
-  @NotNull(message = "OTP ID cannot be null")
-  private Long id;
-
-  @NotBlank(message = "Target (email or phone) cannot be blank")
-  private String target;
+  /** The challenge id the login endpoint returned with the code. */
+  @NotBlank(message = "OTP ID cannot be blank")
+  private String id;
 
   @NotBlank(message = "OTP code cannot be blank")
   @Size(min = 6, max = 6, message = "OTP code must be 6 digits")

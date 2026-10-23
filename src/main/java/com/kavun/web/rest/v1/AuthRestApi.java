@@ -20,7 +20,6 @@ import com.kavun.constant.LoggingConstants;
 import com.kavun.constant.SecurityConstants;
 import com.kavun.constant.user.UserConstants;
 import com.kavun.enums.OperationStatus;
-import com.kavun.enums.OtpDeliveryMethod;
 import com.kavun.enums.TokenType;
 import com.kavun.exception.EncryptionException;
 import com.kavun.exception.user.InvalidTokenException;
@@ -30,7 +29,6 @@ import com.kavun.shared.util.CaptchaStore;
 import com.kavun.shared.util.UserUtils;
 import com.kavun.shared.util.core.SecurityUtils;
 import com.kavun.web.payload.request.ForgotPasswordRequest;
-import com.kavun.web.payload.request.GenerateOtpRequest;
 import com.kavun.web.payload.request.LoginRequest;
 import com.kavun.web.payload.request.OtpVerificationRequest;
 import com.kavun.web.payload.request.ResetPasswordRequest;
@@ -46,7 +44,6 @@ import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Date;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import lombok.RequiredArgsConstructor;
@@ -271,12 +268,6 @@ public class AuthRestApi {
       captchaRepository.save(captcha);
     }
 
-    UserDto user = userService.findByUsername(username);
-    if (user == null) {
-      return ApiResponse.error(HttpStatus.BAD_REQUEST,
-          UserConstants.USER_NOT_FOUND, SecurityConstants.LOGIN);
-    }
-
     // Per-IP+username failed-attempt throttle. Independent of - and much cheaper to
     // trip
     // than - the persistent account lock in BruteForceProtectionService: it
@@ -296,12 +287,15 @@ public class AuthRestApi {
           AuthConstants.TOO_MANY_LOGIN_ATTEMPTS, SecurityConstants.LOGIN);
     }
 
+    UserDto user;
     try {
-      // Authentication will fail if the credentials are invalid
+      // Authentication will fail if the credentials are invalid. An unknown username fails exactly
+      // like a wrong password, so the response does not reveal which usernames exist.
       SecurityUtils.authenticateUser(authenticationManager, username,
           loginRequest.getPassword());
       LOG.info("User {} authenticated successfully from IP: {}", username, request.getRemoteAddr());
-      registerDeviceId(user.getId(), request);
+      // The login name may be an email; continue with the account's username.
+      user = userService.findByUsername(SecurityUtils.getAuthenticatedUserDetails().getUsername());
     } catch (AuthenticationException e) {
       // Caught locally (rather than left to the global handler) specifically to consume the
       // per-IP+username throttle bucket as a side effect of the failed attempt.
@@ -310,55 +304,32 @@ public class AuthRestApi {
       return ApiResponse.error(HttpStatus.UNAUTHORIZED, AuthConstants.INVALID_CREDENTIALS, SecurityConstants.LOGIN);
     }
 
-    var decryptedRefreshToken = decryptClientToken(refreshToken);
-    var isRefreshTokenValid = jwtService.isValidJwtToken(decryptedRefreshToken);
-
     if (isOtpEnabled) {
-      // Check if user has OTP delivery method configured
-      if (user.getOtpDeliveryMethod() == null ||
-          user.getOtpDeliveryMethod().isBlank()) {
-        return ApiResponse.error(HttpStatus.BAD_REQUEST,
-            AuthConstants.BLANK_OTP_DELIVERY_METHOD, SecurityConstants.LOGIN);
-      }
-
-      // Generate and send OTP based on delivery method. SmsServiceException/EmailServiceException
-      // propagate to the global exception handler (mapped to 500 with a clean message) rather than
-      // being caught here.
-      Map<String, Object> response;
-      if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
-        if (user.getPhone() == null || user.getPhone().isBlank()) {
-          return ApiResponse.error(HttpStatus.BAD_REQUEST,
-              AuthConstants.USER_HAS_NO_PHONE_FOR_OTP, SecurityConstants.LOGIN);
-        }
-        response = otpService.generateAndSendOtpSms(user.getPhone());
-      } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
-        if (user.getEmail() == null || user.getEmail().isBlank()) {
-          return ApiResponse.error(HttpStatus.BAD_REQUEST,
-              AuthConstants.USER_HAS_NO_EMAIL_FOR_OTP, SecurityConstants.LOGIN);
-        }
-        response = otpService.generateAndSendOtpEmail(user.getEmail());
-      } else {
-        return ApiResponse.error(HttpStatus.BAD_REQUEST,
-            AuthConstants.INVALID_OTP_DELIVERY_METHOD, SecurityConstants.LOGIN);
-      }
-      return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY,
-          SecurityConstants.LOGIN);
+      // The password was right; /verify-otp issues the tokens once the code sent here is confirmed.
+      // SmsServiceException/EmailServiceException propagate to the global exception handler
+      // (mapped to 500 with a clean message) rather than being caught here.
+      return ApiResponse.success(otpService.sendSignInCode(user),
+          AuthConstants.OTP_SENT_SUCCESSFULLY, SecurityConstants.LOGIN);
     } else {
+      registerDeviceId(user.getId(), request);
 
       // Create session FIRST to get session ID
       UserSession session = userSessionService.createSession(user.getId(), request);
       String sessionId = session.getId().toString();
-      LOG.info("Created session: {} for user: {}", sessionId, username);
+      LOG.info("Created session: {} for user: {}", sessionId, user.getUsername());
 
       var responseHeaders = new HttpHeaders();
       // Generate access token with session ID embedded in JWT
       var accessTokenExpiration = DateUtils.addMinutes(new Date(), accessTokenExpirationInMinutes);
-      String newAccessToken = jwtService.generateJwtToken(username, accessTokenExpiration, sessionId);
+      String newAccessToken =
+          jwtService.generateJwtToken(user.getUsername(), accessTokenExpiration, sessionId);
 
       // Handle refresh token
+      var isRefreshTokenValid = jwtService.isValidJwtToken(decryptClientToken(refreshToken));
       if (!isRefreshTokenValid) {
         var refreshExpiration = DateUtils.addDays(new Date(), SecurityConstants.DEFAULT_TOKEN_DURATION);
-        var newRefreshToken = jwtService.generateJwtToken(username, refreshExpiration, sessionId);
+        var newRefreshToken =
+            jwtService.generateJwtToken(user.getUsername(), refreshExpiration, sessionId);
         var encryptedRefreshToken = encryptionService.encrypt(newRefreshToken);
         var refreshDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
         cookieService.addCookieToHeaders(responseHeaders, TokenType.REFRESH, encryptedRefreshToken, refreshDuration);
@@ -464,45 +435,11 @@ public class AuthRestApi {
   }
 
   /**
-   * Endpoint to generate OTP for the user.
-   *
-   * @param request the generate OTP request
-   * @return the response entity
-   */
-  @SecurityRequirements
-  @Loggable(level = "warn")
-  @PostMapping(SecurityConstants.GENERATE_OTP)
-  public ApiResponse<?> generateOtp(@Valid @RequestBody GenerateOtpRequest request) {
-    UserDto user = userService.findByUsername(request.getUsername());
-
-    if (user == null) {
-      return ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.GENERATE_OTP);
-    }
-
-    if (user.getOtpDeliveryMethod() == null || user.getOtpDeliveryMethod().isBlank()) {
-      return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.USER_HAS_NO_OTP_DELIVERY_METHOD,
-          SecurityConstants.GENERATE_OTP);
-    }
-
-    // SmsServiceException/EmailServiceException propagate to the global exception handler
-    // (mapped to 500 with a clean message) rather than being caught here.
-    Map<String, Object> response;
-    if (OtpDeliveryMethod.SMS.name().equals(user.getOtpDeliveryMethod())) {
-      response = otpService.generateAndSendOtpSms(user.getPhone());
-    } else if (OtpDeliveryMethod.EMAIL.name().equals(user.getOtpDeliveryMethod())) {
-      response = otpService.generateAndSendOtpEmail(user.getEmail());
-    } else {
-      return ApiResponse.error(HttpStatus.BAD_REQUEST, AuthConstants.INVALID_OTP_DELIVERY_METHOD,
-          SecurityConstants.GENERATE_OTP);
-    }
-    return ApiResponse.success(response, AuthConstants.OTP_SENT_SUCCESSFULLY, SecurityConstants.GENERATE_OTP);
-  }
-
-  /**
-   * Endpoint to verify OTP for the user and issue access token.
+   * Second step of a login when OTP is enabled: checks the code the login endpoint sent and issues
+   * the tokens. There is no way to request a code without the password.
    *
    * @param refreshToken the refresh token (optional)
-   * @param request      the OTP verification request
+   * @param request      the challenge id returned by the login endpoint and the code
    * @return JWT response with tokens and user details
    */
   @SecurityRequirements
@@ -513,38 +450,22 @@ public class AuthRestApi {
       @Valid @RequestBody OtpVerificationRequest request,
       HttpServletRequest httpRequest) {
 
-    // Validate and normalize target (email or phone)
-    if (request.getTarget() == null || request.getTarget().trim().isEmpty()) {
-      return ResponseEntity.badRequest().body(
-          ApiResponse.error(HttpStatus.BAD_REQUEST, "Target (email or phone) is required",
-              SecurityConstants.VERIFY_OTP));
-    }
+    // On failure this throws OtpValidationException, which the global exception handler maps to
+    // 400 with the specific failure reason (expired / max attempts / not verified).
+    String username = otpService.verifySignInCode(request.getId(), request.getCode());
 
-    String target = request.getTarget().trim();
-
-    // Validate OTP with normalized target. On failure this throws OtpValidationException, which
-    // the global exception handler maps to 400 with the specific failure reason (expired / max
-    // attempts / not verified) - it never returns false, so the result doesn't need checking here.
-    otpService.validateOtp(request.getId(), target, request.getCode());
-
-    UserDto user = target.contains("@") ? userService.findByEmail(target) : userService.findByPhone(target);
-
-    if (user == null) {
-      LOG.warn("User not found for target: {} after successful OTP validation", target);
-      return ResponseEntity.badRequest().body(
-          ApiResponse.error(HttpStatus.BAD_REQUEST, UserConstants.USER_NOT_FOUND, SecurityConstants.VERIFY_OTP));
-    }
-
-    // Authenticate user without password
-    SecurityUtils.authenticateUser(userDetailsService.loadUserByUsername(user.getUsername()));
+    // The account may have been disabled or locked since its password was checked.
+    var userDetails = (UserDetailsBuilder) userDetailsService.loadUserByUsername(username);
+    SecurityUtils.validateUserDetailsStatus(userDetails);
+    SecurityUtils.authenticateUser(httpRequest, userDetails);
 
     // Register device ID if provided
-    registerDeviceId(user.getId(), httpRequest);
+    registerDeviceId(userDetails.getId(), httpRequest);
 
     // Create session and get the session ID
-    var userSession = userSessionService.createSession(user.getId(), httpRequest);
+    var userSession = userSessionService.createSession(userDetails.getId(), httpRequest);
     String sessionId = userSession.getId().toString();
-    LOG.info("Created session: {} for user: {} after OTP verification", sessionId, user.getUsername());
+    LOG.info("Created session: {} for user: {} after OTP verification", sessionId, username);
 
     // Check if refresh token is valid
     String decryptedRefreshToken = decryptClientToken(refreshToken);
@@ -553,12 +474,12 @@ public class AuthRestApi {
     // Generate tokens with session ID embedded
     HttpHeaders responseHeaders = new HttpHeaders();
     var accessTokenExpiration = DateUtils.addMinutes(new Date(), accessTokenExpirationInMinutes);
-    String newAccessToken = jwtService.generateJwtToken(user.getUsername(), accessTokenExpiration, sessionId);
+    String newAccessToken = jwtService.generateJwtToken(username, accessTokenExpiration, sessionId);
 
     // Handle refresh token
     if (!isRefreshTokenValid) {
       var refreshExpiration = DateUtils.addDays(new Date(), SecurityConstants.DEFAULT_TOKEN_DURATION);
-      var newRefreshToken = jwtService.generateJwtToken(user.getUsername(), refreshExpiration, sessionId);
+      var newRefreshToken = jwtService.generateJwtToken(username, refreshExpiration, sessionId);
       var encryptedRefreshToken = encryptionService.encrypt(newRefreshToken);
       var refreshDuration = Duration.ofDays(SecurityConstants.DEFAULT_TOKEN_DURATION);
       cookieService.addCookieToHeaders(responseHeaders, TokenType.REFRESH, encryptedRefreshToken, refreshDuration);
@@ -569,8 +490,6 @@ public class AuthRestApi {
     // Convert expiration to seconds for OAuth2 compliance
     long expiresInSeconds = (long) accessTokenExpirationInMinutes * 60;
 
-    // Build response with user details
-    UserDetailsBuilder userDetails = (UserDetailsBuilder) userDetailsService.loadUserByUsername(user.getUsername());
     AuthResponse authResponse = AuthResponse.of(encryptedAccessToken, expiresInSeconds, null, userDetails, sessionId);
 
     return ResponseEntity.ok().headers(responseHeaders)

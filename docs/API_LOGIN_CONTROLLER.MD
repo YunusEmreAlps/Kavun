@@ -68,9 +68,15 @@ When `false` (default):
 When `true`:
 - Login does **not** return JWT token immediately
 - An OTP code is sent to user's email or phone (based on user preference)
-- Login returns `{ id, target }` session info
-- User **must** call `/api/v1/auth/verify-otp` with the OTP code to complete authentication
+- Login returns `{ id, target }`: the challenge id and the masked address the code was sent to
+- User **must** call `/api/v1/auth/verify-otp` with the challenge id and the code to complete authentication
 - Only after OTP verification, JWT token is returned
+- A code can only be obtained by passing the password check; there is no endpoint that sends one
+  for a username alone
+
+In the `development` and `test` profiles nothing is sent and the code is always
+`app.test-otp-code` (`APP_TEST_OTP_CODE`, default `190303`). The password is still checked first;
+other profiles send a random code.
 
 ## Authentication Flow
 
@@ -123,10 +129,10 @@ login.otp.enabled=true       # Must be set
 ```
 1. POST /api/v1/auth/login
    → username + password
-   → Returns: { id, target } (OTP session info)
+   → Returns: { id, target } (challenge id, masked address)
 
 2. POST /api/v1/auth/verify-otp
-   → id + target + code (6-digit OTP)
+   → id + code (6-digit OTP)
    → Returns: JWT accessToken + refreshToken (cookie)
 ```
 
@@ -145,20 +151,20 @@ login.otp.enabled=true       # Must be set
 
 2. POST /api/v1/auth/login
    → username + password + captchaId + captchaText
-   → Returns: { id, target } (OTP session info)
+   → Returns: { id, target } (challenge id, masked address)
 
 3. POST /api/v1/auth/verify-otp
-   → id + target + code (6-digit OTP)
+   → id + code (6-digit OTP)
    → Returns: JWT accessToken + refreshToken (cookie)
 ```
 
 **Important Notes:**
 - **Both features are disabled by default** - Basic authentication (Flow 1) is used unless explicitly enabled
 - Features can be enabled independently or together
-- `target` is the user's email or phone number depending on their OTP delivery preference
-- `id` is the OTP session identifier returned from the login endpoint
-- OTP codes expire after a configured time period (typically 5 minutes)
-- Failed OTP attempts are limited to prevent brute force attacks
+- `target` is the user's email or phone number, masked, depending on their OTP delivery preference
+- `id` is the challenge id returned from the login endpoint (a random UUID)
+- OTP codes expire after 5 minutes and can be used once
+- A challenge allows 3 attempts; after that the user has to log in again
 - To enable features, set environment variables: `LOGIN_CAPTCHA_ENABLED=true` and/or `LOGIN_OTP_ENABLED=true`
 
 ---
@@ -211,13 +217,12 @@ a new one.
 
 ```json
 {
-  "id": 123,
-  "target": "user@example.com", # SMS or EMAIL
-  "code": "123456" # Only included for testing purposes, not sent in production
+  "id": "1b4e28ba-2fa1-11d2-883f-0016d3cca427",
+  "target": "u***@example.com"
 }
 ```
 
-**After receiving this response, proceed to verify-otp endpoint with the OTP code sent to the target.**
+**After receiving this response, proceed to verify-otp endpoint with the `id` and the code the user received.**
 
 ![img_2.png](images/auth-rest-login-response.png)
 
@@ -225,8 +230,11 @@ a new one.
 
 - `accessToken`: JWT token to be passed with requests to access protected endpoints (only when OTP is disabled)
 - `publicId`: User identifier for all requests (only when OTP is disabled)
-- `id`: OTP session identifier (only when OTP is enabled)
-- `target`: Email or phone where OTP was sent (only when OTP is enabled)
+- `id`: OTP challenge id (only when OTP is enabled)
+- `target`: Masked email or phone the code was sent to, for display (only when OTP is enabled)
+
+An unknown username and a wrong password get the same `401` response, so the endpoint does not
+reveal which usernames exist.
 
 **Note:** Request to retrieve a user object does not include the database id. PublicId must be used instead.
 
@@ -245,15 +253,13 @@ POST: /api/v1/auth/verify-otp
 **Request Body:**
 ```json
 {
-  "id": 123,
-  "target": "user@example.com",
+  "id": "1b4e28ba-2fa1-11d2-883f-0016d3cca427",
   "code": "123456"
 }
 ```
 
 **Fields:**
-- `id`: OTP session ID returned from the login endpoint
-- `target`: Email or phone number where OTP was sent (returned from login)
+- `id`: OTP challenge id returned from the login endpoint
 - `code`: 6-digit OTP code received via email or SMS
 
 **Response:**
@@ -266,9 +272,8 @@ POST: /api/v1/auth/verify-otp
 ```
 
 **Error Responses:**
-- `400 Bad Request`: Invalid OTP code, expired OTP, or maximum attempts exceeded
-- `404 Not Found`: User not found for the given target
-- `500 Internal Server Error`: OTP verification system error
+- `400 Bad Request`: Unknown challenge, invalid OTP code, expired or used OTP, or maximum attempts exceeded
+- `401 Unauthorized`: The account was disabled, locked or deleted after the password check
 
 ## Refresh Endpoint
 

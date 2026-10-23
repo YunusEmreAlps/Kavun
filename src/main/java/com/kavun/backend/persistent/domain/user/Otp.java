@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.io.Serial;
 import java.io.Serializable;
 import java.security.SecureRandom;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import org.hibernate.annotations.SQLDelete;
 
@@ -38,12 +38,12 @@ public class Otp extends BaseEntity implements Serializable {
   private String code;
 
   @Column(nullable = false)
-  private String target; // The user's phone number or email address to send the OTP code.
+  private String target; // The username of the user the code was issued to.
 
   @Column(nullable = false)
-  private Instant expiresAt; // When the OTP expires
+  private LocalDateTime expiresAt; // When the OTP expires
 
-  private Instant usedAt; // When the OTP was successfully used
+  private LocalDateTime usedAt; // When the OTP was successfully used
 
   @Column(nullable = false)
   private Integer failedAttempts = 0; // Track failed attempts
@@ -52,7 +52,7 @@ public class Otp extends BaseEntity implements Serializable {
   private Boolean active = true;
 
   public Otp() {
-    this.expiresAt = Instant.now().plusSeconds(SecurityConstants.OTP_DURATION);
+    this.expiresAt = LocalDateTime.now().plusSeconds(SecurityConstants.OTP_DURATION);
   }
 
   /**
@@ -61,7 +61,7 @@ public class Otp extends BaseEntity implements Serializable {
    * @return true if expired, false otherwise
    */
   public boolean isExpired() {
-    return Instant.now().isAfter(expiresAt);
+    return LocalDateTime.now().isAfter(expiresAt);
   }
 
   /**

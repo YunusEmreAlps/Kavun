@@ -163,7 +163,7 @@ including `page`, `size` and `sort`, are ignored by the filter.
 
 | Parameter | Meaning |
 | --- | --- |
-| `name=lap` | text field contains the value, case-insensitive |
+| `name=lap` | text field contains the value, ignoring case and accents in any language (`İSTANBUL`, `istanbul` and `Istanbul` match each other, `sukru` finds `Şükrü`) |
 | `price=100` | equality for numbers, booleans, enums (case-insensitive) and ids |
 | `createdAt=2026-10-16` | a date on a date-time field matches the whole day |
 | `priceFrom=100` / `priceTo=500` | inclusive range; `createdAtTo=2026-10-16` includes that day |

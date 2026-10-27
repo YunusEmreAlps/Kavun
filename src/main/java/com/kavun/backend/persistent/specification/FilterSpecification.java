@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -26,8 +25,9 @@ import org.springframework.util.ClassUtils;
  * which fields may be filtered. For an allowed field {@code f}:
  *
  * <ul>
- *   <li>{@code f=value}: text fields match case-insensitively when they contain the value; other
- *       types must be equal. A date ({@code 2026-10-16}) on a date-time field matches that day.
+ *   <li>{@code f=value}: text fields match when they contain the value, ignoring case and accents
+ *       in any language (see {@link SearchUtils}); other types must be equal. A date ({@code
+ *       2026-10-16}) on a date-time field matches that day.
  *   <li>{@code fFrom=value} / {@code fTo=value}: inclusive range; a date as upper bound covers
  *       the whole day.
  *   <li>{@code fId=value}: for a many-to-one relation {@code f}, matches the related id (e.g.
@@ -48,6 +48,8 @@ public final class FilterSpecification {
   private static final String TO = "To";
   private static final String ID = "Id";
   private static final char LIKE_ESCAPE = '\\';
+  /** The SQL function that folds a column like {@link SearchUtils#fold(String)}. */
+  private static final String SEARCH_FOLD = "search_fold";
   private static final ConversionService CONVERSION = DefaultConversionService.getSharedInstance();
 
   private FilterSpecification() {}
@@ -98,8 +100,9 @@ public final class FilterSpecification {
   private static Predicate matches(CriteriaBuilder cb, Path<?> path, String key, String value) {
     Class<?> type = path.getJavaType();
     if (type == String.class) {
-      String pattern = "%" + escapeLike(value.toLowerCase(Locale.ROOT)) + "%";
-      return cb.like(cb.lower(path.as(String.class)), pattern, LIKE_ESCAPE);
+      String pattern = "%" + escapeLike(SearchUtils.fold(value)) + "%";
+      Expression<String> folded = cb.function(SEARCH_FOLD, String.class, path.as(String.class));
+      return cb.like(folded, pattern, LIKE_ESCAPE);
     }
     if (type == LocalDateTime.class && isDate(value)) {
       LocalDate day = (LocalDate) convert(value, LocalDate.class, key);

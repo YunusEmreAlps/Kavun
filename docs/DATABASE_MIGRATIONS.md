@@ -77,6 +77,9 @@ convenient.
 
 - The database and the schema (`DATABASE_SCHEMA`, default `kavun`) must exist; Liquibase creates
   the tables, including its own `databasechangelog` and `databasechangeloglock`, inside it.
+- PostgreSQL 13 or later with a `UTF8` database and ICU (built in by default since PostgreSQL 16,
+  and in the official images and managed services): the `search_fold` function that list filters
+  use to ignore case and accents (`003-search-fold.xml`) needs them.
 - The application's database user needs the right to create and alter tables in that schema.
 - Several instances starting at once are safe: Liquibase takes a lock and the others wait.
 

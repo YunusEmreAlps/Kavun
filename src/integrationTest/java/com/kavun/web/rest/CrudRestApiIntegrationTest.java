@@ -108,6 +108,18 @@ class CrudRestApiIntegrationTest extends IntegrationTestUtils {
   }
 
   @Test
+  void textFiltersIgnoreCaseAndAccentsInAnyLanguage() {
+    var role = createRole("İSTANBUL Şubesi, Straße 5, Οδός Ερμού, Ｋａｖｕｎ");
+
+    Assertions.assertTrue(containsRole(Map.of("description", "istanbul subesi"), role));
+    Assertions.assertTrue(containsRole(Map.of("description", "ŞUBESİ"), role));
+    Assertions.assertTrue(containsRole(Map.of("description", "STRASSE"), role));
+    Assertions.assertTrue(containsRole(Map.of("description", "ΟΔΟΣ"), role));
+    Assertions.assertTrue(containsRole(Map.of("description", "kavun"), role));
+    Assertions.assertFalse(containsRole(Map.of("description", "izmir"), role));
+  }
+
+  @Test
   void likeWildcardsInFilterValuesAreLiteral() {
     var discounted = createRole("Campaign 50% off");
     var other = createRole("Campaign 500 off");

@@ -20,5 +20,6 @@
 
   <include file="changes/001-baseline.xml" relativeToChangelogFile="true"/>
   <include file="changes/002-user-devices-last-seen.xml" relativeToChangelogFile="true"/>
+  <include file="changes/003-search-fold.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

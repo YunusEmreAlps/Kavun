@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  search_fold(text) folds a text column for list filters, so that a filter matches regardless of
+  case, accents and how the text was typed, in any language. The application folds the filter value
+  with SearchUtils.fold in Java; this function must fold the column the same way. Change both
+  together, the function in a new changeset (CREATE OR REPLACE).
+-->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <!--
+    Needs a UTF8 database, PostgreSQL 13+ (normalize) and ICU, which PostgreSQL builds include by
+    default since 16. The ICU root collation makes upper/lower independent of the database locale.
+  -->
+  <changeSet id="003-search-fold-postgresql" author="kavun" dbms="postgresql">
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION search_fold(value TEXT) RETURNS TEXT
+        LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+        AS $$
+          SELECT translate(
+            lower(upper(
+              normalize(regexp_replace(normalize(value, NFKD),
+                '[\u0300-\u036F\u0591-\u05C7\u064B-\u065F\u0670]', '', 'g'), NFC)
+              COLLATE "und-x-icu")),
+            'ςłøđħ', 'σlodh')
+        $$
+    </sql>
+  </changeSet>
+
+  <!-- H2 (integration tests) calls the Java implementation itself. -->
+  <changeSet id="003-search-fold-h2" author="kavun" dbms="h2">
+    <sql>
+      CREATE ALIAS search_fold DETERMINISTIC
+        FOR 'com.kavun.backend.persistent.specification.SearchUtils.fold'
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>
